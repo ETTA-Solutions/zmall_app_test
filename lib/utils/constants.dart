@@ -25,8 +25,8 @@ const BASE_URL_JUBA = "https://juba.zmallapp.com"; //Juba Production
 // const BASE_URL_HTTP = "http://159.65.147.111:8000";
 
 // Ethiopia test
-const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
-// const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test domain
+// const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
+const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test domain
 
 const BASE_URL = BASE_URL_TEST;
 // const BASE_URL = BASE_URL_PROD;
