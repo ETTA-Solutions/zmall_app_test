@@ -59,27 +59,27 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
 
         ///Confirm payment verification
         if (code == 0) {
-          var confirmPaymentResponce = await confirmPayment(
-            code: code,
-            status: response['status'].toString(),
-            traceNo: widget.traceNo,
-            message: response['errMsg'].toString(),
-          );
+          // var confirmPaymentResponce = await confirmPayment(
+          //   code: code,
+          //   status: response['status'].toString(),
+          //   traceNo: widget.traceNo,
+          //   message: response['errMsg'].toString(),
+          // );
           // debugPrint("confirmPaymentResponce:>>>> $confirmPaymentResponce");
-          if (confirmPaymentResponce != null &&
-              confirmPaymentResponce["success"]) {
-            _handlePaymentResponse(code: code);
-            Future.delayed(
-              Duration(seconds: 2),
-              () => Navigator.pop(context, _paymentResult),
-            );
-          } else {
-            _handlePaymentResponse(code: -99);
-            Future.delayed(
-              Duration(seconds: 2),
-              () => Navigator.pop(context, _paymentResult),
-            );
-          }
+          // if (confirmPaymentResponce != null &&
+          //     confirmPaymentResponce["success"]) {
+          _handlePaymentResponse(code: code);
+          Future.delayed(
+            Duration(seconds: 2),
+            () => Navigator.pop(context, _paymentResult),
+          );
+          // } else {
+          //   _handlePaymentResponse(code: -99);
+          //   Future.delayed(
+          //     Duration(seconds: 2),
+          //     () => Navigator.pop(context, _paymentResult),
+          //   );
+          // }
         } else {
           _handlePaymentResponse(code: code);
           Future.delayed(
@@ -156,25 +156,25 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
 
         ///Confirm payment verification
         if (code == 0) {
-          var confirmPaymentResponce = await confirmPayment(
-            code: code,
-            status: response['status'].toString(),
-            traceNo: widget.traceNo,
-            message: response['errMsg'].toString(),
+          // var confirmPaymentResponce = await confirmPayment(
+          //   code: code,
+          //   status: response['status'].toString(),
+          //   traceNo: widget.traceNo,
+          //   message: response['errMsg'].toString(),
+          // );
+          // if (confirmPaymentResponce != null &&
+          //     confirmPaymentResponce["success"]) {
+          _handlePaymentResponse(code: code);
+          Future.delayed(
+            Duration(seconds: 2),
+            () => Navigator.pop(context, _paymentResult),
           );
-          if (confirmPaymentResponce != null &&
-              confirmPaymentResponce["success"]) {
-            _handlePaymentResponse(code: code);
-            Future.delayed(
-              Duration(seconds: 2),
-              () => Navigator.pop(context, _paymentResult),
-            );
-          } else {
-            Future.delayed(
-              Duration(seconds: 2),
-              () => Navigator.pop(context, _paymentResult),
-            );
-          }
+          // } else {
+          //   Future.delayed(
+          //     Duration(seconds: 2),
+          //     () => Navigator.pop(context, _paymentResult),
+          //   );
+          // }
         } else {
           _handlePaymentResponse(code: -99);
           Future.delayed(
@@ -363,41 +363,41 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
     );
   }
 
-  Future<dynamic> confirmPayment({
-    required int code,
-    required String traceNo,
-    required String status,
-    required String message,
-  }) async {
-    var url = "https://pgw.shekla.app/telebirrInapp/in_app_call_back";
-    Map data = {
-      "code": code,
-      "status": status,
-      "traceNo": traceNo,
-      "message": message,
-    };
-    var body = json.encode(data);
-    try {
-      http.Response response = await http
-          .post(
-            Uri.parse(url),
-            headers: <String, String>{
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-            },
-            body: body,
-          )
-          .timeout(
-            Duration(seconds: 15),
-            onTimeout: () {
-              throw TimeoutException("The connection has timed out!");
-            },
-          );
-      return json.decode(response.body);
-    } catch (e) {
-      return null;
-    }
-  }
+  // Future<dynamic> confirmPayment({
+  //   required int code,
+  //   required String traceNo,
+  //   required String status,
+  //   required String message,
+  // }) async {
+  //   var url = "https://pgw.shekla.app/telebirrInapp/in_app_call_back";
+  //   Map data = {
+  //     "code": code,
+  //     "status": status,
+  //     "traceNo": traceNo,
+  //     "message": message,
+  //   };
+  //   var body = json.encode(data);
+  //   try {
+  //     http.Response response = await http
+  //         .post(
+  //           Uri.parse(url),
+  //           headers: <String, String>{
+  //             "Content-Type": "application/json",
+  //             "Accept": "application/json",
+  //           },
+  //           body: body,
+  //         )
+  //         .timeout(
+  //           Duration(seconds: 15),
+  //           onTimeout: () {
+  //             throw TimeoutException("The connection has timed out!");
+  //           },
+  //         );
+  //     return json.decode(response.body);
+  //   } catch (e) {
+  //     return null;
+  //   }
+  // }
 
   Future<dynamic> getRreceiveCode({
     required String amount,

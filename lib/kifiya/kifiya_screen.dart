@@ -284,7 +284,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
 
     List<String> invalidPaths = [];
-    
+
     for (var path in imagePath) {
       File imageFile = File(path);
       if (!await imageFile.exists()) {
@@ -295,15 +295,16 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     if (invalidPaths.isNotEmpty) {
       // Clear invalid images from storage
       await Service.remove('images');
-      
+
       // Show user-friendly error
       Service.showMessage(
         context: context,
-        title: "Some images are missing or deleted. Please go back to the vehicle selection screen and re-select your images.",
+        title:
+            "Some images are missing or deleted. Please go back to the vehicle selection screen and re-select your images.",
         error: true,
         duration: 5,
       );
-      
+
       return false;
     }
 
@@ -547,7 +548,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         // Payment was verified but images are invalid - log for potential refund
         Service.showMessage(
           context: context,
-          title: "Payment verified but order could not be created due to missing images. Please contact support at 8707 for assistance.",
+          title:
+              "Payment verified but order could not be created due to missing images. Please contact support at 8707 for assistance.",
           error: true,
           duration: 5,
         );
@@ -1707,7 +1709,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                           serverToken:
                                                               userData['user']['server_token'],
                                                           url:
-                                                              "http://196.189.44.60:8069/telebirr/ussd/send_sms", // New configuration
+                                                              "http://196.189.44.60:8069/telebirr/ussd/send_sms", // New configuration: odoo server ip,
                                                           // "https://pgw.shekla.app/telebirr/ussd/send_sms",
                                                           hisab: widget.price!,
                                                           traceNo:
@@ -1972,66 +1974,70 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                     ),
                                                   ).then((value) async {
                                                     // debugPrint( "Value: $value");
-                                                    if (value != null) {
-                                                      if (value == false) {
-                                                        Service.showMessage(
-                                                          context: context,
-                                                          title:
-                                                              "Payment was not completed. Please choose your payment method and try again!.",
-                                                          error: true,
-                                                        );
-                                                      } else if ((value['code'] !=
-                                                                  null &&
-                                                              value['code'] ==
-                                                                  0) ||
-                                                          (value['status'] !=
-                                                                  null &&
-                                                              value['status']
-                                                                      .toString()
-                                                                      .toLowerCase() ==
-                                                                  "success")) {
-                                                        // debugPrint( "Payment Successful>>>");
-                                                        // SECURITY FIX: Validate images before creating courier order
-                                                        if (widget.isCourier!) {
-                                                          bool imagesValid = await _validateCourierImagesBeforePayment();
-                                                          if (!imagesValid) {
-                                                            Service.showMessage(
-                                                              context: context,
-                                                              title: "Payment successful but images are missing. Please contact support at 8707 for refund assistance.",
-                                                              error: true,
-                                                              duration: 5,
-                                                            );
-                                                            return;
-                                                          }
-                                                          _createCourierOrder();
-                                                        } else if (aliexpressCart != null &&
-                                                                  aliexpressCart!
-                                                                          .cart
-                                                                          .storeId ==
-                                                                      cart.storeId) {
-                                                          _createAliexpressOrder();
-                                                        } else {
-                                                          _createOrder();
-                                                        }
-                                                      }
-                                                    } else {
-                                                      // _boaVerify();
-                                                      Future.delayed(
-                                                        Duration(
-                                                          milliseconds: 100,
-                                                        ),
-                                                        () {
-                                                          if (mounted) {
-                                                            Service.showMessage(
-                                                              context: context,
-                                                              title:
-                                                                  "Payment was not completed. Please choose your payment method and try again!.",
-                                                              error: true,
-                                                            );
-                                                          }
-                                                        },
-                                                      );
-                                                    }
+                                                    // if (value != null) {
+                                                    //   if (value == false) {
+                                                    //     Service.showMessage(
+                                                    //       context: context,
+                                                    //       title:
+                                                    //           "Payment was not completed. Please choose your payment method and try again!.",
+                                                    //       error: true,
+                                                    //     );
+                                                    //   } else if ((value['code'] !=
+                                                    //               null &&
+                                                    //           value['code'] ==
+                                                    //               0) ||
+                                                    //       (value['status'] !=
+                                                    //               null &&
+                                                    //           value['status']
+                                                    //                   .toString()
+                                                    //                   .toLowerCase() ==
+                                                    //               "success")) {
+                                                    //     // debugPrint( "Payment Successful>>>");
+                                                    //     // SECURITY FIX: Validate images before creating courier order
+                                                    //     if (widget.isCourier!) {
+                                                    //       bool imagesValid =
+                                                    //           await _validateCourierImagesBeforePayment();
+                                                    //       if (!imagesValid) {
+                                                    //         Service.showMessage(
+                                                    //           context: context,
+                                                    //           title:
+                                                    //               "Payment successful but images are missing. Please contact support at 8707 for refund assistance.",
+                                                    //           error: true,
+                                                    //           duration: 5,
+                                                    //         );
+                                                    //         return;
+                                                    //       }
+                                                    //       _createCourierOrder();
+                                                    //     } else if (aliexpressCart !=
+                                                    //             null &&
+                                                    //         aliexpressCart!
+                                                    //                 .cart
+                                                    //                 .storeId ==
+                                                    //             cart.storeId) {
+                                                    //       _createAliexpressOrder();
+                                                    //     } else {
+                                                    //       _createOrder();
+                                                    //     }
+                                                    //   }
+                                                    // } else {
+                                                    //   // _boaVerify();
+                                                    //   Future.delayed(
+                                                    //     Duration(
+                                                    //       milliseconds: 100,
+                                                    //     ),
+                                                    //     () {
+                                                    //       if (mounted) {
+                                                    //         Service.showMessage(
+                                                    //           context: context,
+                                                    //           title:
+                                                    //               "Payment was not completed. Please choose your payment method and try again!.",
+                                                    //           error: true,
+                                                    //         );
+                                                    //       }
+                                                    //     },
+                                                    //   );
+                                                    // }
+                                                    _boaVerify();
                                                   });
                                                 },
                                               ),
@@ -2887,25 +2893,30 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         'payment_id': paymentId,
         'is_courier': true,
       };
-      
+
       // Store in local storage for user to reference when contacting support
       List<dynamic> failedOrders = await Service.read('failed_orders') ?? [];
       failedOrders.add(failedOrder);
       await Service.save('failed_orders', failedOrders);
-      
+
       // Try to notify backend about the failed order (best effort)
       try {
-        var url = "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/log_failed_order";
-        await http.post(
-          Uri.parse(url),
-          headers: {"Content-Type": "application/json"},
-          body: json.encode(failedOrder),
-        ).timeout(Duration(seconds: 5));
+        var url =
+            "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/log_failed_order";
+        await http
+            .post(
+              Uri.parse(url),
+              headers: {"Content-Type": "application/json"},
+              body: json.encode(failedOrder),
+            )
+            .timeout(Duration(seconds: 5));
       } catch (_) {
         // Silent fail - local log is primary
       }
-      
-      debugPrint("SECURITY: Logged failed order after payment - ID: ${widget.orderPaymentId}, Amount: $amount, Reason: $reason");
+
+      debugPrint(
+        "SECURITY: Logged failed order after payment - ID: ${widget.orderPaymentId}, Amount: $amount, Reason: $reason",
+      );
     } catch (e) {
       debugPrint("Error logging failed order: $e");
     }
@@ -3053,16 +3064,18 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                   error: true,
                 );
                 print("else error>>> ${data['error_code']}");
-                
+
                 // SECURITY: Log failed order when API returns error
                 await _logFailedOrderAfterPayment(
-                  reason: "API error: ${data['error_code']} - ${errorCodes['${data['error_code']}']}",
-                  paymentId: kifiyaMethod != -1 
-                      ? paymentResponse['payment_gateway'][kifiyaMethod]['_id'] ?? ''
+                  reason:
+                      "API error: ${data['error_code']} - ${errorCodes['${data['error_code']}']}",
+                  paymentId: kifiyaMethod != -1
+                      ? paymentResponse['payment_gateway'][kifiyaMethod]['_id'] ??
+                            ''
                       : '',
                   amount: widget.price ?? 0.0,
                 );
-                
+
                 await Future.delayed(Duration(seconds: 2));
                 if (data['error_code'] == 999) {
                   await Service.saveBool('logged', false);
@@ -3075,7 +3088,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                   // Show support message for non-auth errors
                   Service.showMessage(
                     context: context,
-                    title: "If payment was deducted, contact support at 8707. Ref: ${widget.orderPaymentUniqueId}",
+                    title:
+                        "If payment was deducted, contact support at 8707. Ref: ${widget.orderPaymentUniqueId}",
                     error: true,
                     duration: 8,
                   );
@@ -3140,7 +3154,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       // This helps support team track orders that need refunds
       await _logFailedOrderAfterPayment(
         reason: "Order creation failed after payment: $e",
-        paymentId: kifiyaMethod != -1 
+        paymentId: kifiyaMethod != -1
             ? paymentResponse['payment_gateway'][kifiyaMethod]['_id'] ?? ''
             : '',
         amount: widget.price ?? 0.0,
@@ -3151,7 +3165,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         if (mounted) {
           Service.showMessage(
             context: context,
-            title: "If payment was deducted, please contact support at 8707 with reference: ${widget.orderPaymentUniqueId}",
+            title:
+                "If payment was deducted, please contact support at 8707 with reference: ${widget.orderPaymentUniqueId}",
             error: true,
             duration: 5,
           );
