@@ -307,3 +307,6 @@ const store_delivery_id = {"DonationID": "66472227b2f9514de2636266"};
 /// For ADDRESS VALIDATION SERVICE
 /// Minimum distance in meters to consider two addresses as different.
 final double kMinimumDistanceThreshold = 0.1; // 50 meters
+
+/// Telebirr-InApp Trace Number Filteration Key
+final String kTelebirrInAppTraceKey = "ZTelebirrInApp";

@@ -1965,8 +1965,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                         return TelebirrInApp(
                                                           context: context,
                                                           amount: widget.price!,
-                                                          traceNo: widget
-                                                              .orderPaymentUniqueId!,
+                                                          traceNo:
+                                                              "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}",
                                                           phone:
                                                               userData['user']['phone'],
                                                         );
