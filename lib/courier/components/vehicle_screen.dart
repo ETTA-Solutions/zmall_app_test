@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:zmall/services/image_upload_service.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/courier_checkout/courier_checkout_screen.dart';
@@ -91,28 +93,38 @@ class _VehicleScreenState extends State<VehicleScreen> {
     }
   }
 
-  //from gallery
-  Future getImage() async {
-    final image = await imagePicker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      _image = File(image!.path);
-      imageList.add(_image!);
-      imagePath.add(_image!.path);
-      imageList.length == 2 ? canAddImage = false : canAddImage = true;
-    });
-    // debugPrint("image path $imagePath");
+  /// Pick an image from gallery with full error handling.
+  /// Delegates all validation to [ImageUploadService].
+  Future<void> getImage() async {
+    final result = await ImageUploadService.pickAndValidate();
+
+    result.when(
+      success: (file) {
+        setState(() {
+          _image = file;
+          imageList.add(file);
+          imagePath.add(file.path);
+          canAddImage = imageList.length < 2;
+        });
+      },
+      failure: (message, type) {
+        // User cancellation — no message needed
+        if (type == ImageValidationError.cancelled) return;
+        _showImageError(message);
+      },
+    );
   }
-  //from camera
-  // Future getImage() async {
-  //   // final image = await imagePicker.getImage(source: ImageSource.camera); change getImage to pickImage
-  //   final image = await imagePicker.pickImage(source: ImageSource.camera);
-  // setState(() {
-  //   _image = File(image!.path);
-  //   imageList.add(_image!);
-  //   imagePath.add(image.path);
-  //   imageList.length == 2 ? canAddImage = false : canAddImage = true;
-  // });
-  // }
+
+  /// Show a user-friendly error message for image issues.
+  void _showImageError(String message) {
+    if (!mounted) return;
+    Service.showMessage(
+      context: context,
+      title: message,
+      error: true,
+      duration: 4,
+    );
+  }
 
   void _getTotalDistance() async {
     setState(() {
@@ -1051,7 +1063,53 @@ class _VehicleScreenState extends State<VehicleScreen> {
                                       width: getProportionateScreenWidth(
                                         kDefaultPadding * 5,
                                       ),
-                                      child: Image.file(imageList[index]),
+                                      clipBehavior: Clip.antiAlias,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          getProportionateScreenWidth(
+                                            kDefaultPadding / 2,
+                                          ),
+                                        ),
+                                        color: kGreyColor.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                      ),
+                                      child: Image.file(
+                                        imageList[index],
+                                        fit: BoxFit.cover,
+                                        cacheWidth: 300,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          // Remove the broken image on next frame
+                                          WidgetsBinding.instance
+                                              .addPostFrameCallback((_) {
+                                            if (mounted) {
+                                              setState(() {
+                                                imageList.removeAt(index);
+                                                if (index <
+                                                    imagePath.length) {
+                                                  imagePath.removeAt(index);
+                                                }
+                                                canAddImage =
+                                                    imageList.length < 2;
+                                              });
+                                              _showImageError(
+                                                'An image could not be loaded and was removed.',
+                                              );
+                                            }
+                                          });
+                                          return Center(
+                                            child: Icon(
+                                              HeroiconsOutline.photo,
+                                              color: kGreyColor,
+                                              size:
+                                                  getProportionateScreenWidth(
+                                                    kDefaultPadding * 1.5,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                     Positioned(
                                       top: -2,

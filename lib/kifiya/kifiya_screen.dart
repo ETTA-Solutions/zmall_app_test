@@ -36,6 +36,7 @@ import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'components/kifiya_method_container.dart';
 import 'components/telebirr_screen.dart';
+import 'package:zmall/services/image_upload_service.dart';
 
 class KifiyaScreen extends StatefulWidget {
   static String routeName = '/kifiya';
@@ -269,9 +270,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
   }
 
-  /// SECURITY FIX: Validates that all courier images exist before payment
-  /// Returns true if validation passes, false if any image is missing
-  /// This prevents payment from being processed when images will fail to upload
+  /// SECURITY FIX: Validates that all courier images exist, are accessible,
+  /// have valid formats, and are within size limits before payment.
+  /// Returns true if validation passes, false if any image fails.
+  /// Delegates all validation logic to [ImageUploadService.validateBatch].
   Future<bool> _validateCourierImagesBeforePayment() async {
     // Skip validation for non-courier orders
     if (widget.isCourier != true) {
@@ -283,24 +285,33 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       return true;
     }
 
-    List<String> invalidPaths = [];
+    final batch = await ImageUploadService.validateBatch(imagePath);
 
-    for (var path in imagePath) {
-      File imageFile = File(path);
-      if (!await imageFile.exists()) {
-        invalidPaths.add(path);
-      }
-    }
-
-    if (invalidPaths.isNotEmpty) {
+    if (batch.hasIssues && batch.allFailed) {
       // Clear invalid images from storage
       await Service.remove('images');
 
-      // Show user-friendly error
       Service.showMessage(
         context: context,
         title:
-            "Some images are missing or deleted. Please go back to the vehicle selection screen and re-select your images.",
+            "Image issue: ${batch.summary}. "
+            "Please go back and re-select your images.",
+        error: true,
+        duration: 5,
+      );
+
+      return false;
+    }
+
+    if (batch.hasIssues) {
+      // Some images invalid — clear storage and let user re-select
+      await Service.remove('images');
+
+      Service.showMessage(
+        context: context,
+        title:
+            "Image issue: ${batch.summary}. "
+            "Please go back and re-select your images.",
         error: true,
         duration: 5,
       );
@@ -2957,21 +2968,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             : ""
         ..fields['vehicle_id'] = widget.vehicleId!;
       if (imagePath != null && imagePath.length > 0) {
-        // Validate files exist before showing upload UI
-        List<String> validPaths = [];
-        List<String> invalidPaths = [];
+        // Validate all image paths using the shared service
+        final batch = await ImageUploadService.validateBatch(imagePath);
 
-        for (var path in imagePath) {
-          File imageFile = File(path);
-          if (await imageFile.exists()) {
-            validPaths.add(path);
-          } else {
-            invalidPaths.add(path);
-          }
-        }
-
-        // If some files are missing, alert user and stop
-        if (invalidPaths.length > 0) {
+        // If every image failed validation, stop the order
+        if (batch.allFailed) {
           setState(() {
             _loading = false;
             _placeOrder = false;
@@ -2980,7 +2981,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                "Some images are missing or deleted. Please go back and select images again.",
+                "All images failed validation (${batch.issues.map((i) => i.label).join('; ')}). "
+                "Please go back and select images again.",
                 style: TextStyle(color: kPrimaryColor),
               ),
               backgroundColor: kSecondaryColor,
@@ -2996,8 +2998,23 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           return null;
         }
 
-        // Only show "Uploading..." if we have valid files
-        if (validPaths.length > 0) {
+        // If some (but not all) images had issues, warn but continue with valid ones
+        if (batch.hasIssues) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "${batch.issues.length} image(s) skipped (${batch.issues.map((i) => i.label).join('; ')}). "
+                "Continuing with ${batch.validPaths.length} valid image(s).",
+                style: TextStyle(color: kPrimaryColor),
+              ),
+              backgroundColor: kSecondaryColor,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Upload valid images
+        if (batch.hasValid) {
           setState(() {
             linearProgressIndicator = Container(
               child: Column(
@@ -3009,7 +3026,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                   ),
                   SizedBox(height: kDefaultPadding * 0.5),
                   Text(
-                    "Uploading ${validPaths.length} image(s)...",
+                    "Uploading ${batch.validPaths.length} image(s)...",
                     style: TextStyle(color: kBlackColor),
                   ),
                 ],
@@ -3017,11 +3034,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             );
           });
 
-          for (var i = 0; i < validPaths.length; i++) {
-            http.MultipartFile multipartFile =
-                await http.MultipartFile.fromPath('file', validPaths[i]);
-            request.files.add(multipartFile);
-            // print("current multipartFile $multipartFile");
+          for (var i = 0; i < batch.validPaths.length; i++) {
+            try {
+              http.MultipartFile multipartFile =
+                  await http.MultipartFile.fromPath('file', batch.validPaths[i]);
+              request.files.add(multipartFile);
+            } catch (e) {
+              // Skip files that fail to attach (e.g., deleted between validation and attach)
+              debugPrint('Failed to attach image: ${batch.validPaths[i]} - $e');
+            }
           }
         }
       }
