@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -75,10 +74,7 @@ class BatchValidationResult {
   final List<String> validPaths;
   final List<BatchIssue> issues;
 
-  const BatchValidationResult({
-    required this.validPaths,
-    required this.issues,
-  });
+  const BatchValidationResult({required this.validPaths, required this.issues});
 
   bool get hasValid => validPaths.isNotEmpty;
   bool get hasIssues => issues.isNotEmpty;
@@ -249,7 +245,8 @@ class ImageUploadService {
     File file, {
     String? fileName,
   }) async {
-    final String name = fileName ?? file.path.split(Platform.pathSeparator).last;
+    final String name =
+        fileName ?? file.path.split(Platform.pathSeparator).last;
 
     // --- Existence ---
     if (!await file.exists()) {
@@ -260,8 +257,9 @@ class ImageUploadService {
     }
 
     // --- Extension ---
-    final String ext =
-        name.contains('.') ? '.${name.split('.').last.toLowerCase()}' : '';
+    final String ext = name.contains('.')
+        ? '.${name.split('.').last.toLowerCase()}'
+        : '';
     if (ext.isEmpty || !allowedExtensions.contains(ext)) {
       return ImageValidationResult.failure(
         'Unsupported image format ($ext).\n'
@@ -340,23 +338,28 @@ class ImageUploadService {
 
       // Existence
       if (!await file.exists()) {
-        issues.add(BatchIssue(
-          path: path,
-          fileName: fileName,
-          type: ImageValidationError.notFound,
-        ));
+        issues.add(
+          BatchIssue(
+            path: path,
+            fileName: fileName,
+            type: ImageValidationError.notFound,
+          ),
+        );
         continue;
       }
 
       // Extension
-      final String ext =
-          path.contains('.') ? '.${path.split('.').last.toLowerCase()}' : '';
+      final String ext = path.contains('.')
+          ? '.${path.split('.').last.toLowerCase()}'
+          : '';
       if (ext.isEmpty || !allowedExtensions.contains(ext)) {
-        issues.add(BatchIssue(
-          path: path,
-          fileName: fileName,
-          type: ImageValidationError.unsupportedFormat,
-        ));
+        issues.add(
+          BatchIssue(
+            path: path,
+            fileName: fileName,
+            type: ImageValidationError.unsupportedFormat,
+          ),
+        );
         continue;
       }
 
@@ -364,27 +367,33 @@ class ImageUploadService {
       try {
         final int fileSize = await file.length();
         if (fileSize == 0) {
-          issues.add(BatchIssue(
-            path: path,
-            fileName: fileName,
-            type: ImageValidationError.empty,
-          ));
+          issues.add(
+            BatchIssue(
+              path: path,
+              fileName: fileName,
+              type: ImageValidationError.empty,
+            ),
+          );
           continue;
         }
         if (fileSize > maxImageSizeBytes) {
-          issues.add(BatchIssue(
-            path: path,
-            fileName: fileName,
-            type: ImageValidationError.tooLarge,
-          ));
+          issues.add(
+            BatchIssue(
+              path: path,
+              fileName: fileName,
+              type: ImageValidationError.tooLarge,
+            ),
+          );
           continue;
         }
       } catch (_) {
-        issues.add(BatchIssue(
-          path: path,
-          fileName: fileName,
-          type: ImageValidationError.unreadable,
-        ));
+        issues.add(
+          BatchIssue(
+            path: path,
+            fileName: fileName,
+            type: ImageValidationError.unreadable,
+          ),
+        );
         continue;
       }
 
@@ -392,11 +401,13 @@ class ImageUploadService {
       try {
         final bytes = await file.readAsBytes();
         if (bytes.isEmpty) {
-          issues.add(BatchIssue(
-            path: path,
-            fileName: fileName,
-            type: ImageValidationError.corrupted,
-          ));
+          issues.add(
+            BatchIssue(
+              path: path,
+              fileName: fileName,
+              type: ImageValidationError.corrupted,
+            ),
+          );
           continue;
         }
 
@@ -404,20 +415,24 @@ class ImageUploadService {
         if (fullDecode) {
           final ui.Image decoded = await _decodeImage(bytes);
           if (decoded.width == 0 || decoded.height == 0) {
-            issues.add(BatchIssue(
-              path: path,
-              fileName: fileName,
-              type: ImageValidationError.corrupted,
-            ));
+            issues.add(
+              BatchIssue(
+                path: path,
+                fileName: fileName,
+                type: ImageValidationError.corrupted,
+              ),
+            );
             continue;
           }
         }
       } catch (_) {
-        issues.add(BatchIssue(
-          path: path,
-          fileName: fileName,
-          type: ImageValidationError.corrupted,
-        ));
+        issues.add(
+          BatchIssue(
+            path: path,
+            fileName: fileName,
+            type: ImageValidationError.corrupted,
+          ),
+        );
         continue;
       }
 

@@ -237,7 +237,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     debugPrint("image path  in kifiya $data");
     if (data != null) {
       setState(() {
-        imagePath = data;
+        imagePath = List<String>.from(data);
       });
     }
   }
@@ -2618,6 +2618,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   Future<dynamic> payOrderPayment(otp, paymentId) async {
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/pay_order_payment";
+
+    // if (widget.isCourier! &&
+    //     services != null &&
+    //     services['deliveries'] != null &&
+    //     services['deliveries'].isNotEmpty) {
+    //   debugPrint(
+    //     "##### DEBUG: List of deliveries count: ${services['deliveries'].toString().length} \nlist of Delivery types: ${services['deliveries']} \n### Delivery at index 0: ${services['deliveries'][0]} \n### More Detail: ${services['deliveries'][0]['_id']} \nfor order_payment_id: ${widget.orderPaymentId}",
+    //   );
+    // }
     Map data = widget.isCourier!
         ? {
             "user_id": userData['user']['_id'],
@@ -3036,8 +3045,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
           for (var i = 0; i < batch.validPaths.length; i++) {
             try {
-              http.MultipartFile multipartFile =
-                  await http.MultipartFile.fromPath('file', batch.validPaths[i]);
+              http.MultipartFile multipartFile = await http
+                  .MultipartFile.fromPath('file', batch.validPaths[i]);
               request.files.add(multipartFile);
             } catch (e) {
               // Skip files that fail to attach (e.g., deleted between validation and attach)
