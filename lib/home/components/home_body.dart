@@ -308,7 +308,7 @@ class _HomeBodyState extends State<HomeBody> {
     }
     try {
       List<Map<String, dynamic>> orders = await Service.getProximityOrders(
-         context: context,
+        context: context,
         userLatitude: latitude!,
         userLongitude: longitude!,
         userId: userData['user']['_id'],
@@ -528,15 +528,36 @@ class _HomeBodyState extends State<HomeBody> {
       _getPromotionalItems();
       _getUserOrder();
 
-      // Check if date_of_birth is missing and show dialog
-      if (userData['user']['gender'] == null ||
-          userData['user']['date_of_birth'] == null ||
-          userData['user']['gender'].toString().isEmpty ||
-          userData['user']['date_of_birth'].toString().isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showUpdateProfileDialog();
-        });
-      }
+      // Fetch fresh user data from server, then check if profile is Incomplete
+      _checkAndShowProfileDialog();
+    }
+  }
+
+  void _checkAndShowProfileDialog() async {
+    // Fetch fresh user data from the server to ensure local cache is up-to-date
+    var freshData = await CoreServices.getUserDetail(
+      userData['user']['_id'],
+      userData['user']['_id'],
+      context,
+    );
+
+    if (!mounted) return;
+
+    if (freshData != null && freshData['success']) {
+      setState(() {
+        userData = freshData;
+        Service.save('user', userData);
+      });
+    }
+
+    // Now check with the latest data
+    if (userData['user']['gender'] == null ||
+        userData['user']['date_of_birth'] == null ||
+        userData['user']['gender'].toString().isEmpty ||
+        userData['user']['date_of_birth'].toString().isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showUpdateProfileDialog();
+      });
     }
   }
 
@@ -599,6 +620,7 @@ class _HomeBodyState extends State<HomeBody> {
                   // Refresh user data when returning from edit profile
                   getUser();
                 });
+                // getUser();
               },
               child: Text(
                 'Update Profile',
