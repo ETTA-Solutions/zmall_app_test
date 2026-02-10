@@ -391,6 +391,8 @@ class _EditProfileState extends State<EditProfile> {
 
   void _showPasswordBottomSheet() {
     bool _showPassword = false;
+    // Capture parent setState so we can use it after the bottom sheet is dismissing
+    final parentSetState = setState;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -487,15 +489,21 @@ class _EditProfileState extends State<EditProfile> {
                       title: 'Submit',
                       press: () async {
                         if (password.isNotEmpty) {
-                          setState(() => _loading = true);
+                          // setState(() => _loading = true);
                           Navigator.of(context).pop();
+                          parentSetState(() {
+                            _loading = true;
+                          });
+
                           var data = await updateUser();
                           if (data != null && data['success']) {
-                            userDetails();
-                            setState(() {
-                              enabled = false;
-                              _loading = false;
-                            });
+                            await userDetails();
+                            if (mounted) {
+                              parentSetState(() {
+                                enabled = false;
+                                _loading = false;
+                              });
+                            }
                           }
                         } else {
                           Service.showMessage(
@@ -627,54 +635,58 @@ class _EditProfileState extends State<EditProfile> {
         );
         request.files.add(multipartFile);
       }
-      await request
-          .send()
-          .then((response) async {
-            http.Response.fromStream(response).then((value) async {
-              var data = json.decode(value.body);
-              if (data != null && data['success']) {
-                Service.showMessage(
-                  context: context,
-                  title: "Profile data updated successfully!",
-                  error: false,
-                );
-                setState(() {
-                  _loading = false;
-                  enabled = false;
-                });
-              } else {
-                if (data['error_code'] == 999) {
-                  Service.showMessage(
-                    context: context,
-                    title: "${errorCodes['${data['error_code']}']}!",
-                    error: true,
-                  );
-                  await Service.saveBool('logged', false);
-                  await Service.remove('user');
-                  Navigator.pushReplacementNamed(
-                    context,
-                    LoginScreen.routeName,
-                  );
-                } else {
-                  Service.showMessage(
-                    context: context,
-                    title: "Something went wrong. Please try again!",
-                    error: true,
-                  );
-                }
-              }
-              // print("update ${json.decode(value.body)}");
-              return json.decode(value.body);
-            });
-          })
-          .timeout(
-            Duration(seconds: 10),
-            onTimeout: () {
-              throw TimeoutException(
-                "The connection has timed out, please try again!",
-              );
-            },
+      // await request
+      //     .send()
+      //     .then((response) async {
+
+      var streamedResponse = await request.send().timeout(
+        Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException(
+            "The connection has timed out, please try again!",
           );
+        },
+      );
+
+      var response = await http.Response.fromStream(streamedResponse);
+      debugPrint("update response ${response.body}");
+      var data = json.decode(response.body);
+      // http.Response.fromStream(response).then((value) async {
+      // var data = json.decode(value.body);
+      if (data != null && data['success']) {
+        Service.showMessage(
+          context: context,
+          title: "Profile data updated successfully!",
+          error: false,
+        );
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            enabled = false;
+          });
+        }
+        return data;
+      } else {
+        if (data != null && data['error_code'] == 999) {
+          Service.showMessage(
+            context: context,
+            title: "${errorCodes['${data['error_code']}']}!",
+            error: true,
+          );
+          await Service.saveBool('logged', false);
+          await Service.remove('user');
+          Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+        } else {
+          String errorMsg = data != null && data['meessage'] != null
+              ? data['message'].toString()
+              : data != null && data['error'] != null
+              ? data['error'].toString()
+              : "Something went wrong. Please try again!";
+          debugPrint("update profile error: $data");
+          Service.showMessage(context: context, title: errorMsg, error: true);
+        }
+        return data;
+      }
     } catch (e) {
       // print("update ${json.decode(value.body)}");
 
@@ -685,9 +697,11 @@ class _EditProfileState extends State<EditProfile> {
       );
       return null;
     } finally {
-      setState(() {
-        this._loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
     }
   }
 }

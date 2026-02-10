@@ -201,7 +201,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           getCourierSchedule();
           getCourierScheduleDate();
         });
-        debugPrint("courierCart CART>>> ${courierCart!}");
+        //debugPrint("courierCart CART>>> ${courierCart!}");
       }
     } else {
       var data = await Service.read('cart');
@@ -2934,9 +2934,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         // Silent fail - local log is primary
       }
 
-      debugPrint(
-        "SECURITY: Logged failed order after payment - ID: ${widget.orderPaymentId}, Amount: $amount, Reason: $reason",
-      );
+      // debugPrint(
+      //   "SECURITY: Logged failed order after payment - ID: ${widget.orderPaymentId}, Amount: $amount, Reason: $reason",
+      // );
     } catch (e) {
       debugPrint("Error logging failed order: $e");
     }
@@ -3050,7 +3050,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               request.files.add(multipartFile);
             } catch (e) {
               // Skip files that fail to attach (e.g., deleted between validation and attach)
-              debugPrint('Failed to attach image: ${batch.validPaths[i]} - $e');
+              //debugPrint('Failed to attach image: ${batch.validPaths[i]} - $e');
             }
           }
         }

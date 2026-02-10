@@ -374,7 +374,7 @@ class _MagazineReaderScreenState extends State<MagazineReaderScreen> {
               ),
               onWebViewCreated: (controller) async {
                 webViewController = controller;
-                debugPrint('WebView Created');
+                // debugPrint('WebView Created');
 
                 // Set a proper user agent
                 await controller.setSettings(
@@ -385,7 +385,7 @@ class _MagazineReaderScreenState extends State<MagazineReaderScreen> {
                 );
               },
               onLoadStart: (controller, url) {
-                debugPrint('WebView Loading');
+                //debugPrint('WebView Loading');
                 setState(() {
                   webViewProgress = 0;
                 });
@@ -394,19 +394,19 @@ class _MagazineReaderScreenState extends State<MagazineReaderScreen> {
                 setState(() {
                   webViewProgress = progress / 100;
                 });
-                debugPrint('WebView webViewProgress $webViewProgress');
+                //debugPrint('WebView webViewProgress $webViewProgress');
               },
               onLoadStop: (controller, url) async {
                 setState(() {
                   webViewProgress = 1;
                 });
-                debugPrint('WebView stoped');
+                //debugPrint('WebView stoped');
               },
               onReceivedError: (controller, request, error) {
-                debugPrint(
-                  'WebView Error: ${error.type} - ${error.description}',
-                );
-                debugPrint('Failed URL: ${request.url}');
+                //debugPrint(
+                //   'WebView Error: ${error.type} - ${error.description}',
+                // );
+                // debugPrint('Failed URL: ${request.url}');
                 setState(() {
                   errorMessage =
                       'Failed to load magazine.\nError: ${error.description}';
