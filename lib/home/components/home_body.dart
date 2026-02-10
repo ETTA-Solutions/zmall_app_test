@@ -295,9 +295,11 @@ class _HomeBodyState extends State<HomeBody> {
       // }
     } catch (e) {
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -470,7 +472,7 @@ class _HomeBodyState extends State<HomeBody> {
 
   void isAbroad() async {
     var data = await Service.read('is_abroad');
-    if (data != null && data) {
+    if (data != null && data && mounted) {
       setState(() {
         is_abroad = data;
       });
@@ -480,7 +482,7 @@ class _HomeBodyState extends State<HomeBody> {
   void getCart() async {
     // debugPrint("Fetching data");
     var data = await Service.read('cart');
-    if (data != null) {
+    if (data != null && mounted) {
       setState(() {
         cart = Cart.fromJson(data);
       });
@@ -488,10 +490,12 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void launchRedirect(url) async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     await Future.delayed(Duration(seconds: 2));
+    if (!mounted) return;
     setState(() {
       _loading = false;
     });
@@ -500,7 +504,7 @@ class _HomeBodyState extends State<HomeBody> {
 
   _getToken() {
     _firebaseMessaging.getToken().then((value) {
-      if (value != null && userData != null) {
+      if (value != null && userData != null && mounted) {
         setState(() {
           deviceToken = value;
           userData['user']['device_token'] = deviceToken;
@@ -519,6 +523,7 @@ class _HomeBodyState extends State<HomeBody> {
   void getUser() async {
     var data = await Service.read('user');
     if (data != null) {
+      if (!mounted) return;
       setState(() {
         userData = data;
         orderFrom = userData['user']['first_name'];
@@ -638,9 +643,11 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void _getUserDetails(userId, serverToken) async {
-    setState(() {
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
     var data = await CoreServices.getUserDetail(userId, serverToken, context);
 
     if (data != null && data['success']) {
@@ -672,6 +679,7 @@ class _HomeBodyState extends State<HomeBody> {
 
   void getUserOrderCount() {
     _getUserDetails(userData['user']['_id'], userData['user']['server_token']);
+    if (!mounted) return;
     if (userData['user']['order_count'] > 0) {
       setState(() {
         orderCount = int.parse(userData['user']['order_count'].toString());
@@ -897,6 +905,7 @@ class _HomeBodyState extends State<HomeBody> {
 
   // Sorted promotional items by distance to store
   void _getPromotionalItems() async {
+    if (!mounted) return;
     setState(() {
       _loading = widget.isLaunched;
     });
@@ -958,6 +967,7 @@ class _HomeBodyState extends State<HomeBody> {
           getLocalPromotionalItems();
         }
       } else {
+        if (!mounted) return;
         setState(() {
           promotionalItems = {"success": false, "promotional_items": []};
         });
@@ -971,13 +981,16 @@ class _HomeBodyState extends State<HomeBody> {
       // if (mounted) {}
     } catch (e) {
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
   void _getPromotionalStores() async {
+    if (!mounted) return;
     setState(() {
       _loading = widget.isLaunched;
     });
@@ -1000,6 +1013,7 @@ class _HomeBodyState extends State<HomeBody> {
       // debugPrint( "promotionalStores ${promotionalStores["promotional_stores"][1]}");
       // 24_7 , discount, exclusive, healthy_option, healthy, holiday_special, limited_offer, local_cuisine, most_popular, new_on_zmall, seasonal, store_closed, top_rated, top_selling, trending
     } else {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         promotionalStores = {"success": false, "promotional_items": []};
@@ -1036,6 +1050,7 @@ class _HomeBodyState extends State<HomeBody> {
     }
     isPromotionalItemOpen.clear();
     var data = await Service.read('p_items');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         promotionalItems = data;
@@ -1058,6 +1073,7 @@ class _HomeBodyState extends State<HomeBody> {
 
   void getLocalPromotionalStores() async {
     var data = await Service.read('s_items');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         promotionalStores = data;
@@ -1072,10 +1088,12 @@ class _HomeBodyState extends State<HomeBody> {
   void _getNearbyStores() async {
     // debugPrint("\t=> \in nearbyStores>>>>>");
     isNearbyStoreOpen.clear();
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getNearbyStores();
+    if (!mounted) return;
     if (data != null && data['success']) {
       setState(() {
         nearbyStores = data['stores'];
@@ -1094,6 +1112,7 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void _getItemInformation(String itemId) async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
@@ -1140,15 +1159,18 @@ class _HomeBodyState extends State<HomeBody> {
       }
     } catch (e) {
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
   void getCategories() async {
     _getAppKeys();
     var data = await Service.read('categories');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         responseData = data;
@@ -1160,6 +1182,7 @@ class _HomeBodyState extends State<HomeBody> {
 
   void getServices() async {
     var data = await Service.read('services');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         servicesData = data;
@@ -1190,6 +1213,7 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void checkLaundryCategory(List categoryList) {
+    if (!mounted) return;
     setState(() {
       laundryIndex = -1;
     });
@@ -1211,6 +1235,7 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void checkProximityService(List serviceList) {
+    if (!mounted) return;
     setState(() {
       proximityIndex = -1;
       isProximityActive = false; // reset first
@@ -1232,6 +1257,7 @@ class _HomeBodyState extends State<HomeBody> {
           false;
 
       if (hasProximityTag) {
+        if (!mounted) return;
         setState(() {
           isProximityActive = true;
           proximityIndex = i;
@@ -1271,6 +1297,7 @@ class _HomeBodyState extends State<HomeBody> {
 
   //Recap service
   void checkHolidaySplashService(List serviceList) async {
+    if (!mounted) return;
     setState(() {
       holidaySplashIndex = -1;
       isHolidaySplashActive = false; // reset first
@@ -1300,6 +1327,7 @@ class _HomeBodyState extends State<HomeBody> {
           false;
 
       if (isRecapLocal || isHolidaySplashLocal) {
+        if (!mounted) return;
         setState(() {
           isHolidaySplashActive = true;
           holidaySplashIndex = i;
