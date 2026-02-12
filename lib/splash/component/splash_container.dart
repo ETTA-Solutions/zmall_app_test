@@ -165,11 +165,12 @@ class _SplashContainerState extends State<SplashContainer> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // debugPrint("Launch ad url");
+        // debugPrint("=== SPLASH AD TAP ===");
+        // debugPrint("urlLink: ${widget.urlLink}");
+        // debugPrint("adId: ${widget.adId}");
         CoreServices.saveAdClick(widget.adId);
         if (widget.urlLink.split("/")[0] == "item") {
-          //Redirect to notification item
-          // debugPrint("Redirect to notification item");
+          // debugPrint("Redirecting to item ID: ${widget.urlLink.split("/")[1]}");
           _getItemInformation(widget.urlLink.split("/")[1]);
         } else if (widget.urlLink.split("/")[0] == "store") {
           // Redirect to notification store

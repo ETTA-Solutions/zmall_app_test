@@ -248,6 +248,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<String> getAd() async {
+    // TODO: Restore API call when endpoint is ready
     var url = Uri.parse("https://nedajmadeya.com/ad/launch");
     try {
       http.Response response = await http
@@ -259,7 +260,7 @@ class _SplashScreenState extends State<SplashScreen> {
             },
           );
       var data = json.decode(response.body);
-
+    
       if (mounted) {
         setState(() {
           bytes = base64Decode(data['image']);
@@ -275,6 +276,24 @@ class _SplashScreenState extends State<SplashScreen> {
       return "failed";
     }
   }
+
+  //   // Mock data for testing
+  //   try {
+  //     final byteData = await rootBundle.load('images/zmall.jpg');
+  //     if (mounted) {
+  //       setState(() {
+  //         bytes = byteData.buffer.asUint8List();
+  //         urlLink = 'item/REPLACE_WITH_REAL_ITEM_ID';
+  //         adId = 'mock_ad_001';
+  //         loading = !loading;
+  //       });
+  //     }
+  //     return "success";
+  //   } catch (e) {
+  //     loader(5);
+  //     return "failed";
+  //   }
+  // }
 
   Future<dynamic> getAppKeys() async {
     var url = Uri.parse(

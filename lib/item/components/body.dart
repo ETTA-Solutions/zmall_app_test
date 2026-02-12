@@ -55,6 +55,10 @@ class _BodyState extends State<Body> {
   @override
   void initState() {
     super.initState();
+    // debugPrint("=== ITEM SCREEN ===");
+    // debugPrint("Item ID: ${widget.item['_id']}");
+    // debugPrint("Item Name: ${widget.item['name']}");
+    // debugPrint("===================");
     getUser();
     requiredCount();
     getCart();
