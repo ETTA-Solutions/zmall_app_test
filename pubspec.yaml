@@ -21,7 +21,7 @@ dependencies:
   shimmer:
   flutter_spinkit:
   # shared_preferences:
-  shared_preferences: ^2.5.3
+  shared_preferences: ^2.5.4
   url_launcher: ^6.0.3
   # mobile_scanner:
   # qr_code_scanner:

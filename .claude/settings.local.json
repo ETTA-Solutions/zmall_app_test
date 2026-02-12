@@ -22,7 +22,8 @@
       "Bash(awk:*)",
       "Bash(find:*)",
       "WebFetch(domain:pub.dev)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(flutter run:*)"
     ],
     "deny": [],
     "ask": []
