@@ -1717,10 +1717,13 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void getNearByServices() async {
-    setState(() {
-      _loading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+      });
+    }
 
+    if (!mounted) return;
     setState(() {
       _loading = servicesData == null;
     });
