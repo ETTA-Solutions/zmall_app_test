@@ -101,6 +101,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   void getUser() async {
     var data = await Service.read('user');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         userData = data;
@@ -110,23 +111,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void getCart() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await Service.read('cart');
     var aliCart = await Service.read('aliexpressCart');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         cart = Cart.fromJson(data);
-        // debugPrint("cart ${Cart.fromJson(data)}");
-        // debugPrint("destinationAddress ${cart!.destinationAddress?.name}");
         if (cart != null &&
-            // cart!.destinationAddress != null &&
             cart!.destinationAddress?.name == "User Pickup") {
-          setState(() {
-            selfPickup = true;
-          });
-          // debugPrint("in getCart ========  $selfPickup");
+          selfPickup = true;
         }
       });
       if (aliCart != null) {
@@ -135,17 +132,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         });
       }
       _getStoreDetail();
-      // _getTotalDistance(cart!);
+      //_getTotalDistance(cart!)
       _getTotalDistanceGeoHash(cart!);
     }
   }
 
   void _getStoreDetail() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getStoreDetail();
-    // debugPrint("store detail; $data");
+    if (!mounted) return;
     if (data != null && data['success']) {
       setState(() {
         storeDetail = data;
@@ -154,43 +152,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             storeDetail['store']['accept_user_pickup_delivery_only'];
         onlyScheduledOrder =
             storeDetail['store']['accept_scheduled_order_only'];
-      });
-      // debugPrint("store==========\n====");
-      // debugPrint("store======== ${storeDetail['store']}");
-      // debugPrint("is store self only?======== $onlySelfPickup");
-      if (onlyScheduledOrder != null && onlyScheduledOrder!) {
-        setState(() {
+        if (onlyScheduledOrder != null && onlyScheduledOrder!) {
           orderAsap = false;
           scheduledOrder = true;
-        });
-      }
-      if (onlySelfPickup != null && onlySelfPickup!) {
-        // debugPrint("in if onlySelfPickup======== ");
-        setState(() {
+        }
+        if (onlySelfPickup != null && onlySelfPickup!) {
           selfPickup = onlySelfPickup!;
-        });
-        // debugPrint("after in if == onlySelfPickup ========  $selfPickup");
-      }
-      if (cart != null && cart!.isLaundryService) {
-        setState(() {
+        }
+        if (cart != null && cart!.isLaundryService) {
           expressOptions = storeDetail['store']['express_options'];
           if (expressOptions.isNotEmpty && selectedDeliveryId == null) {
             selectedDeliveryId = expressOptions.first['_id'];
             selectedExpressOption = 'normal';
           }
-        });
-      }
+        }
+      });
     } else {
-      Service.showMessage(
-        context: context,
-        title: "${errorCodes['${promoCodeData['error_code']}']}!",
-        error: true,
-      );
+      if (data != null && data['error_code'] != null) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}",
+          error: true,
+        );
+      }
     }
   }
 
   void _getTotalDistance(Cart cart) async {
     var data = await getTotalDistance(cart);
+    if (!mounted) return;
     if (data != null && data['rows'][0]['elements'][0]['status'] == 'OK') {
       setState(() {
         distance = data['rows'][0]['elements'][0]['distance']['value']
@@ -198,18 +188,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         time = data['rows'][0]['elements'][0]['duration']['value'].toDouble();
       });
       await Future.delayed(Duration(seconds: 1));
+      if (!mounted) return;
       _getCartInvoice();
     }
   }
 
   void _getTotalDistanceGeoHash(Cart cart) async {
     var data = await getTotalDistanceGeoHash(cart);
+    if (!mounted) return;
     if (data != null && data['success']) {
       setState(() {
         distance = data['results'][0].toDouble() * 1050;
         time = data['results'][0].toDouble() * 500;
       });
       await Future.delayed(Duration(seconds: 1));
+      if (!mounted) return;
       _getCartInvoice();
     } else {
       _getTotalDistance(cart);
@@ -217,28 +210,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _applyPromoCode() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await applyPromoCode();
+    if (!mounted) return;
     if (data != null && data['success']) {
       setState(() {
         promoCodeApplied = true;
       });
     } else {
-      Service.showMessage(
-        context: context,
-        title: "${errorCodes['${promoCodeData['error_code']}']}!",
-        error: true,
-      );
+      if (data != null && data['error_code'] != null) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['${data['error_code']}'] ?? 'Promo code failed'}",
+          error: true,
+        );
+      }
     }
   }
 
   void _getETA() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getETA();
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         etaResponse = data['result'];
@@ -265,28 +264,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _getCartInvoice() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getCartInvoice();
-    // debugPrint("getCartInvoice data $data");
+    if (!mounted) return;
     if (data != null && data['success']) {
       _getETA();
     } else {
-      if (responseData['error_code'] != null &&
-          responseData['error_code'] == 999) {
+      if (responseData != null && responseData['error_code'] == 999) {
         Service.showMessage(
           context: context,
           title: "${errorCodes['${responseData['error_code']}']}!",
           error: true,
         );
         await CoreServices.clearCache();
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
       } else {
-        // debugPrint( "getCartInvoice Error:  ${errorCodes['${responseData['message']}']}", );
         Service.showMessage(
           context: context,
-          title: "${errorCodes['${responseData['message']}']}!",
+          title: responseData != null
+              ? "${errorCodes['${responseData['message']}'] ?? 'Something went wrong'}"
+              : "Something went wrong! Please check your internet connection.",
           error: true,
         );
       }
@@ -370,6 +371,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     isLoading: _placeOrder,
                     title: Provider.of<ZLanguage>(context).placeOrder,
                     press: () {
+                      if (responseData == null || responseData['success'] != true) {
+                        Service.showMessage(
+                          context: context,
+                          title: "Please wait, your Invoice is being analyzed...",
+                          error: null,
+                        );
+                        return;
+                      }
                       if (scheduledOrder) {
                         if (_scheduledDate != null) {
                           Navigator.push(
@@ -1297,7 +1306,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                                 ),
                                           ),
                                           child: Text(
-                                            "${errorCodes['${responseData['message']}']}",
+                                            responseData != null
+                                                ? "${errorCodes['${responseData['message']}'] ?? 'Something went wrong'}"
+                                                : "Loading...",
                                           ),
                                         ),
                                       ),
@@ -1431,7 +1442,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             body: body,
           )
           .timeout(
-            Duration(seconds: 30),
+            Duration(seconds: 20),
             onTimeout: () {
               setState(() {
                 this._loading = false;
@@ -1514,20 +1525,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
-        this.responseData = json.decode(response.body);
-        this._loading = false;
-      });
-      // debugPrint("orderPaymentUniqueId:${responseData['order_payment']['unique_id']}");
-      // debugPrint("====================\n");
-      // debugPrint("vehicles>>>> ${responseData['vehicles'][0]['_id']}");
-      // debugPrint("====================\n");
-      // debugPrint("invoce responseData>>> $responseData");
-      return json.decode(response.body);
+      final decoded = json.decode(response.body);
+      if (mounted) {
+        setState(() {
+          this.responseData = decoded;
+          this._loading = false;
+        });
+      }
+      return decoded;
     } catch (e) {
-      setState(() {
-        this._loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
       if (mounted) {
         Service.showMessage(
           context: context,
@@ -1629,11 +1640,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final String url = "https://ethiopiataxi.com/order/eta_predict";
     // final String url = "http://196.189.44.51:8069/order/eta_predict";
+    final orderPayment = responseData?['order_payment'];
     Map data = {
       "model_id": 1,
-      "cart_total": responseData['order_payment']['total_order_price'],
-      "delivery_total": responseData['order_payment']['total_delivery_price'],
-      "distance": distance! / 1000,
+      "cart_total": orderPayment?['total_order_price'] ?? 0,
+      "delivery_total": orderPayment?['total_delivery_price'] ?? 0,
+      "distance": (distance ?? 0) / 1000,
       "hour": DateTime.now().hour,
       "weekday": DateTime.now().weekday,
     };
@@ -1664,7 +1676,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         this.storeDetail = json.decode(response.body);
       });
       // debugPrint("===========");
-      // debugPrint("===getETA repsonse=====${json.decode(response.body)}");
+      // debugPrint("===getETA response=====${json.decode(response.body)}");
       // debugPrint("============");
       return json.decode(response.body);
     } catch (e) {
