@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
+import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
@@ -132,8 +133,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         });
       }
       _getStoreDetail();
-      //_getTotalDistance(cart!)
-      _getTotalDistanceGeoHash(cart!);
+      _getTotalDistance(cart!);
+      // _getTotalDistanceGeoHash(cart!);
     }
   }
 
@@ -190,7 +191,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       await Future.delayed(Duration(seconds: 1));
       if (!mounted) return;
       _getCartInvoice();
+      // debugPrint('### [GOOGLE Maps API Call]');
+    } else {
+      _fallbackHaversine(cart);
+      // debugPrint("### [Haversine Fallback]");
     }
+  }
+
+  void _fallbackHaversine(Cart cart) {
+    final storeLat = cart.storeLocation?.lat;
+    final storeLng = cart.storeLocation?.long;
+    final destLat = cart.destinationAddress?.lat;
+    final destLng = cart.destinationAddress?.long;
+
+    if (storeLat == null || storeLng == null || destLat == null || destLng == null) return;
+
+    final distanceMeters = AddressValidationService.calculateDistanceInMeters(
+      storeLat, storeLng, destLat, destLng,
+    );
+    // Estimate time: ~2 min per km (urban average)
+    final estimatedTimeSeconds = (distanceMeters / 1000) * 120;
+
+    if (!mounted) return;
+    setState(() {
+      distance = distanceMeters;
+      time = estimatedTimeSeconds;
+    });
+    // debugPrint('### DEBUG: distance: ${distance} \t time: $time');
+    _getCartInvoice();
   }
 
   void _getTotalDistanceGeoHash(Cart cart) async {
