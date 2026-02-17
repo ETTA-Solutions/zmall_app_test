@@ -28,8 +28,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   bool logged = false;
-  late Uint8List bytes;
-  late String urlLink, adId;
+  late String imageUrl, urlLink, adId;
   bool loading = true;
   String _projectVersion = '';
   LocationPermission _permissionStatus = LocationPermission.denied;
@@ -44,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen> {
     getAd();
     _doLocationTask();
     MyApp.analytics.logAppOpen();
-    loader(7);
+    loader(8);
   }
 
   void getLang() async {
@@ -239,7 +238,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ? Loader()
             : SplashContainer(
                 urlLink: urlLink,
-                bytes: bytes,
+                imageUrl: imageUrl,
                 adId: adId,
                 logged: logged,
               ),
@@ -248,30 +247,89 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<String> getAd() async {
-    // TODO: Restore API call when endpoint is ready
-    var url = Uri.parse("https://nedajmadeya.com/ad/launch");
+    final baseUrl =
+        Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    var url = Uri.parse("$baseUrl/admin/get_all_advertises");
+    debugPrint("###[SPLASH] Fetching ads from: $url");
     try {
       http.Response response = await http
-          .get(url, headers: <String, String>{'Device': 'ios'})
+          .post(
+            url,
+            headers: <String, String>{
+              'Device': 'ios',
+              'Content-Type': 'application/json',
+            },
+          )
           .timeout(
-            Duration(seconds: 5),
+            Duration(seconds: 15),
             onTimeout: () {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      var data = json.decode(response.body);
-    
-      if (mounted) {
+      debugPrint("###[SPLASH] HTTP status: ${response.statusCode}, content-type: ${response.headers['content-type']}");
+      debugPrint("###[SPLASH] Response body (first 300 chars): ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}");
+      if (response.statusCode != 200) {
+        debugPrint("###[SPLASH] Server returned status ${response.statusCode}");
+        loader(5);
+        return "failed";
+      }
+
+      dynamic data;
+      try {
+        data = json.decode(response.body);
+      } on FormatException catch (e) {
+        debugPrint("###[SPLASH] JSON parse error: $e");
+        loader(5);
+        return "failed";
+      }
+
+      debugPrint("###[SPLASH] API response success: ${data['success']}, ads count: ${data['advertises']?.length ?? 0}");
+
+      if (
+          data['success'] == true &&
+          data['advertises'] != null &&
+          data['advertises'].length > 0) {
+        // Filter to only visible ads, then take the last one
+        final allAds = data['advertises'] as List;
+        final visibleAds = allAds
+            .where((ad) => ad['is_ads_visible'] == true)
+            .toList();
+        debugPrint("###[SPLASH] Total ads: ${allAds.length}, Visible ads: ${visibleAds.length}");
+
+        if (visibleAds.isEmpty) {
+          debugPrint("###[SPLASH] No visible ads found");
+          return "success";
+        }
+
+        final ad = visibleAds.last;
+        debugPrint("###[SPLASH] Full ad keys: ${ad.keys.toList()}");
+        debugPrint("###[SPLASH] image_url: ${ad['image_url']}");
+        final rawImageUrl = ad['image_url']
+            ?.toString() ?? '';
+        final adImageUrl = rawImageUrl.startsWith('http')
+            ? rawImageUrl
+            : "$baseUrl/$rawImageUrl";
+        debugPrint("###[SPLASH] Selected ad ID: ${ad['_id']}");
+        debugPrint("###[SPLASH] Final Image URL: $adImageUrl");
+
+        if (!mounted) return "failed";
+
         setState(() {
-          bytes = base64Decode(data['image']);
-          urlLink = data['url_link'];
-          adId = data['ad_id'];
+          imageUrl = adImageUrl;
+          urlLink = ad['store_id'] != null
+              ? 'store/${ad['store_id']}'
+              : 'item/${ad['item_id']}';
+          adId = ad['_id'];
           loading = !loading;
         });
+        loader(3);
+        debugPrint("###[SPLASH] Ad loaded successfully, showing splash container");
+      } else {
+        debugPrint("###[SPLASH] No ads available or API failed");
       }
       return "success";
     } catch (e) {
-      // debugPrint(e);
+      debugPrint("###[SPLASH] ERROR: $e");
       loader(5);
       return "failed";
     }

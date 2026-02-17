@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart';
@@ -18,12 +18,11 @@ class SplashContainer extends StatefulWidget {
     super.key,
     required this.urlLink,
     required this.adId,
-    required this.bytes,
+    required this.imageUrl,
     required this.logged,
   });
 
-  final String urlLink, adId;
-  final Uint8List bytes;
+  final String urlLink, adId, imageUrl;
   final bool logged;
 
   @override
@@ -168,7 +167,7 @@ class _SplashContainerState extends State<SplashContainer> {
         // debugPrint("=== SPLASH AD TAP ===");
         // debugPrint("urlLink: ${widget.urlLink}");
         // debugPrint("adId: ${widget.adId}");
-        CoreServices.saveAdClick(widget.adId);
+        CoreServices.saveAdClick(widget.adId, context);
         if (widget.urlLink.split("/")[0] == "item") {
           // debugPrint("Redirecting to item ID: ${widget.urlLink.split("/")[1]}");
           _getItemInformation(widget.urlLink.split("/")[1]);
@@ -187,14 +186,30 @@ class _SplashContainerState extends State<SplashContainer> {
           Service.launchInWebViewOrVC(this.widget.urlLink);
         }
       },
-      child: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: MemoryImage(widget.bytes),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(
+            imageUrl: widget.imageUrl,
             fit: BoxFit.cover,
+            placeholder: (context, url) => Container(
+              color: kSecondaryColor,
+              child: Center(
+                child: CircularProgressIndicator(color: kPrimaryColor),
+              ),
+            ),
+            errorWidget: (context, url, error) {
+              debugPrint("###[SPLASH] Image load error: $error, url: $url");
+              return Container(
+                color: kSecondaryColor,
+                child: Center(
+                  child: Image.asset('images/zmall.jpg', fit: BoxFit.contain),
+                ),
+              );
+            },
           ),
-        ),
-        child: SafeArea(child: SkipButton(logged: widget.logged)),
+          SafeArea(child: SkipButton(logged: widget.logged)),
+        ],
       ),
     );
   }

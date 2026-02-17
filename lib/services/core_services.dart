@@ -334,8 +334,9 @@ class CoreServices {
     }
   }
 
-  static Future<Map?> saveAdClick(String adId) async {
-    var url = "https://nedajmadeya.com/ad/click/$adId";
+  static Future<Map?> saveAdClick(String adId, BuildContext context) async {
+    final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    var url = "$baseUrl/admin/get_all_advertises/$adId";
     try {
       http.Response response = await http
           .post(
@@ -427,7 +428,7 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      // debugPrint("respose: ${json.decode(response.body)}");
+      // debugPrint("response: ${json.decode(response.body)}");
       return json.decode(response.body);
     } catch (e) {
       // debugPrint("Error fetching orders list: $e");

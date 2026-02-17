@@ -22,7 +22,7 @@ class SkipButton extends StatelessWidget {
           ),
           onPressed: () async {
             bool isGlobal = await Service.readBool('is_global') ?? false;
-            var abroadData = await Service.read('abroad_user') ?? false;
+            var abroadData = await Service.read('abroad_user');
             try {
               isGlobal
                   ? Navigator.of(context).pushReplacement(
