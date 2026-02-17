@@ -110,18 +110,20 @@ class BodyState extends State<Body> {
     if (responseData != null && responseData['success']) {
       stores = responseData['stores'];
       storeOpen(stores);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("${errorCodes['${responseData['error_code']}']}"),
+    } else if (mounted && responseData != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "${errorCodes['${responseData['error_code']}'] ?? 'Something went wrong.'}",
           ),
-        );
-      }
+        ),
+      );
     }
-    setState(() {
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 
   void _getCompanyList() async {
@@ -145,18 +147,20 @@ class BodyState extends State<Body> {
         this._loading = false;
         _notifyAllClosed(); // Notify parent after updating isOpen
       });
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("${errorCodes['${responseData['error_code']}']}"),
+    } else if (mounted && responseData != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "${errorCodes['${responseData['error_code']}'] ?? 'Something went wrong.'}",
           ),
-        );
-      }
+        ),
+      );
     }
-    setState(() {
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 
   void getAppKeys() async {

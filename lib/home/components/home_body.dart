@@ -276,15 +276,17 @@ class _HomeBodyState extends State<HomeBody> {
     try {
       var data = await getOrders();
       if (data != null && data['success']) {
-        if (mounted) {
+        List orderList = data['order_list'] ?? [];
+        if (mounted && orderList.isNotEmpty) {
           setState(() {
             _loading = false;
-            userLastOrder = data['order_list'][0];
+            userLastOrder = orderList[0];
             userOrderStatus = userLastOrder['order_status'];
-            userLocation =
-                userLastOrder['destination_addresses'][0]['location'];
-            orderTo =
-                userLastOrder['destination_addresses'][0]['user_details']['name'];
+            var destAddresses = userLastOrder['destination_addresses'] as List?;
+            if (destAddresses != null && destAddresses.isNotEmpty) {
+              userLocation = destAddresses[0]['location'];
+              orderTo = destAddresses[0]['user_details']?['name'] ?? '';
+            }
             _startTimer();
           });
         }
@@ -3706,9 +3708,11 @@ class _HomeBodyState extends State<HomeBody> {
 
       return null;
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -3760,9 +3764,11 @@ class _HomeBodyState extends State<HomeBody> {
 
       return null;
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -3858,6 +3864,7 @@ class _HomeBodyState extends State<HomeBody> {
   ////////////////////////////////////////////////////////////////////////////
 
   Future<dynamic> getOrders() async {
+    if (userData == null || userData['user'] == null) return null;
     setState(() {
       _loading = true;
     });

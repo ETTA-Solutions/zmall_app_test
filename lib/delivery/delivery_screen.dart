@@ -148,16 +148,19 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       setState(() {
         _loading = false;
       });
-      Service.showMessage(
-        context: context,
-        title: "${errorCodes['${data['error_code']}']}!",
-        error: true,
-      );
-      await Future.delayed(Duration(seconds: 2));
-      if (data['error_code'] == 999) {
-        await Service.saveBool('logged', false);
-        await Service.remove('user');
-        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+      if (data != null) {
+        if (data['error_code'] == 999) {
+          await Service.saveBool('logged', false);
+          await Service.remove('user');
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+          return;
+        }
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}",
+          error: true,
+        );
       }
     }
   }
@@ -653,24 +656,27 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                                             return Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
                                               spacing:
                                                   getProportionateScreenHeight(
                                                     kDefaultPadding / 3,
                                                   ),
                                               children: [
-                                                SearchButtonShimmer(
-                                                  width:
-                                                      getProportionateScreenWidth(
-                                                        kDefaultPadding * 5,
-                                                      ),
-                                                  height:
-                                                      getProportionateScreenHeight(
-                                                        kDefaultPadding * 4,
-                                                      ),
-                                                  borderRadius: kDefaultPadding,
+                                                Flexible(
+                                                  child: SearchButtonShimmer(
+                                                    width:
+                                                        getProportionateScreenWidth(
+                                                          kDefaultPadding * 5,
+                                                        ),
+                                                    height:
+                                                        getProportionateScreenHeight(
+                                                          kDefaultPadding * 3.5,
+                                                        ),
+                                                    borderRadius: kDefaultPadding,
+                                                  ),
                                                 ),
                                                 SearchButtonShimmer(
-                                                  height: 20,
+                                                  height: 16,
                                                   borderRadius: 5,
                                                   width:
                                                       getProportionateScreenWidth(
@@ -965,15 +971,15 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                     if (categoriesResponse != null &&
                         categoriesResponse['success']) {
                       _addToCart();
-                    } else {
+                    } else if (categoriesResponse != null) {
                       if (categoriesResponse['error_code'] == 999) {
                         await Service.saveBool('logged', false);
                         await Service.remove('user');
-
+                        if (!mounted) return;
                         Service.showMessage(
                           context: context,
                           title:
-                              "${errorCodes['${categoriesResponse['error_code']}']}",
+                              "${errorCodes['${categoriesResponse['error_code']}'] ?? 'Session expired'}",
                           error: true,
                         );
                         Navigator.pushReplacementNamed(
@@ -995,7 +1001,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                         Service.showMessage(
                           context: context,
                           title:
-                              "${errorCodes['${categoriesResponse['error_code']}']}",
+                              "${errorCodes['${categoriesResponse['error_code']}'] ?? 'Something went wrong'}",
                           error: true,
                         );
                       }
