@@ -124,10 +124,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   }
 
   void _getVehicleList() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getVehicleList();
+    if (!mounted) return;
     if (data != null && data['success']) {
       setState(() {
         _loading = false;
@@ -145,7 +147,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         // debugPrint("selected vehicle id  after ${vehicleId}");
       });
     } else {
-      setState(() {
+      if (mounted) setState(() {
         _loading = false;
       });
       if (data != null) {
@@ -208,10 +210,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   }
 
   void getUser() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await Service.read('user');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         userData = data;
@@ -224,6 +228,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
   void getLocations({bool returned = false}) async {
     var data = await Service.read('delivery');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         deliveryLocation = DeliveryLocation.fromJson(data);
@@ -316,22 +321,23 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     ).then((value) {
       getLocations(returned: true);
     });
-    setState(() {
+    if (mounted) setState(() {
       _loading = false;
     });
   }
 
   Future<void> getCart() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await Service.read('cart');
     var aliCart = await Service.read('aliexpressCart');
+    if (!mounted) return;
     if (data != null) {
       setState(() {
         cart = Cart.fromJson(data);
       });
-      // debugPrint("cart ${Cart.fromJson(data)}");
     }
     if (aliCart != null) {
       setState(() {
@@ -345,38 +351,43 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   }
 
   void _clearCart(String cartId) async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
 
     var data = await clearCart(cartId);
+    if (!mounted) return;
     if (data != null && data['success']) {
-    } else {
+    } else if (data != null) {
       Service.showMessage(
         context: context,
-        title: "${errorCodes['${data['error_code']}']}!",
+        title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}!",
         error: true,
       );
       await Future.delayed(Duration(seconds: 2));
       if (data['error_code'] == 999) {
         await Service.saveBool('logged', false);
         await Service.remove('user');
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
       }
     }
   }
 
   void _addToCart() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await addToCart();
+    if (!mounted) return;
     if (data != null && data['success']) {
-      // debugPrint("add cart data $data");
       setState(() {
         userData['user']['cart_id'] = data['cart_id'];
       });
       await Service.save('user', userData);
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -391,17 +402,20 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         ),
       );
     } else {
-      Service.showMessage(
-        context: context,
-        title: "${errorCodes['${responseData['error_code']}']}!",
-        error: true,
-      );
-      await Future.delayed(Duration(seconds: 2));
-      if (responseData['error_code'] != null &&
-          responseData['error_code'] == 999) {
-        await Service.saveBool('logged', false);
-        await Service.remove('user');
-        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+      if (responseData != null) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['${responseData['error_code']}'] ?? 'Something went wrong'}!",
+          error: true,
+        );
+        await Future.delayed(Duration(seconds: 2));
+        if (!mounted) return;
+        if (responseData['error_code'] != null &&
+            responseData['error_code'] == 999) {
+          await Service.saveBool('logged', false);
+          await Service.remove('user');
+          Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+        }
       }
     }
   }
@@ -994,7 +1008,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           error: true,
                           duration: 4,
                         );
-                        setState(() {
+                        if (mounted) setState(() {
                           _loading = false;
                         });
                       } else {
@@ -1005,7 +1019,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           error: true,
                         );
                       }
-                      setState(() {
+                      if (mounted) setState(() {
                         _loading = false;
                       });
                     }
@@ -1155,7 +1169,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         );
       },
     ).whenComplete(() {
-      setState(() {});
+      if (mounted) setState(() {});
     });
   }
 
@@ -1194,7 +1208,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
+      if (mounted) setState(() {
         this.responseData = json.decode(response.body);
       });
 
@@ -1211,7 +1225,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
       return null;
     } finally {
-      setState(() {
+      if (mounted) setState(() {
         _loading = false;
       });
     }
@@ -1249,7 +1263,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
+      if (mounted) setState(() {
         this.responseData = json.decode(response.body);
       });
 
@@ -1265,7 +1279,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       }
       return null;
     } finally {
-      setState(() {
+      if (mounted) setState(() {
         _loading = false;
       });
     }
@@ -1313,17 +1327,19 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
       return json.decode(response.body);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Something went wrong. Please check your internet connection!",
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Something went wrong. Please check your internet connection!",
+            ),
+            backgroundColor: kSecondaryColor,
           ),
-          backgroundColor: kSecondaryColor,
-        ),
-      );
+        );
+      }
       return null;
     } finally {
-      setState(() {
+      if (mounted) setState(() {
         _loading = false;
       });
     }

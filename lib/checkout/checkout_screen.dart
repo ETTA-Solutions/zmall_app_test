@@ -1403,7 +1403,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 30),
             onTimeout: () {
-              setState(() {
+              if (mounted) setState(() {
                 this._loading = false;
               });
               throw TimeoutException("The connection has timed out!");
@@ -1412,7 +1412,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       return json.decode(response.body);
     } catch (e) {
-      setState(() {
+      if (mounted) setState(() {
         this._loading = false;
       });
       if (mounted) {
@@ -1472,7 +1472,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              setState(() {
+              if (mounted) setState(() {
                 this._loading = false;
               });
               throw TimeoutException("The connection has timed out!");
@@ -1480,7 +1480,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           );
       return json.decode(response.body);
     } catch (e) {
-      setState(() {
+      if (mounted) setState(() {
         this._loading = false;
       });
       if (mounted) {
@@ -1546,7 +1546,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 30),
             onTimeout: () {
-              setState(() {
+              if (mounted) setState(() {
                 this._loading = false;
               });
 
@@ -1621,19 +1621,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              setState(() {
+              if (mounted) setState(() {
                 this._loading = false;
               });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
+      if (mounted) setState(() {
         this.promoCodeData = json.decode(response.body);
         this._loading = false;
       });
       return json.decode(response.body);
     } catch (e) {
-      setState(() {
+      if (mounted) setState(() {
         this._loading = false;
       });
       if (mounted) {
@@ -1694,21 +1694,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              setState(() {
+              if (mounted) setState(() {
                 this._loading = false;
               });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
+      if (mounted) setState(() {
         this.storeDetail = json.decode(response.body);
       });
-      // debugPrint("===========");
-      // debugPrint("===getETA response=====${json.decode(response.body)}");
-      // debugPrint("============");
       return json.decode(response.body);
     } catch (e) {
-      setState(() {
+      if (mounted) setState(() {
         this._loading = false;
       });
       if (mounted) {
@@ -1760,18 +1757,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              setState(() {
+              if (mounted) setState(() {
                 this._loading = false;
               });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
+      if (mounted) setState(() {
         this.storeDetail = json.decode(response.body);
       });
       return json.decode(response.body);
     } catch (e) {
-      setState(() {
+      if (mounted) setState(() {
         this._loading = false;
       });
       if (mounted) {
@@ -1874,7 +1871,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       },
     ).whenComplete(() {
-      setState(() {});
+      if (mounted) setState(() {});
     });
   }
 
@@ -2064,7 +2061,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       },
     ).whenComplete(() {
-      setState(() {});
+      if (mounted) setState(() {});
     });
   }
 }

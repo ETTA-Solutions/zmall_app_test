@@ -3054,12 +3054,7 @@ class _HomeBodyState extends State<HomeBody> {
                                     subTitle: " ",
                                   ),
                                   CustomBanner(
-                                    // imageUrl: 'images/laundry.png',
-                                    isNetworkImage:
-                                        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${categories[laundryIndex]['image_url']}"
-                                            .isNotEmpty
-                                        ? true
-                                        : false,
+                                    isNetworkImage: isNetworkImage("laundry"),
                                     imageUrl: isNetworkImage("laundry")
                                         ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${categories[laundryIndex]['image_url']}"
                                         : "images/laundry.png",
