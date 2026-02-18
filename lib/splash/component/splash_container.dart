@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart';
+import 'package:zmall/services/app_update_service.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/item/item_screen.dart';
 import 'package:zmall/models/metadata.dart';
@@ -34,7 +34,6 @@ class _SplashContainerState extends State<SplashContainer> {
   // bool _isClosed = false;
   var notificationItem;
 
-  String promptMessage = "";
 
   void _getItemInformation(String itemId) async {
     // setState(() {
@@ -79,85 +78,7 @@ class _SplashContainerState extends State<SplashContainer> {
   }
 
   void _getAppKeys() async {
-    // debugPrint("in _getAppKeys=====");
-    var data = await CoreServices.appKeys(context);
-    if (data != null && data['success']) {
-      if (mounted)
-        setState(() {
-          Service.saveBool("is_closed", data['message_flag']);
-          Service.save("closed_message", data['message']);
-          Service.save("ios_app_version", data['ios_user_app_version_code']);
-          Service.saveBool(
-            "ios_update_dialog",
-            data['is_ios_user_app_open_update_dialog'],
-          );
-          Service.saveBool(
-            "ios_force_update",
-            data['is_ios_user_app_force_update'],
-          );
-          Service.save('app_close', data['app_close']);
-          Service.save('app_open', data['app_open']);
-        });
-      if (data['message_flag']) {
-        showSimpleNotification(
-          Text("⚠️ NOTICE ⚠️", style: TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text("${data['message']}\n"),
-          background: kBlackColor,
-          duration: Duration(seconds: 7),
-          elevation: 2.0,
-          autoDismiss: false,
-          // slideDismiss: true,
-          slideDismissDirection: DismissDirection.up,
-        );
-      }
-    } else {
-      getAppKeys();
-    }
-  }
-
-  void getAppKeys() async {
-    var data = await Service.read('ios_app_version');
-    var currentVersion = await Service.read('version');
-    // _isClosed = await Service.readBool('is_closed');
-    promptMessage = await Service.read('closed_message');
-    var showUpdateDialog = await Service.readBool('ios_update_dialog');
-    if (data != null) {
-      if (currentVersion.toString() != data.toString()) {
-        if (showUpdateDialog) {
-          // debugPrint("\t=> \tShowing update dialog...");
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: kPrimaryColor,
-                title: Text("New Version Update"),
-                content: Text(
-                  "We have detected an older version on the App on your phone.",
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    child: Text(
-                      "Update Now",
-                      style: TextStyle(
-                        color: kSecondaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () {
-                      Service.launchInWebViewOrVC("http://onelink.to/vnchst");
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              );
-            },
-          );
-        }
-      }
-    }
-    if (mounted) {
-      setState(() {});
-    }
+    await AppUpdateService.fetchAndCheck(context);
   }
 
   @override

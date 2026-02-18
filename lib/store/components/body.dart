@@ -6,7 +6,7 @@ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/controllers/controllers.dart';
-import 'package:zmall/services/core_services.dart';
+import 'package:zmall/services/app_update_service.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
@@ -164,18 +164,10 @@ class BodyState extends State<Body> {
   }
 
   void getAppKeys() async {
-    var appKeys = await CoreServices.appKeys(context);
-    if (appKeys != null && appKeys['success']) {
-      setState(() {
-        appClose = appKeys['app_close'];
-        appOpen = appKeys['app_open'];
-        Service.save("app_close", appClose);
-        Service.save("app_open", appOpen);
-      });
-    } else {
-      appClose = await Service.read('app_close');
-      appOpen = await Service.read('app_open');
-    }
+    await AppUpdateService.fetchAndCheck(context, showDialogIfNeeded: false);
+    appClose = await Service.read('app_close');
+    appOpen = await Service.read('app_open');
+    if (mounted) setState(() {});
   }
 
   void getTags(List stores) {
@@ -203,28 +195,10 @@ class BodyState extends State<Body> {
   }
 
   void _getAppKeys() async {
-    var data = await CoreServices.appKeys(context);
-    if (data != null && data['success']) {
-      setState(() {
-        Service.saveBool("is_closed", data['message_flag']);
-        Service.save("closed_message", data['message']);
-        Service.save("ios_app_version", data['ios_user_app_version_code']);
-        Service.saveBool(
-          "ios_update_dialog",
-          data['is_ios_user_app_open_update_dialog'],
-        );
-        Service.saveBool(
-          "ios_force_update",
-          data['is_ios_user_app_force_update'],
-        );
-        Service.save('app_close', data['app_close']);
-        Service.save('app_open', data['app_open']);
-        appOpen = data['app_open'];
-        appClose = data['app_close'];
-      });
-    } else {
-      getAppKeys();
-    }
+    await AppUpdateService.fetchAndCheck(context, showDialogIfNeeded: false);
+    appClose = await Service.read('app_close');
+    appOpen = await Service.read('app_open');
+    if (mounted) setState(() {});
   }
 
   void storeOpen(List stores) async {

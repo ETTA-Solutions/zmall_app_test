@@ -10,6 +10,7 @@ import 'package:zmall/global/home_page/global_home.dart';
 import 'package:zmall/main.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
+import 'package:zmall/services/app_update_service.dart';
 import 'package:zmall/services/service.dart';
 import 'package:flutter/material.dart';
 import 'package:zmall/utils/tab_screen.dart';
@@ -139,21 +140,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _getAppKeys() async {
-    var data = await getAppKeys();
-    if (data != null && data['success']) {
-      // debugPrint("Saving data....");
-      Service.saveBool("is_closed", data['message_flag']);
-      Service.save("closed_message", data['message']);
-      Service.save("ios_app_version", data['ios_user_app_version_code']);
-      Service.saveBool(
-        "ios_update_dialog",
-        data['is_ios_user_app_open_update_dialog'],
-      );
-      Service.saveBool(
-        "ios_force_update",
-        data['is_ios_user_app_force_update'],
-      );
-    }
+    await AppUpdateService.fetchAndCheck(context, showDialogIfNeeded: false);
   }
 
   initPlatformState() async {
@@ -353,48 +340,4 @@ class _SplashScreenState extends State<SplashScreen> {
   //   }
   // }
 
-  Future<dynamic> getAppKeys() async {
-    var url = Uri.parse(
-      "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/admin/get_app_keys",
-    );
-
-    try {
-      http.Response response = await http
-          .post(url)
-          .timeout(
-            Duration(seconds: 10),
-            onTimeout: () {
-              throw TimeoutException("The connection has timed out!");
-            },
-          );
-      if (json.decode(response.body) != null &&
-          json.decode(response.body)['success']) {
-        var data = {
-          "success": json.decode(response.body)['success'],
-          "message_flag": json.decode(
-            response.body,
-          )['app_keys']['message_flag'],
-          "ios_user_app_version_code": json.decode(
-            response.body,
-          )['app_keys']['ios_user_app_version_code'],
-          "message": json.decode(response.body)['app_keys']['message'],
-          // "ios_user_app_version_code": json.decode(response.body)['app_keys']
-          // ['ios_user_app_version_code'],
-          "is_ios_user_app_open_update_dialog": json.decode(
-            response.body,
-          )['app_keys']['is_ios_user_app_open_update_dialog'],
-          "is_ios_user_app_force_update": json.decode(
-            response.body,
-          )['app_keys']['is_ios_user_app_force_update'],
-        };
-        return data;
-      } else {
-        var data = {"success": false};
-        return data;
-      }
-    } catch (e) {
-      // debugPrint(e);
-      return null;
-    }
-  }
 }

@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:zmall/home/components/web_view_screen.dart';
 import 'package:zmall/home/magazine/screens/magazine_list_screen.dart';
 import 'package:zmall/utils/constants.dart';
+import 'package:zmall/services/app_update_service.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/global/aliexpress/global_ali_product_screen.dart';
@@ -54,10 +55,6 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
 
   Map<String,  dynamic>? magazineService;
   bool hasMagazine = false;
-  // bool _isClosed = false;
-  String promptMessage =
-      'We are sorry to inform you that we are not operational today';
-
   LocationPermission _permissionStatus = LocationPermission.denied;
 
   void _requestLocationPermission() async {
@@ -430,73 +427,20 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
   }
 
   void _getAppKeys() async {
-    var data = await CoreServices.appKeys(context);
-
-    if (data != null && data['success']) {
-      if (data['message_flag']) {
-        Service.showMessage(
-          context: context,
-          title:
-              "${data['message']} We deliver your order once we resume our service.",
-          error: false,
-          duration: 4,
-        );
-      }
-      Service.saveBool("is_closed", false);
-      Service.save("closed_message", data['message']);
-      Service.save("ios_app_version", data['ios_user_app_version_code']);
-      Service.saveBool(
-        "ios_update_dialog",
-        data['is_ios_user_app_open_update_dialog'],
-      );
-      Service.saveBool(
-        "ios_force_update",
-        data['is_ios_user_app_force_update'],
-      );
-    }
-    getAppKeys();
-  }
-
-  void getAppKeys() async {
-    var data = await Service.read('ios_app_version');
-    var currentVersion = await Service.read('version');
-    // _isClosed = await Service.readBool('is_closed');
-    promptMessage = await Service.read('closed_message');
-    var showUpdateDialog = await Service.readBool('ios_update_dialog');
-    if (data != null) {
-      if (currentVersion != data) {
-        if (showUpdateDialog) {
-          showDialog(
+    await AppUpdateService.fetchAndCheck(
+      context,
+      onMessageFlag: (message) {
+        if (mounted) {
+          Service.showMessage(
             context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: kPrimaryColor,
-                title: Text("New Version Update"),
-                content: Text(
-                  "We have detected an older version on the App on your phone.",
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    child: Text(
-                      "Update Now",
-                      style: TextStyle(
-                        color: kSecondaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () {
-                      Service.launchInWebViewOrVC("http://onelink.to/vnchst");
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              );
-            },
+            title:
+                "$message We deliver your order once we resume our service.",
+            error: false,
+            duration: 4,
           );
         }
-      }
-    }
-    setState(() {});
+      },
+    );
   }
 
   // Tag checking logic
@@ -1140,12 +1084,18 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
                                                       error,
                                                     ) => Container(
                                                       decoration: BoxDecoration(
+                                                        color: kWhiteColor,
                                                         image: DecorationImage(
-                                                          fit: BoxFit.cover,
+                                                          fit: BoxFit.contain,
                                                           image: AssetImage(
-                                                            'images/zmall.jpg',
+                                                            'images/zmall_sm.png',
                                                           ),
                                                         ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              kDefaultPadding /
+                                                                  1.5,
+                                                            ),
                                                       ),
                                                     ),
                                               ),

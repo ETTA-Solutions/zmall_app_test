@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
-import 'package:zmall/services/core_services.dart';
+import 'package:zmall/services/app_update_service.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/item/item_screen.dart';
 import 'package:zmall/login/login_screen.dart';
@@ -107,26 +107,7 @@ class _NotificationStoreState extends State<NotificationStore> {
   }
 
   void _getAppKeys() async {
-    var data = await CoreServices.appKeys(context);
-    if (data != null && data['success']) {
-      // debugPrint("=> \tIs Closed : ${data['message_flag']}");
-      // debugPrint("=> \tCurrent Version : ${data['ios_user_app_version_code']}");
-      setState(() {
-        Service.saveBool("is_closed", data['message_flag']);
-        Service.save("closed_message", data['message']);
-        Service.save("ios_app_version", data['ios_user_app_version_code']);
-        Service.saveBool(
-          "ios_update_dialog",
-          data['is_ios_user_app_open_update_dialog'],
-        );
-        Service.saveBool(
-          "ios_force_update",
-          data['is_ios_user_app_force_update'],
-        );
-        Service.save('app_close', data['app_close']);
-        Service.save('app_open', data['app_open']);
-      });
-    }
+    await AppUpdateService.fetchAndCheck(context, showDialogIfNeeded: false);
   }
 
   void addToCart(item, destination, storeLocation, storeId) {

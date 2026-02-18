@@ -20,6 +20,7 @@ import 'package:zmall/home/magazine/screens/magazine_list_screen.dart';
 import 'package:zmall/home/yearly_recap/screens/recap_screen.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/controllers/controllers.dart';
+import 'package:zmall/services/app_update_service.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/courier/courier_screen.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
@@ -103,8 +104,6 @@ class _HomeBodyState extends State<HomeBody> {
   var orderFrom;
   Timer? timer;
   bool _isLocationDialogShown = false;
-  // bool _isUpdateScreenShown = false;
-  bool _isUpdateDialogShown = false;
   bool _isMessageDialogShown = false;
   List<bool> isPromotionalItemOpen = [];
   List<bool> isProximitylItemOpen = [];
@@ -186,7 +185,7 @@ class _HomeBodyState extends State<HomeBody> {
     });
     if (widget.isLaunched) {
       // debugPrint("=> \tChecking for version update");
-      getAppKeys();
+      _getAppKeys();
     }
     getCategories();
     getServices();
@@ -375,7 +374,7 @@ class _HomeBodyState extends State<HomeBody> {
     });
     if (widget.isLaunched) {
       // debugPrint("=> \tChecking for version update");
-      getAppKeys();
+      _getAppKeys();
     }
 
     getCategories();
@@ -706,161 +705,25 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void _getAppKeys() async {
-    var data = await CoreServices.appKeys(context);
-    if (data != null && data['success']) {
-      if (mounted) {
-        setState(() {
-          Service.saveBool("is_closed", data['message_flag']);
-          Service.save("closed_message", data['message']);
-          Service.save("ios_app_version", data['ios_user_app_version_code']);
-          Service.saveBool(
-            "ios_update_dialog",
-            data['is_ios_user_app_open_update_dialog'],
-          );
-          Service.saveBool(
-            "ios_force_update",
-            data['is_ios_user_app_force_update'],
-          );
-          Service.save('app_close', data['app_close']);
-          Service.save('app_open', data['app_open']);
-        });
-      }
-      if (data['message_flag'] && !_isMessageDialogShown) {
-        _isMessageDialogShown = true;
-        showSimpleNotification(
-          Text("⚠️ NOTICE ⚠️", style: TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text("${data['message']}\n"),
-          background: kBlackColor,
-          duration: Duration(seconds: 7),
-          elevation: 2.0,
-          autoDismiss: false,
-          // slideDismiss: true,
-          slideDismissDirection: DismissDirection.up,
-        );
-      }
-      getAppKeys();
-    } else {
-      getAppKeys();
-    }
-  }
-
-  Future<void> getAppKeys() async {
-    try {
-      // Read backend values
-      var data = await Service.read('ios_app_version');
-      var currentVersion = await Service.read('version');
-      // var isClosed = await Service.readBool('is_closed') ?? await Service.readBool('is_closed');
-      // var promptMessage = await Service.read('closed_message');
-      var showUpdateDialog = await Service.readBool('ios_update_dialog');
-
-      // debugPrint("=====================");
-      // debugPrint("Backend version: $data, Current version: $currentVersion");
-
-      if (data != null &&
-          currentVersion.toString() != data.toString() &&
-          showUpdateDialog == true &&
-          !_isUpdateDialogShown) {
-        _isUpdateDialogShown = true;
-
-        // debugPrint("\t=> \tShowing update dialog...");
-
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false, // cannot dismiss by tapping outside
-            builder: (BuildContext ctx) {
-              return PopScope(
-                canPop: false, // disable back button
-                child: AlertDialog(
-                  backgroundColor: kPrimaryColor,
-                  title: const Text(
-                    "New Version Update",
-                    style: TextStyle(color: kBlackColor),
-                  ),
-                  content: const Text(
-                    "Looks like you’re using an older version of the app 🚀. Update now to enjoy the latest features and improvements!",
-                    style: TextStyle(color: kBlackColor),
-                  ),
-                  actions: <Widget>[
-                    TextButton(
-                      child: Text(
-                        "Update Now",
-                        style: TextStyle(
-                          color: kSecondaryColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      onPressed: () {
-                        Service.launchInWebViewOrVC("http://onelink.to/vnchst");
-                        Navigator.of(ctx).pop();
-                        _isUpdateDialogShown = false; // allow again if needed
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
+    await AppUpdateService.fetchAndCheck(
+      context,
+      onMessageFlag: (message) {
+        if (!_isMessageDialogShown) {
+          _isMessageDialogShown = true;
+          showSimpleNotification(
+            Text("⚠️ NOTICE ⚠️",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text("$message\n"),
+            background: kBlackColor,
+            duration: Duration(seconds: 7),
+            elevation: 2.0,
+            autoDismiss: false,
+            slideDismissDirection: DismissDirection.up,
           );
         }
-      }
-
-      // If you need UI refresh after the check
-      if (context.mounted) {
-        (context as Element).markNeedsBuild();
-      }
-    } catch (e) {
-      // debugPrint("Error while checking for update: $e\n$st");
-    }
+      },
+    );
   }
-
-  // void getAppKeys() async {
-  //   var data = await Service.read('ios_app_version');
-  //   var currentVersion = await Service.read('version');
-  //   _isClosed = await Service.readBool('is_closed') ??
-  //       await Service.readBool('is_closed');
-  //   promptMessage = await Service.read('closed_message');
-  //   var showUpdateDialog = await Service.readBool('ios_update_dialog');
-  //   debugPrint("=====================");
-  //   if (data != null) {
-  //     if (currentVersion.toString() != data.toString()) {
-  //       // if (showUpdateDialog && !_isUpdateDialogShown) {
-  //       //   _isUpdateDialogShown = true;
-  //       if (showUpdateDialog) {
-  //         debugPrint("\t=> \tShowing update dialog...");
-  //         showDialog(
-  //           barrierDismissible: false,
-  //           context: context,
-  //           builder: (BuildContext context) {
-  //             return AlertDialog(
-  //               backgroundColor: kPrimaryColor,
-  //               title: Text("New Version Update"),
-  //               content: Text(
-  //                   "We have detected an older version on the App on your phone."),
-  //               actions: <Widget>[
-  //                 TextButton(
-  //                   child: Text(
-  //                     "Update Now",
-  //                     style: TextStyle(
-  //                       color: kSecondaryColor,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                   onPressed: () {
-  //                     Service.launchInWebViewOrVC("http://onelink.to/vnchst");
-  //                     Navigator.of(context).pop();
-  //                   },
-  //                 ),
-  //               ],
-  //             );
-  //           },
-  //         );
-  //       }
-  //     }
-  //   }
-  //   if (mounted) {
-  //     setState(() {});
-  //   }
-  // }
 
   //function before sorting items based on current user to store location distance
   // void _getPromotionalItems() async {
