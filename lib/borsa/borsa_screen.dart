@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:zmall/borsa/components/payment_card.dart';
+import 'package:zmall/borsa/refund/refund_confirmation_dialog.dart';
+import 'package:zmall/borsa/refund/refund_otp_sheet.dart';
+import 'package:zmall/borsa/refund/refund_service.dart';
 import 'package:zmall/borsa/topup_kifiya/inapp_topup_payment.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
@@ -47,16 +50,55 @@ class _BorsaScreenState extends State<BorsaScreen> {
   bool transferLoading = false;
   String transferAmount = "0.00";
 
+  // Pagination
+  final ScrollController _scrollController = ScrollController();
+  List _walletHistory = [];
+  int _currentPage = 1;
+  static const int _pageLimit = 15;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+
   @override
   void initState() {
     super.initState();
     userData = widget.userData;
     currentBalance = double.parse(widget.userData['user']['wallet'].toString());
+    _scrollController.addListener(_onScroll);
     _getTransactions();
   }
 
-  void _userDetails() async {
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMoreTransactions();
+    }
+  }
+
+  Future<void> _loadMoreTransactions() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() {
+      _isLoadingMore = true;
+    });
+    _currentPage++;
+    await transactionHistoryDetails(page: _currentPage, isLoadMore: true);
+    if (!mounted) return;
+    setState(() {
+      _isLoadingMore = false;
+    });
+  }
+
+  Future<void> _userDetails() async {
     var usrData = await userDetails();
+    if (!mounted) return;
     if (usrData != null && usrData['success']) {
       setState(() {
         userData = usrData;
@@ -66,40 +108,49 @@ class _BorsaScreenState extends State<BorsaScreen> {
     }
   }
 
-  void _getTransactions() async {
+  Future<void> _refreshWallet() async {
+    await Future.wait([_userDetails(), _getTransactions()]);
+  }
+
+  Future<void> _getTransactions() async {
     setState(() {
       isLoading = true;
+      _currentPage = 1;
+      _walletHistory = [];
+      _hasMore = true;
     });
-    await transactionHistoryDetails();
+    await transactionHistoryDetails(page: 1, isLoadMore: false);
+
+    if (!mounted) return;
 
     if (responseData != null && responseData['success']) {
       setState(() {
         isLoading = false;
-        isTopupEnabled =
-            responseData["wallet_history"][0]["wallet_top_up_option"];
+        if (responseData['wallet_history'] != null &&
+            responseData['wallet_history'].isNotEmpty) {
+          isTopupEnabled =
+              responseData["wallet_history"][0]["wallet_top_up_option"];
+        }
       });
     } else {
-      if (responseData['error_code'] != null &&
+      if (responseData != null &&
+          responseData['error_code'] != null &&
           responseData['error_code'] == 999) {
         await Service.saveBool('logged', false);
         await Service.remove('user');
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+        return;
       }
       setState(() {
         isLoading = false;
       });
-      if (responseData['error_code'] != null &&
+      if (responseData != null &&
+          responseData['error_code'] != null &&
           errorCodes['${responseData['error_code']}'] != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("${errorCodes['${responseData['error_code']}']}"),
-            backgroundColor: kSecondaryColor,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("No wallet transaction history"),
             backgroundColor: kSecondaryColor,
           ),
         );
@@ -125,167 +176,192 @@ class _BorsaScreenState extends State<BorsaScreen> {
         ),
       ),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _zWalletCard(textTheme: textTheme)),
+        child: RefreshIndicator(
+          onRefresh: _refreshWallet,
+          color: kSecondaryColor,
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(child: _zWalletCard(textTheme: textTheme)),
 
-            // Transactions Section
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: SliverAppBarDelegate(
-                minHeight: getProportionateScreenWidth(80),
-                maxHeight: getProportionateScreenWidth(80),
-                child: Container(
-                  color: kPrimaryColor,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: getProportionateScreenWidth(kDefaultPadding),
-                    vertical: getProportionateScreenHeight(kDefaultPadding / 4),
-                  ),
-                  child: Column(
-                    spacing: getProportionateScreenHeight(kDefaultPadding / 2),
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section Title
-                      Text(
-                        "Transactions",
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: kBlackColor,
-                            ),
+              // Transactions Section
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: SliverAppBarDelegate(
+                  minHeight: getProportionateScreenWidth(80),
+                  maxHeight: getProportionateScreenWidth(80),
+                  child: Container(
+                    color: kPrimaryColor,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: getProportionateScreenWidth(kDefaultPadding),
+                      vertical: getProportionateScreenHeight(
+                        kDefaultPadding / 4,
                       ),
+                    ),
+                    child: Column(
+                      spacing: getProportionateScreenHeight(
+                        kDefaultPadding / 2,
+                      ),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section Title
+                        Text(
+                          "Transactions",
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: kBlackColor,
+                              ),
+                        ),
 
-                      // Filter Chips
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildFilterChip(
-                              "All",
-                              HeroiconsOutline.arrowPathRoundedSquare,
-                              selectedFilter == "All",
-                              () {
-                                setState(() {
-                                  selectedFilter = "All";
-                                });
-                              },
-                            ),
-                            SizedBox(width: 12),
-                            _buildFilterChip(
-                              "Received",
-                              HeroiconsOutline.arrowDown,
-                              selectedFilter == "Received",
-                              () {
-                                setState(() {
-                                  selectedFilter = "Received";
-                                });
-                              },
-                            ),
-                            SizedBox(width: 12),
-                            _buildFilterChip(
-                              "Sent",
-                              HeroiconsOutline.arrowUp,
-                              selectedFilter == "Sent",
-                              () {
-                                setState(() {
-                                  selectedFilter = "Sent";
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (responseData == null || !responseData['success'])
-              SliverToBoxAdapter(
-                child: isLoading
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            top: kDefaultPadding * 2,
-                          ),
-                          child: SpinKitWave(
-                            color: kSecondaryColor,
-                            size: getProportionateScreenWidth(kDefaultPadding),
-                          ),
-                        ),
-                      )
-                    : Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            top: kDefaultPadding * 2,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                        // Filter Chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
                             children: [
-                              Icon(
-                                HeroiconsOutline.arrowsUpDown,
-                                size: 60,
-                                color: kGreyColor.withValues(alpha: 0.5),
+                              _buildFilterChip(
+                                "All",
+                                HeroiconsOutline.arrowPathRoundedSquare,
+                                selectedFilter == "All",
+                                () {
+                                  setState(() {
+                                    selectedFilter = "All";
+                                  });
+                                },
                               ),
-                              SizedBox(height: 16),
-                              Text(
-                                "No wallet history found!",
-                                style: TextStyle(
-                                  color: kGreyColor,
-                                  fontSize: 16,
-                                ),
+                              SizedBox(width: 12),
+                              _buildFilterChip(
+                                "Received",
+                                HeroiconsOutline.arrowDown,
+                                selectedFilter == "Received",
+                                () {
+                                  setState(() {
+                                    selectedFilter = "Received";
+                                  });
+                                },
                               ),
-                              Text(
-                                "Add funds to your wallet",
-                                style: TextStyle(
-                                  color: kGreyColor.withValues(alpha: 0.6),
-                                  fontSize: 14,
-                                ),
+                              SizedBox(width: 12),
+                              _buildFilterChip(
+                                "Sent",
+                                HeroiconsOutline.arrowUp,
+                                selectedFilter == "Sent",
+                                () {
+                                  setState(() {
+                                    selectedFilter = "Sent";
+                                  });
+                                },
                               ),
                             ],
                           ),
                         ),
-                      ),
-              ),
-
-            if (responseData != null &&
-                responseData['wallet_history'] != null &&
-                responseData['wallet_history'].length == 0)
-              SliverToBoxAdapter(
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        HeroiconsOutline.wallet,
-                        size: 64,
-                        color: kGreyColor.withValues(alpha: 0.5),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        "No wallet transactions yet!",
-                        style: TextStyle(color: kGreyColor, fontSize: 16),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
+              if (responseData == null || !responseData['success'])
+                SliverToBoxAdapter(
+                  child: isLoading
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              top: kDefaultPadding * 2,
+                            ),
+                            child: SpinKitWave(
+                              color: kSecondaryColor,
+                              size: getProportionateScreenWidth(
+                                kDefaultPadding,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              top: kDefaultPadding * 2,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  HeroiconsOutline.arrowsUpDown,
+                                  size: 60,
+                                  color: kGreyColor.withValues(alpha: 0.5),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  "No wallet history found!",
+                                  style: TextStyle(
+                                    color: kGreyColor,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  "Add funds to your wallet",
+                                  style: TextStyle(
+                                    color: kGreyColor.withValues(alpha: 0.6),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
 
-            // Transactions List
-            if (responseData != null &&
-                responseData['wallet_history'] != null &&
-                responseData['wallet_history'].length != 0)
-              SliverList(
-                delegate: SliverChildBuilderDelegate(childCount: 1, (
-                  BuildContext context,
-                  int index,
-                ) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: kDefaultPadding),
-                    child: _buildTransactionsList(),
-                  );
-                }),
-              ),
-          ],
+              if (responseData != null &&
+                  responseData['wallet_history'] != null &&
+                  responseData['wallet_history'].length == 0)
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          HeroiconsOutline.wallet,
+                          size: 64,
+                          color: kGreyColor.withValues(alpha: 0.5),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "No wallet transactions yet!",
+                          style: TextStyle(color: kGreyColor, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Transactions List
+              if (responseData != null &&
+                  responseData['wallet_history'] != null &&
+                  responseData['wallet_history'].length != 0)
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(childCount: 1, (
+                    BuildContext context,
+                    int index,
+                  ) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: kDefaultPadding),
+                      child: _buildTransactionsList(),
+                    );
+                  }),
+                ),
+
+              // Loading more indicator
+              if (_isLoadingMore)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: kDefaultPadding),
+                    child: Center(
+                      child: SpinKitWave(
+                        color: kSecondaryColor,
+                        size: getProportionateScreenWidth(kDefaultPadding),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -435,7 +511,7 @@ class _BorsaScreenState extends State<BorsaScreen> {
                             ),
                             // if (showPayments)
                             PaymentCard(
-                              title: "Telebirr InApp",
+                              title: "telebirr in-app",
                               subtitle: "Pay with mobile app",
                               imageUrl: "images/payment/telebirr.png",
                               onPressed: () {
@@ -715,33 +791,113 @@ class _BorsaScreenState extends State<BorsaScreen> {
               "${transaction['created_at'].split("T")[0]} ${transaction['created_at'].split("T")[1].split('.')[0]}",
               style: TextStyle(fontSize: 12, color: kGreyColor),
             ),
-            trailing: RichText(
-              text: TextSpan(
-                text: isDeposit ? "+ " : "- ",
-                style: TextStyle(
-                  color: isDeposit ? kGreenColor : kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                children: <TextSpan>[
-                  TextSpan(
-                    text:
-                        "${Provider.of<ZMetaData>(context, listen: false).currency} ",
-                    style: TextStyle(
-                      fontWeight: FontWeight.normal,
-                      fontSize: 12,
-                    ),
-                  ),
-                  TextSpan(
-                    text: transaction['from_amount'].toStringAsFixed(2),
+            trailing: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: getProportionateScreenWidth(kDefaultPadding / 4),
+              children: [
+                RichText(
+                  text: TextSpan(
+                    text: isDeposit ? "+ " : "- ",
                     style: TextStyle(
                       color: isDeposit ? kGreenColor : kSecondaryColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text:
+                            "${Provider.of<ZMetaData>(context, listen: false).currency} ",
+                        style: TextStyle(
+                          fontWeight: FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                      ),
+                      TextSpan(
+                        text: transaction['from_amount'].toStringAsFixed(2),
+                        style: TextStyle(
+                          color: isDeposit ? kGreenColor : kSecondaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                if (responseData != null && transaction['is_refunded'] == true)
+                  AnimatedContainer(
+                    width: getProportionateScreenWidth(kDefaultPadding * 5),
+                    duration: Duration(milliseconds: 200),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: getProportionateScreenWidth(
+                        kDefaultPadding / 2,
+                      ),
+                      vertical: getProportionateScreenHeight(
+                        kDefaultPadding / 6,
+                      ),
+                    ),
+                    decoration: BoxDecoration(
+                      color: kGreyColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!, width: 1),
+                    ),
+                    child: Center(
+                      child: Text(
+                        "Refunded",
+                        style: TextStyle(
+                          color: kGreyColor,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                if (responseData != null &&
+                    responseData['is_refund_available'] == true &&
+                    transaction['can_refund'] == true)
+                  InkWell(
+                    onTap: () => _onRefundTap(context, transaction),
+                    child: AnimatedContainer(
+                      width: getProportionateScreenWidth(kDefaultPadding * 4),
+                      duration: Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: getProportionateScreenWidth(
+                          kDefaultPadding / 2,
+                        ),
+                        vertical: getProportionateScreenHeight(
+                          kDefaultPadding / 4,
+                        ),
+                      ),
+                      decoration: BoxDecoration(
+                        color: kSecondaryColor.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[300]!, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: kPrimaryColor.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Refund",
+                          style: TextStyle(
+                            color: kPrimaryColor,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: getProportionateScreenWidth(kDefaultPadding / 4),
+                  ),
+              ],
             ),
           ),
         );
@@ -812,8 +968,8 @@ class _BorsaScreenState extends State<BorsaScreen> {
                         payeePhone = val;
                       },
                       // decoration: textFieldInputDecorator.copyWith(
-                      hintText: "Enter receiver number",
-                      helperText: "Start phone number with 9..",
+                      hintText: "9XXXXXXXX",
+                      helperText: "Phone number must start with 9",
                       // hintText: "...",
                       // prefix: Text(
                       //     "${Provider.of<ZMetaData>(context, listen: false).areaCode}"),
@@ -938,6 +1094,60 @@ class _BorsaScreenState extends State<BorsaScreen> {
         transferError = false;
       });
     });
+  }
+
+  // ---- Refund ---- //
+
+  Future<void> _forceLogout() async {
+    await Service.saveBool('logged', false);
+    await Service.remove('user');
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+  }
+
+  void _onRefundTap(BuildContext context, dynamic transaction) {
+    final meta = Provider.of<ZMetaData>(context, listen: false);
+    debugPrint('### REFUND TAP ====');
+    debugPrint('### user_id: ${widget.userData['user']['_id']}');
+    debugPrint('### phone: ${widget.userData['user']['phone']}');
+    debugPrint('### baseUrl: ${meta.baseUrl}');
+    debugPrint('### transaction: $transaction');
+    debugPrint('### can_refund: ${transaction['can_refund']}');
+    debugPrint('### is_refund_available: ${responseData['is_refund_available']}');
+    debugPrint('### unique_id: ${transaction['unique_id']}');
+    debugPrint('### from_amount: ${transaction['from_amount']}');
+    debugPrint('### ======================');
+    final service = RefundService(
+      userId: widget.userData['user']['_id'],
+      phone: widget.userData['user']['phone'],
+      context: context,
+    );
+
+    RefundOtpSheet.show(
+      context: context,
+      transaction: transaction,
+      service: service,
+      currency: meta.currency,
+      onVerified: (result) {
+        if (!mounted) return;
+        RefundConfirmationDialog.show(
+          context: this.context,
+          verifyResult: result,
+          transaction: transaction,
+          service: service,
+          currency: meta.currency,
+          onSuccess: () {
+            setState(() {
+              transaction['isRefunded'] = true;
+            });
+            _userDetails();
+            _getTransactions();
+          },
+          onForceLogout: _forceLogout,
+        );
+      },
+      onForceLogout: _forceLogout,
+    );
   }
 
   //
@@ -1177,15 +1387,24 @@ class _BorsaScreenState extends State<BorsaScreen> {
     );
   }
 
-  Future<dynamic> transactionHistoryDetails() async {
+  Future<dynamic> transactionHistoryDetails({
+    int page = 1,
+    bool isLoadMore = false,
+  }) async {
     var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/admin/get_wallet_history";
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/admin/get_wallet_history_new";
     Map data = {
       "id": widget.userData['user']['_id'],
       "type": widget.userData['user']['admin_type'],
       "server_token": widget.userData['user']['server_token'],
+      "page": page,
+      "limit": _pageLimit,
     };
     var body = json.encode(data);
+
+    debugPrint('### [WALLET_HISTORY] REQUEST page=$page, limit=$_pageLimit');
+    debugPrint('### [WALLET_HISTORY] URL: $url');
+    debugPrint('### [WALLET_HISTORY] BODY: $body');
 
     try {
       http.Response response = await http
@@ -1210,14 +1429,43 @@ class _BorsaScreenState extends State<BorsaScreen> {
             },
           );
 
-      responseData = json.decode(response.body);
-      return json.decode(response.body);
+      var decoded = json.decode(response.body);
+      debugPrint('### [WALLET_HISTORY] RESPONSE (page $page): $decoded');
+
+      if (decoded != null && decoded['success'] == true) {
+        List newItems = decoded['wallet_history'] ?? [];
+        debugPrint('### [WALLET_HISTORY] items received: ${newItems.length}, hasMore: ${newItems.length >= _pageLimit}');
+
+        if (!mounted) return decoded;
+
+        setState(() {
+          if (isLoadMore) {
+            _walletHistory.addAll(newItems);
+          } else {
+            _walletHistory = List.from(newItems);
+          }
+          _hasMore = newItems.length >= _pageLimit;
+          // Keep responseData in sync for is_refund_available and other top-level fields
+          responseData = decoded;
+          responseData['wallet_history'] = _walletHistory;
+        });
+      } else {
+        debugPrint('### [WALLET_HISTORY] FAILED response: $decoded');
+        if (!isLoadMore) {
+          responseData = decoded;
+        }
+      }
+
+      return decoded;
     } catch (e) {
+      debugPrint('### [WALLET_HISTORY] ERROR: $e');
       return null;
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (!isLoadMore) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
