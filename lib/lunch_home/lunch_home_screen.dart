@@ -551,7 +551,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                               }
                               return null;
                             },
-                            hintText: "  Receiver Phone (Optional)",
+                            hintText: "  9XXXXXXXX (Optional)",
                             prefix: Text(
                                 "${Provider.of<ZMetaData>(context, listen: false).areaCode}"),
                           ),
@@ -598,7 +598,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                               }
                               return null;
                             },
-                            hintText: "  Sender Phone",
+                            hintText: "  9XXXXXXXX",
                             prefix: Text(
                               "${Provider.of<ZMetaData>(context, listen: false).areaCode}",
                               style: TextStyle(color: kGreyColor),

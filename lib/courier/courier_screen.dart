@@ -580,7 +580,7 @@ class _CourierScreenState extends State<CourierScreen> {
                               }
                               return null;
                             },
-                            hintText: "  Sender Phone (Optional)",
+                            hintText: "  9XXXXXXXX (Optional)",
                             prefix: Text(
                               "${Provider.of<ZMetaData>(context, listen: false).areaCode}",
                               style: TextStyle(color: kGreyColor),
@@ -628,7 +628,7 @@ class _CourierScreenState extends State<CourierScreen> {
                               }
                               return null;
                             },
-                            hintText: "  Receiver Phone",
+                            hintText: "  9XXXXXXXX",
                             prefix: Text(
                                 "${Provider.of<ZMetaData>(context, listen: false).areaCode}"),
                           ),

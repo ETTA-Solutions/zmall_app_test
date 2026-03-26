@@ -178,7 +178,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                               return null;
                             },
                             // labelText: 'Phone number',
-                            hintText: "Phone start with 9 ...",
+                            hintText: "9XXXXXXXX",
                           ),
                           if (_areaCode == "+211") ...[
                             SizedBox(

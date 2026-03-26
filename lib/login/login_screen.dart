@@ -1329,7 +1329,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         return null; // Return null if validation passes
       },
-      hintText: "$areaCode...",
+      hintText: "9XXXXXXXX",
       floatingLabelBehavior: FloatingLabelBehavior.always,
       isPhoneWithFlag: true,
       initialSelection:

@@ -295,7 +295,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
                         dialogSize: Size.fromHeight(
                           getProportionateScreenHeight(double.maxFinite),
                         ),
-                        hintText: "Without country code...",
+                        hintText: "Enter your phone",
 
                         keyboardType: TextInputType.phone,
                         controller: _phoneController,

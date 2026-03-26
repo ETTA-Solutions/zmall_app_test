@@ -401,7 +401,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return null;
       },
       // labelText: "Phone",
-      hintText: "Enter your phone",
+      hintText: "9XXXXXXXX",
       // "$areaCode...",
       floatingLabelBehavior: FloatingLabelBehavior.always,
       isPhoneWithFlag: true,

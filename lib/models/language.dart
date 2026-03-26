@@ -85,7 +85,7 @@ class ZLanguage extends ChangeNotifier {
   String orderForOthers = "Order For Others";
   String receiverPhone = "Receiver Phone";
   String submit = "Submit";
-  String startPhone = "Start phone number with 9";
+  String startPhone = "9XXXXXXXX";
   String locations = "Locations";
   String addLocation = "Add Location";
   String useCurrentLocation = "Use current location";
@@ -124,7 +124,7 @@ class ZLanguage extends ChangeNotifier {
   String onlyDigitalPayments = "Only Digital Payments Accepted";
   String cash = "Cash";
   String zWallet = "Z-Wallet";
-  String telebirr = "Telebirr";
+  String telebirr = "telebirr";
   String amole = "Amole";
   String boa = "Bank Of Abyssinia";
   String zemen = "Zemen Bank";
@@ -236,7 +236,7 @@ class ZLanguage extends ChangeNotifier {
       changeDetails = "Change Details";
       orderForOthers = "Order For Others";
       receiverPhone = "Receiver Phone";
-      startPhone = "Start phone number with 9 or 7";
+      startPhone = "9XXXXXXXX";
       submit = "Submit";
       locations = "Locations";
       addLocation = "Add Location";
@@ -383,7 +383,7 @@ class ZLanguage extends ChangeNotifier {
       changeDetails = "更改";
       orderForOthers = "为亲人点";
       receiverPhone = "亲人电话";
-      startPhone = "手机号为 9 或 7 开始";
+      startPhone = "9XXXXXXXX";
       submit = "提交";
       locations = "地址";
       addLocation = "添加地址";
