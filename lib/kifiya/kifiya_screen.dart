@@ -345,8 +345,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         _loading = false;
         _placeOrder = false;
       });
-      if (paymentResponse != null &&
-          paymentResponse['error_code'] == 999) {
+      if (paymentResponse != null && paymentResponse['error_code'] == 999) {
         await Service.saveBool('logged', false);
         await Service.remove('user');
         if (!mounted) return;
@@ -1103,10 +1102,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           return AlertDialog(
                                             backgroundColor: kPrimaryColor,
                                             title: Text(
-                                              "Pay Using Telebirr App",
+                                              "Pay using telebirr app",
                                             ),
                                             content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Telebirr App?",
+                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr app?",
                                             ),
                                             actions: [
                                               TextButton(
@@ -1682,10 +1681,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           return AlertDialog(
                                             backgroundColor: kPrimaryColor,
                                             title: Text(
-                                              "Pay Using TeleBirr USSD",
+                                              "Pay using telebirr ussd",
                                             ),
                                             content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Telebirr?",
+                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr?",
                                             ),
                                             actions: [
                                               TextButton(
@@ -1940,7 +1939,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                   }
                                   //********************************Star Pay end******************************************///
                                   ///**************************Telebirr InApp***************************************
-                                  else if (paymentName == "telebirr inapp") {
+                                  else if (paymentName == "telebirr inapp" ||
+                                      paymentName == "telebirr in app" ||
+                                      paymentName == "telebirr in-app") {
                                     var data = await useBorsa();
                                     if (data != null && data['success']) {
                                       showDialog(
@@ -1949,10 +1950,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           return AlertDialog(
                                             backgroundColor: kPrimaryColor,
                                             title: Text(
-                                              "Pay Using Telebirr App",
+                                              "Pay using telebirr app",
                                             ),
                                             content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Telebirr InApp?",
+                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr in-app?",
                                             ),
                                             actions: [
                                               TextButton(
@@ -2599,23 +2600,26 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
 
-      if (mounted) setState(() {
-        this.paymentResponse = json.decode(response.body);
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this.paymentResponse = json.decode(response.body);
+          this._loading = false;
+        });
 
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2694,21 +2698,24 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 40),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
 
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2752,21 +2759,24 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
 
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2810,22 +2820,25 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
 
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
 
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2887,22 +2900,25 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
 
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
 
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -3005,10 +3021,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
         // If every image failed validation, stop the order
         if (batch.allFailed) {
-          if (mounted) setState(() {
-            _loading = false;
-            _placeOrder = false;
-          });
+          if (mounted)
+            setState(() {
+              _loading = false;
+              _placeOrder = false;
+            });
 
           if (!mounted) return null;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -3085,16 +3102,18 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             http.Response.fromStream(response).then((value) async {
               var data = json.decode(value.body);
               if (data != null && data['success']) {
-                if (mounted) Service.showMessage(
-                  context: context,
-                  title: "Order successfully created",
-                  error: false,
-                );
+                if (mounted)
+                  Service.showMessage(
+                    context: context,
+                    title: "Order successfully created",
+                    error: false,
+                  );
                 await Service.remove("images");
-                if (mounted) setState(() {
-                  _loading = false;
-                  _placeOrder = false;
-                });
+                if (mounted)
+                  setState(() {
+                    _loading = false;
+                    _placeOrder = false;
+                  });
                 // Navigate to report screen with isCourier flag for proper back navigation
                 Navigator.pushReplacement(
                   context,
@@ -3107,15 +3126,18 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                   ),
                 );
               } else {
-                if (mounted) setState(() {
-                  _loading = false;
-                  _placeOrder = false;
-                });
-                if (mounted) Service.showMessage(
-                  context: context,
-                  title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}!",
-                  error: true,
-                );
+                if (mounted)
+                  setState(() {
+                    _loading = false;
+                    _placeOrder = false;
+                  });
+                if (mounted)
+                  Service.showMessage(
+                    context: context,
+                    title:
+                        "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}!",
+                    error: true,
+                  );
                 print("else error>>> ${data['error_code']}");
 
                 // SECURITY: Log failed order when API returns error
@@ -3154,10 +3176,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 40),
             onTimeout: () {
-              if (mounted) setState(() {
-                _loading = false;
-                this._placeOrder = false;
-              });
+              if (mounted)
+                setState(() {
+                  _loading = false;
+                  this._placeOrder = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
@@ -3185,18 +3208,20 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             "Network error. Please check your internet connection and try again.";
       }
 
-      if (mounted) setState(() {
-        this._loading = false;
-        this._placeOrder = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+          this._placeOrder = false;
+        });
 
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: kSecondaryColor,
-          duration: Duration(seconds: 5),
-        ),
-      );
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: kSecondaryColor,
+            duration: Duration(seconds: 5),
+          ),
+        );
 
       // Only clear images if they're actually invalid (not network errors)
       if (clearImages) {
@@ -3305,27 +3330,31 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             .timeout(
               Duration(seconds: 50),
               onTimeout: () {
-                if (mounted) setState(() {
-                  this._loading = false;
-                });
+                if (mounted)
+                  setState(() {
+                    this._loading = false;
+                  });
                 throw TimeoutException("The connection has timed out!");
               },
             );
-        if (mounted) setState(() {
-          aliOrderResponse = json.decode(response.body);
-        });
+        if (mounted)
+          setState(() {
+            aliOrderResponse = json.decode(response.body);
+          });
         return aliOrderResponse;
       } catch (e) {
-        if (mounted) setState(() {
-          this._loading = false;
-        });
+        if (mounted)
+          setState(() {
+            this._loading = false;
+          });
 
-        if (mounted) Service.showMessage(
-          context: context,
-          title:
-              "Failed to create aliexpress order, please check your internet and try again",
-          error: true,
-        );
+        if (mounted)
+          Service.showMessage(
+            context: context,
+            title:
+                "Failed to create aliexpress order, please check your internet and try again",
+            error: true,
+          );
         return null;
       }
     }
@@ -3381,28 +3410,32 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 50),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      if (mounted) setState(() {
-        orderResponse = json.decode(response.body);
-      });
+      if (mounted)
+        setState(() {
+          orderResponse = json.decode(response.body);
+        });
       return orderResponse;
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-        this._placeOrder = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+          this._placeOrder = false;
+        });
 
-      if (mounted) Service.showMessage(
-        context: context,
-        title:
-            "Failed to create order, please check your internet and try again",
-        error: true,
-      );
+      if (mounted)
+        Service.showMessage(
+          context: context,
+          title:
+              "Failed to create order, please check your internet and try again",
+          error: true,
+        );
       return null;
     }
   }
@@ -3501,14 +3534,16 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 30),
             onTimeout: () {
-              if (mounted) Service.showMessage(
-                context: context,
-                title: "Network error",
-                error: true,
-              );
-              if (mounted) setState(() {
-                _loading = false;
-              });
+              if (mounted)
+                Service.showMessage(
+                  context: context,
+                  title: "Network error",
+                  error: true,
+                );
+              if (mounted)
+                setState(() {
+                  _loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
@@ -3556,27 +3591,31 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 30),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
 
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
-      if (mounted) Service.showMessage(
-        context: context,
-        title: "Failed to verify payment. Check you internet and try again",
-        error: true,
-        duration: 4,
-      );
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
+      if (mounted)
+        Service.showMessage(
+          context: context,
+          title: "Failed to verify payment. Check you internet and try again",
+          error: true,
+          duration: 4,
+        );
       return null;
     }
   }
@@ -3621,27 +3660,31 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .timeout(
             Duration(seconds: 30),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
 
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
-      if (mounted) Service.showMessage(
-        context: context,
-        title: "Failed to verify payment. Check you internet and try again",
-        error: true,
-        duration: 4,
-      );
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
+      if (mounted)
+        Service.showMessage(
+          context: context,
+          title: "Failed to verify payment. Check you internet and try again",
+          error: true,
+          duration: 4,
+        );
       return null;
     }
   }

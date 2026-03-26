@@ -72,7 +72,9 @@ class KifiyaMethodContainer extends StatelessWidget {
                     ? "USSD"
                     : title.toLowerCase().contains("telebirr reference")
                     ? "Reference"
-                    : title.toLowerCase().contains("telebirr inapp")
+                    : title.toLowerCase().contains("telebirr inapp") ||
+                        title.toLowerCase().contains("telebirr in app") ||
+                        title.toLowerCase().contains("telebirr in-app")
                     ? "InApp"
                     : Service.capitalizeFirstLetters(title),
                 textAlign: TextAlign.center,

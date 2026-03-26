@@ -16,7 +16,7 @@ class TelebirrUssd extends StatefulWidget {
     required this.phone,
     required this.traceNo,
     required this.orderPaymentId,
-    this.title = "Telebirr",
+    this.title = "telebirr",
     this.isAbroad = false,
     required this.serverToken,
     required this.userId,
@@ -93,7 +93,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pay Using Telebirr',
+                    'Pay Using telebirr',
                     style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
                   ),
                   Text(

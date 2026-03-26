@@ -16,7 +16,7 @@ class Telebirr extends StatefulWidget {
     required this.phone,
     required this.traceNo,
     required this.orderPaymentId,
-    this.title = "Telebirr",
+    this.title = "telebirr",
     this.isAbroad = false,
   });
   final String url;

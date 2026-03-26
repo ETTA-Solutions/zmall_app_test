@@ -228,12 +228,12 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
           break;
         case -10:
           message =
-              "⚠️ It looks like Telebirr is not installed on your device. Please install it and try again.";
+              "⚠️ It looks like telebirr is not installed on your device. Please install it and try again.";
           isError = true;
           break;
         case -11:
           message =
-              "⚠️ The current version of Telebirr doesn't support this feature. Please upgrade your Telebirr app to the latest version and try again.";
+              "⚠️ The current version of telebirr doesn't support this feature. Please upgrade your telebirr app to the latest version and try again.";
           isError = true;
           break;
         case -99:
@@ -270,7 +270,7 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("TeleBirr InApp", style: TextStyle(color: kBlackColor)),
+        title: Text("telebirr inapp", style: TextStyle(color: kBlackColor)),
         centerTitle: true,
         leading: BackButton(
           onPressed: () {
@@ -411,7 +411,7 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
       "traceNo": traceNo,
       "phone": phone,
       "amount": amount,
-      "description": "ZMall_Telebirr_InApp",
+      "description": "ZMall_telebirr_inapp",
       "isInapp": true,
     };
     var body = json.encode(data);

@@ -72,7 +72,10 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
       });
 
       Service.showMessage(
-          context: context, title: "${data['message']}", error: true);
+        context: context,
+        title: "${data['message']}",
+        error: true,
+      );
       await Future.delayed(Duration(seconds: 2));
     }
   }
@@ -113,10 +116,7 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Tele Birr",
-          style: TextStyle(color: kBlackColor),
-        ),
+        title: Text("Tele Birr", style: TextStyle(color: kBlackColor)),
         elevation: 1.0,
         leading: BackButton(
           onPressed: () {
@@ -130,31 +130,34 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
         color: kWhiteColor,
         child: SingleChildScrollView(
           child: Padding(
-            padding:
-                EdgeInsets.all(getProportionateScreenHeight(kDefaultPadding)),
+            padding: EdgeInsets.all(
+              getProportionateScreenHeight(kDefaultPadding),
+            ),
             child: Column(
               children: [
                 Container(
                   padding: EdgeInsets.all(
-                      getProportionateScreenWidth(kDefaultPadding)),
+                    getProportionateScreenWidth(kDefaultPadding),
+                  ),
                   width: double.infinity,
                   decoration: BoxDecoration(
-                      color: kPrimaryColor,
-                      borderRadius: BorderRadius.circular(
-                          getProportionateScreenWidth(kDefaultPadding))),
+                    color: kPrimaryColor,
+                    borderRadius: BorderRadius.circular(
+                      getProportionateScreenWidth(kDefaultPadding),
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "Pay ብር ${widget.hisab.toStringAsFixed(2)} with Tele Birr",
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       Text(
                         "Please use the bottom reference number to complete your payment using Tele Birr App or USSD.",
@@ -162,8 +165,9 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
                         textAlign: TextAlign.justify,
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       Center(
                         child: Container(
@@ -174,12 +178,11 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
                             ),
                           ),
                           padding: EdgeInsets.all(
-                              getProportionateScreenWidth(kDefaultPadding / 2)),
+                            getProportionateScreenWidth(kDefaultPadding / 2),
+                          ),
                           child: Text(
                             "${widget.traceNo}",
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -188,103 +191,100 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
                         child: TextButton(
                           onPressed: () {
                             Clipboard.setData(
-                                    new ClipboardData(text: widget.traceNo))
-                                .then((_) {
+                              new ClipboardData(text: widget.traceNo),
+                            ).then((_) {
                               setState(() {
                                 copied = true;
                               });
 
                               Service.showMessage(
-                                  context: context,
-                                  title:
-                                      "Reference number copied to clipboard! Please complete your payment using Tele Birr App",
-                                  error: false);
+                                context: context,
+                                title:
+                                    "Reference number copied to clipboard! Please complete your payment using Tele Birr App",
+                                error: false,
+                              );
                             });
                           },
                           child: Text(
                             "Copy Reference Number",
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: kSecondaryColor),
                           ),
                         ),
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       RichText(
                         text: TextSpan(
                           text: 'Press',
-                          style: TextStyle(
-                            color: kGreyColor,
-                          ),
+                          style: TextStyle(color: kGreyColor),
                           children: <TextSpan>[
                             TextSpan(
                               text: ' VERIFY',
                               style: TextStyle(
-                                  color: kBlackColor,
-                                  fontSize: getProportionateScreenWidth(
-                                      kDefaultPadding * .75),
-                                  fontWeight: FontWeight.bold),
+                                color: kBlackColor,
+                                fontSize: getProportionateScreenWidth(
+                                  kDefaultPadding * .75,
+                                ),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             TextSpan(
                               text: ' once you\'re done paying...',
-                              style: TextStyle(
-                                color: kGreyColor,
-                              ),
-                            )
+                              style: TextStyle(color: kGreyColor),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding),
-                ),
+                SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
                 CustomButton(
                   title: "Verify",
                   press: () {
                     if (!copied) {
                       Service.showMessage(
-                          context: context,
-                          title:
-                              "Please copy the reference number and make payment on Tele Birr application.",
-                          error: true);
+                        context: context,
+                        title:
+                            "Please copy the reference number and make payment on Tele Birr application.",
+                        error: true,
+                      );
                     } else {
                       _telebirrVerifyBill();
                     }
                   },
                   color: copied ? kSecondaryColor : kGreyColor,
                 ),
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding),
-                ),
+                SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
                 Container(
                   padding: EdgeInsets.all(
-                      getProportionateScreenWidth(kDefaultPadding)),
+                    getProportionateScreenWidth(kDefaultPadding),
+                  ),
                   width: double.infinity,
                   decoration: BoxDecoration(
-                      color: kPrimaryColor.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(
-                          getProportionateScreenWidth(kDefaultPadding))),
+                    color: kPrimaryColor.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(
+                      getProportionateScreenWidth(kDefaultPadding),
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Center(
                         child: Text(
-                          "How to pay with Telebirr?",
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
+                          "How to pay with telebirr?",
+                          style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       Text(
                         "1. Copy the reference number above ☝🏾",
@@ -292,71 +292,73 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
                         textAlign: TextAlign.start,
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       Text(
-                        "2. Open Telebirr App and Login",
+                        "2. Open telebirr app and login",
                         style: Theme.of(context).textTheme.titleMedium,
                         textAlign: TextAlign.start,
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       RichText(
                         text: TextSpan(
-                            text: '3. Press ',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            children: <TextSpan>[
-                              TextSpan(
-                                text: '"Pay with Telebirr"',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              )
-                            ]),
+                          text: '3. Press ',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: '"Pay with telebirr"',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       RichText(
                         text: TextSpan(
-                            text: '4. Press ',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            children: <TextSpan>[
-                              TextSpan(
-                                text: '"Utility Payment"',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              )
-                            ]),
+                          text: '4. Press ',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: '"Utility Payment"',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       RichText(
                         text: TextSpan(
-                            text: '5. Press ',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            children: <TextSpan>[
-                              TextSpan(
-                                text: '"ZMALL"',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              )
-                            ]),
+                          text: '5. Press ',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: '"ZMALL"',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       Text(
                         "6. Paste the reference number and proceed with payment",
@@ -376,16 +378,17 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
                       GestureDetector(
                         onTap: () {
                           Service.launchInWebViewOrVC(
-                              "https://t.me/zmall_delivery");
+                            "https://t.me/zmall_delivery",
+                          );
                         },
                         child: Text(
                           "9. ZMall Delivery Telegram",
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
-                                    color: kSecondaryColor,
-                                  ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                                color: kSecondaryColor,
+                              ),
                           textAlign: TextAlign.start,
                         ),
                       ),
@@ -409,28 +412,28 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
       "code": "0005",
       "trace_no": widget.traceNo,
       "amount": "${widget.hisab}",
-      "appId": "1234"
+      "appId": "1234",
     };
     var body = json.encode(data);
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+            Duration(seconds: 10),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
 
       setState(() {
         this._loading = false;
@@ -445,7 +448,8 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              "Something went wrong. Please check your internet connection!"),
+            "Something went wrong. Please check your internet connection!",
+          ),
           backgroundColor: kSecondaryColor,
         ),
       );
@@ -459,28 +463,28 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
     Map data = {
       "user_id": userData['user']['_id'],
       "server_token": userData['user']['server_token'],
-      "order_payment_id": widget.orderPaymentId
+      "order_payment_id": widget.orderPaymentId,
     };
     var body = json.encode(data);
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+            Duration(seconds: 10),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
 
       setState(() {
         this._loading = false;
@@ -495,7 +499,8 @@ class _KifiyaVerificationState extends State<KifiyaVerification> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              "Something went wrong. Please check your internet connection!"),
+            "Something went wrong. Please check your internet connection!",
+          ),
           backgroundColor: kSecondaryColor,
         ),
       );
