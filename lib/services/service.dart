@@ -707,7 +707,7 @@ class Service {
     required BuildContext context,
     required double userLatitude,
     required double userLongitude,
-    double radius = 5.0,
+    double radius = kProximityRadius,
     required String serverToken,
     required String userId,
   }) async {
@@ -729,8 +729,10 @@ class Service {
       if (response != null && response['success'] == true) {
         List ordersList = response['orders'] ?? [];
         List<Map<String, dynamic>> proximityItems = [];
-        var radiusKm = response['radiusKm'] ?? radius;
-        // debugPrint("respose: $response");
+        var radiusKm = response['comparsion_km'] ?? radius;
+        debugPrint(
+          "### [DEBUG] response: $response \n### [DEBUG] radiusKm: $radiusKm \n### [DEBUG] ordersList: $ordersList",
+        );
         for (var order in ordersList) {
           // Get destination location
           var cartDetail = order['cart_detail'];

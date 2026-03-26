@@ -428,7 +428,7 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      // debugPrint("response: ${json.decode(response.body)}");
+      debugPrint("XXX response: ${json.decode(response.body)}");
       return json.decode(response.body);
     } catch (e) {
       // debugPrint("Error fetching orders list: $e");

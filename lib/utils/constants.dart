@@ -26,6 +26,7 @@ const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 
 // Ethiopia test
 // const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
+// const BASE_URL_TEST = "http://196.189.124.132:8e000"; //test (blen)
 // const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test domain
 
 // const BASE_URL = BASE_URL_TEST;
@@ -306,7 +307,17 @@ const store_delivery_id = {"DonationID": "66472227b2f9514de2636266"};
 
 /// For ADDRESS VALIDATION SERVICE
 /// Minimum distance in meters to consider two addresses as different.
-final double kMinimumDistanceThreshold = 0.1; // 50 meters
+final double kMinimumDistanceThreshold = 0.1; // 100 meters
 
 /// Telebirr-InApp Trace Number Filteration Key
 final String kTelebirrInAppTraceKey = "ZTelebirrInApp";
+
+/// ---- B2C Wallet Refund to telebirr endpoints ---- ///
+const String kRefundGenerateOtpEndpoint = "/api/user/send_refund_otp";
+const String kRefundVerifyOtpEndpoint = "/api/user/verify_refund_otp";
+const String kRefundProcessEndpoint = "/api/admin/enable_wallet_refund";
+const int kRefundOtpCountdownSeconds = 60;
+
+/// ---- Proximity Order Radius ---- ///
+const double kProximityRadius =
+    5.0; // near by orders within 5km radius fallback
