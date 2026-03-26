@@ -173,12 +173,12 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
           break;
         case -10:
           message =
-              "⚠️ It looks like Telebirr is not installed on your device. Please install it and try again.";
+              "⚠️ It looks like telebirr is not installed on your device. Please install it and try again.";
           isError = true;
           break;
         case -11:
           message =
-              "⚠️ The current version of Telebirr doesn't support this feature. Please upgrade your Telebirr app to the latest version and try again.";
+              "⚠️ The current version of telebirr doesn't support this feature. Please upgrade your telebirr app to the latest version and try again.";
           isError = true;
           break;
         case -99:
@@ -215,7 +215,7 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("TeleBirr InApp", style: TextStyle(color: kBlackColor)),
+        title: Text("telebirr in-app", style: TextStyle(color: kBlackColor)),
         centerTitle: true,
         leading: BackButton(
           onPressed: () {
@@ -288,7 +288,7 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
             ),
             SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
             Text(
-              "Please complete the transaction in the Telebirr app.",
+              "Please complete the transaction in the telebirr app.",
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,

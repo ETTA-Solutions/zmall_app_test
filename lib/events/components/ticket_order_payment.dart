@@ -66,10 +66,7 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Purchase",
-          style: TextStyle(color: kBlackColor),
-        ),
+        title: Text("Purchase", style: TextStyle(color: kBlackColor)),
         elevation: 1.0,
       ),
       body: ModalProgressHUD(
@@ -88,11 +85,13 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
                 children: [
                   Container(
                     width: getProportionateScreenHeight(kDefaultPadding * 6),
-                    height:
-                        getProportionateScreenHeight(kDefaultPadding * 1.25),
+                    height: getProportionateScreenHeight(
+                      kDefaultPadding * 1.25,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(
-                          getProportionateScreenHeight(kDefaultPadding)),
+                        getProportionateScreenHeight(kDefaultPadding),
+                      ),
                       border: Border.all(width: 1.0, color: kSecondaryColor),
                     ),
                     child: Center(
@@ -105,12 +104,14 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
                   Row(
                     children: const [
                       Text(
-                        'TELEBIRR',
+                        'telebirr',
                         style: TextStyle(
-                            color: Colors.blue, fontWeight: FontWeight.bold),
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
               const Padding(
@@ -118,9 +119,10 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
                 child: Text(
                   'Event Ticket',
                   style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20.0,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.black,
+                    fontSize: 20.0,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Column(
@@ -128,50 +130,58 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
                 children: [
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      vertical:
-                          getProportionateScreenHeight(kDefaultPadding / 2),
+                      vertical: getProportionateScreenHeight(
+                        kDefaultPadding / 2,
+                      ),
                     ),
                     child: ticketDetailsWidget(
-                        'User',
-                        'Yoseph Solomon',
-                        'Date',
-                        orderPayment['ticket_order_payment']['created_at']
-                            .split('T')[0]),
+                      'User',
+                      'Yoseph Solomon',
+                      'Date',
+                      orderPayment['ticket_order_payment']['created_at'].split(
+                        'T',
+                      )[0],
+                    ),
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      vertical:
-                          getProportionateScreenHeight(kDefaultPadding / 2),
+                      vertical: getProportionateScreenHeight(
+                        kDefaultPadding / 2,
+                      ),
                     ),
                     child: ticketDetailsWidget(
-                        'Host',
-                        orderPayment['ticket_order_payment']
-                            ['organization_name'],
-                        'Event',
-                        orderPayment['ticket_order_payment']['event_name']),
+                      'Host',
+                      orderPayment['ticket_order_payment']['organization_name'],
+                      'Event',
+                      orderPayment['ticket_order_payment']['event_name'],
+                    ),
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      vertical:
-                          getProportionateScreenHeight(kDefaultPadding / 2),
+                      vertical: getProportionateScreenHeight(
+                        kDefaultPadding / 2,
+                      ),
                     ),
                     child: ticketDetailsWidget(
-                        'Ticket Type',
-                        orderPayment['ticket_order_payment']['ticket_name'],
-                        'Unit Price',
-                        '${Provider.of<ZMetaData>(context, listen: false).currency} ${orderPayment['ticket_order_payment']['total'] / orderPayment['ticket_order_payment']['quantity']}'),
+                      'Ticket Type',
+                      orderPayment['ticket_order_payment']['ticket_name'],
+                      'Unit Price',
+                      '${Provider.of<ZMetaData>(context, listen: false).currency} ${orderPayment['ticket_order_payment']['total'] / orderPayment['ticket_order_payment']['quantity']}',
+                    ),
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      vertical:
-                          getProportionateScreenHeight(kDefaultPadding / 2),
+                      vertical: getProportionateScreenHeight(
+                        kDefaultPadding / 2,
+                      ),
                     ),
                     child: ticketDetailsWidget(
-                        'Quantity',
-                        orderPayment['ticket_order_payment']['quantity']
-                            .toString(),
-                        'Total Price',
-                        '${Provider.of<ZMetaData>(context, listen: false).currency} ${orderPayment['ticket_order_payment']['total']}'),
+                      'Quantity',
+                      orderPayment['ticket_order_payment']['quantity']
+                          .toString(),
+                      'Total Price',
+                      '${Provider.of<ZMetaData>(context, listen: false).currency} ${orderPayment['ticket_order_payment']['total']}',
+                    ),
                   ),
                 ],
               ),
@@ -189,38 +199,39 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
       "user_id": widget.userId,
       "server_token": widget.serverToken,
       "quantity": widget.quantity,
-      "ticket_type_id": widget.ticketId
+      "ticket_type_id": widget.ticketId,
     };
     var body = json.encode(data);
 
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 15),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          if (mounted) {
-            Service.showMessage(
-              context: context,
-              title: "Something went wrong! Check your internet and try again",
-              error: true,
-              duration: 3,
-            );
-          }
+            Duration(seconds: 15),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              if (mounted) {
+                Service.showMessage(
+                  context: context,
+                  title:
+                      "Something went wrong! Check your internet and try again",
+                  error: true,
+                  duration: 3,
+                );
+              }
 
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         this.orderPayment = json.decode(response.body);
         this._loading = false;
@@ -236,8 +247,12 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
     }
   }
 
-  Widget ticketDetailsWidget(String firstTitle, String firstDesc,
-      String secondTitle, String secondDesc) {
+  Widget ticketDetailsWidget(
+    String firstTitle,
+    String firstDesc,
+    String secondTitle,
+    String secondDesc,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
@@ -245,18 +260,13 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
-                firstTitle,
-                style: TextStyle(color: kGreyColor),
-              ),
+              Text(firstTitle, style: TextStyle(color: kGreyColor)),
               Padding(
                 padding: EdgeInsets.only(
-                    top: getProportionateScreenHeight(kDefaultPadding / 4)),
-                child: Text(
-                  firstDesc,
-                  style: TextStyle(color: kBlackColor),
+                  top: getProportionateScreenHeight(kDefaultPadding / 4),
                 ),
-              )
+                child: Text(firstDesc, style: TextStyle(color: kBlackColor)),
+              ),
             ],
           ),
         ),
@@ -267,21 +277,16 @@ class _TicketOrderPaymentState extends State<TicketOrderPayment> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                secondTitle,
-                style: TextStyle(color: kGreyColor),
-              ),
+              Text(secondTitle, style: TextStyle(color: kGreyColor)),
               Padding(
                 padding: EdgeInsets.only(
-                    top: getProportionateScreenHeight(kDefaultPadding / 4)),
-                child: Text(
-                  secondDesc,
-                  style: TextStyle(color: kBlackColor),
+                  top: getProportionateScreenHeight(kDefaultPadding / 4),
                 ),
-              )
+                child: Text(secondDesc, style: TextStyle(color: kBlackColor)),
+              ),
             ],
           ),
-        )
+        ),
       ],
     );
   }
