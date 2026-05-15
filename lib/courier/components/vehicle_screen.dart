@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:zmall/services/image_upload_service.dart';

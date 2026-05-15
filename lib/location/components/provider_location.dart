@@ -117,26 +117,24 @@ class _ProviderLocationState extends State<ProviderLocation> {
       var location = await getProviderLocation();
       if (location != null && location['success']) {
         Uint8List imageData = await getMarker(true);
-        if (_controller != null) {
-          double zoomLevel = await _controller.getZoomLevel();
-          _controller.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(
-                target: LatLng(location['provider_location'][0],
-                    location['provider_location'][1]),
-                tilt: 0,
-                zoom: zoomLevel,
-              ),
+        double zoomLevel = await _controller.getZoomLevel();
+        _controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(location['provider_location'][0],
+                  location['provider_location'][1]),
+              tilt: 0,
+              zoom: zoomLevel,
             ),
-          );
-        }
-        updateMarkerAndCircle(
+          ),
+        );
+              updateMarkerAndCircle(
             LatLng(location['provider_location'][0],
                 location['provider_location'][1]),
             imageData);
       }
       await Future.delayed(Duration(seconds: 6), () => getCurrentLocation());
-    } on PlatformException catch (e) {
+    } on PlatformException {
       // debugPrint(e);
       await Future.delayed(Duration(seconds: 10), () => getCurrentLocation());
     }

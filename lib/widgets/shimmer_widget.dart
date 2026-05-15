@@ -459,7 +459,6 @@ class KifiyaMethodesShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isServiceScreen = isService != null && isService == true;
     return Shimmer.fromColors(
       baseColor: baseColor,
       highlightColor: highlightColor,
@@ -488,7 +487,7 @@ class KifiyaMethodesShimmer extends StatelessWidget {
                       height: getProportionateScreenHeight(kDefaultPadding * 4),
                       width: getProportionateScreenWidth(kDefaultPadding * 4),
                       decoration: BoxDecoration(
-                        color: Colors.grey[300], // Placeholder color
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(
                           getProportionateScreenWidth(kDefaultPadding),
                         ),
@@ -505,7 +504,7 @@ class KifiyaMethodesShimmer extends StatelessWidget {
                       ),
                       width: getProportionateScreenWidth(kDefaultPadding * 4),
                       decoration: BoxDecoration(
-                        color: Colors.grey[300], // Placeholder color
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(
                           getProportionateScreenHeight(kDefaultPadding),
                         ),

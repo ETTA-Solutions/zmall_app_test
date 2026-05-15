@@ -8,7 +8,6 @@ import 'package:fl_location/fl_location.dart';
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
-import 'package:zmall/home/components/web_view_screen.dart';
 import 'package:zmall/home/magazine/screens/magazine_list_screen.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/app_update_service.dart';

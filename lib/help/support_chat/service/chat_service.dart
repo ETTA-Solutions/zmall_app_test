@@ -104,7 +104,7 @@ class ChatService {
               'Connection timed out. Please try again.', // 'message': 'Failed to get response. Status: ${response.statusCode}',
         };
       }
-    } on TimeoutException catch (e) {
+    } on TimeoutException {
       // debugPrint("====Chat API Timeout: $e");
       return {
         'error': true,
@@ -198,7 +198,7 @@ class ChatService {
           'message': 'Failed to get response. Status: ${response.statusCode}',
         };
       }
-    } on TimeoutException catch (e) {
+    } on TimeoutException {
       // debugPrint("Chat API Timeout: $e");
       return {
         'error': true,

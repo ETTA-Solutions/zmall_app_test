@@ -142,7 +142,7 @@ class AbroadCart {
         "username": userName,
         "phone": phone,
         "abroad_data": abroadData == null ? null : abroadData!.toJson(),
-        "user_id": userId == null ? null : userId,
+        "user_id": userId,
       };
 }
 

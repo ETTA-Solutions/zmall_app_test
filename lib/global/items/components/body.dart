@@ -445,7 +445,7 @@ class _BodyState extends State<Body> {
                                           .0,
                                     );
 
-                                    if (specification!
+                                    if (specification
                                             .where(
                                               (element) =>
                                                   element.uniqueId ==

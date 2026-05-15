@@ -575,84 +575,91 @@ class _BodyState extends State<Body> {
                           top: Radius.circular(24),
                         ),
                       ),
-                      builder: (_) => SafeArea(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: getProportionateScreenWidth(
-                              kDefaultPadding,
-                            ),
-                            vertical: getProportionateScreenHeight(
-                              kDefaultPadding,
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "Add Note",
-                                    style: textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.close),
-                                    onPressed: () => Navigator.pop(context),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: kWhiteColor,
-                                    ),
-                                  ),
-                                ],
+                      builder: (sheetContext) => AnimatedPadding(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+                        ),
+                        child: SafeArea(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: getProportionateScreenWidth(
+                                kDefaultPadding,
                               ),
-                              SizedBox(height: 12),
-                              Container(
-                                constraints: BoxConstraints(minHeight: 120),
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: kGreyColor.withValues(alpha: 0.2),
+                              vertical: getProportionateScreenHeight(
+                                kDefaultPadding,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Add Note",
+                                      style: textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.close),
+                                      onPressed: () => Navigator.pop(context),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: kWhiteColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                Container(
+                                  constraints: BoxConstraints(minHeight: 120),
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: kGreyColor.withValues(alpha: 0.2),
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    maxLines: null,
+                                    keyboardType: TextInputType.multiline,
+                                    onChanged: (val) => note = val,
+                                    decoration: InputDecoration.collapsed(
+                                      hintText: Provider.of<ZLanguage>(
+                                        context,
+                                      ).note,
+                                      hintStyle: TextStyle(color: kGreyColor),
+                                    ),
                                   ),
                                 ),
-                                child: TextField(
-                                  maxLines: null,
-                                  keyboardType: TextInputType.multiline,
-                                  onChanged: (val) => note = val,
-                                  decoration: InputDecoration.collapsed(
-                                    hintText: Provider.of<ZLanguage>(
-                                      context,
-                                    ).note,
-                                    hintStyle: TextStyle(color: kGreyColor),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: kSecondaryColor,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                SizedBox(height: 16),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kSecondaryColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
                                     ),
-                                  ),
 
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text(
-                                    "Add",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text(
+                                      "Add",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

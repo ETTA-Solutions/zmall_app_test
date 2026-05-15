@@ -609,6 +609,7 @@ class Service {
     stores.forEach((store) {
       bool isStoreOpen = false;
       if (store['store_time'] != null && store['store_time'].length != 0) {
+        //
         for (var i = 0; i < store['store_time'].length; i++) {
           int weekday;
           if (now.weekday == 7) {

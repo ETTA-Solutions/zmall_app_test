@@ -1228,12 +1228,9 @@ class _GlobalKifiyaState extends State<GlobalKifiya> {
       Map data = {
         "user_id": cart!.userId,
         "cart_id": cart_id,
-        "is_schedule_order": cart!.isSchedule != null
-            ? cart!.isSchedule
-            : false,
+        "is_schedule_order": cart!.isSchedule,
         "schedule_order_start_at":
             cart!.scheduleStart != null &&
-                cart!.isSchedule != null &&
                 cart!.isSchedule
             ? cart!.scheduleStart!.toUtc().toString()
             : "",

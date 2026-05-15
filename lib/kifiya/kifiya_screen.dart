@@ -114,6 +114,98 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     uuid = widget.orderPaymentUniqueId!;
   }
 
+  /// Poll Telebirr query API to confirm in-app payment.
+  /// Returns true when the backend reports a paid/success state.
+  Future<bool> pollTelebirrStatus({
+    required String merchOrderId,
+    int intervalSeconds = 3,
+  }) async {
+    debugPrint('🔍 Polling Telebirr status for merchOrderId: $merchOrderId');
+
+    if (!mounted) return false;
+
+    setState(() {
+      _loading = true;
+      linearProgressIndicator = Container(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SpinKitWave(
+              color: kSecondaryColor,
+              size: getProportionateScreenWidth(kDefaultPadding),
+            ),
+            SizedBox(height: kDefaultPadding * 0.5),
+            Text(
+              "Checking Telebirr payment...",
+              style: TextStyle(color: kBlackColor),
+            ),
+          ],
+        ),
+      );
+    });
+
+    const String url = "https://pgw.shekla.app/teleInapp/query";
+    var attempt = 0;
+
+    while (mounted) {
+      attempt += 1;
+      try {
+        final response = await http
+            .post(
+              Uri.parse(url),
+              headers: <String, String>{
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+              },
+              body: json.encode({"merch_order_id": merchOrderId}),
+            )
+            .timeout(Duration(seconds: 10));
+
+        if (!mounted) return false;
+
+        final data = json.decode(response.body);
+        String? status;
+        bool? success;
+        String? message;
+
+        if (data is Map) {
+          status = (data['status'] ?? data['trade_status'] ?? data['result'])
+              ?.toString();
+          success = data['success'] as bool?;
+          message = data['message']?.toString();
+        }
+
+        debugPrint(
+          '📊 Telebirr poll #$attempt => status: $status, success: $success, message: $message',
+        );
+
+        if (status != null) {
+          final upperStatus = status.toUpperCase();
+          if ((upperStatus.contains('PAID') ||
+                  upperStatus.contains('SUCCESS')) &&
+              success == true) {
+            if (mounted) setState(() => _loading = false);
+            return true;
+          }
+
+          if (upperStatus.contains('FAILED') ||
+              upperStatus.contains('FAIL') ||
+              success == false) {
+            if (mounted) setState(() => _loading = false);
+            return false;
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Telebirr poll error (retrying): $e');
+      }
+
+      await Future.delayed(Duration(seconds: intervalSeconds));
+    }
+
+    if (mounted) setState(() => _loading = false);
+    return false;
+  }
+
   // Future<void> _loadPackageInfo() async {
   //   final packageInfo = await PackageInfo.fromPlatform();
   //   setState(() {
@@ -549,18 +641,21 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
   }
 
-  void _boaVerify() async {
-    if (!mounted) return;
+  Future<bool> _boaVerify() async {
+    debugPrint('###[_boaVerify] Starting BOA verification');
+    if (!mounted) return false;
     setState(() {
       _loading = true;
       _placeOrder = true;
     });
     var data = await boaVerify();
-    if (!mounted) return;
+
+    if (!mounted) return false;
     if (data != null && data['success']) {
       // SECURITY FIX: Validate images before creating order after payment verification
       bool imagesValid = await _validateCourierImagesBeforePayment();
-      if (!mounted) return;
+
+      if (!mounted) return false;
       if (!imagesValid) {
         setState(() {
           _loading = false;
@@ -574,7 +669,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           error: true,
           duration: 5,
         );
-        return;
+        debugPrint(
+          '###[_boaVerify] Images invalid after verification - aborting',
+        );
+        return false;
       }
 
       setState(() {
@@ -587,17 +685,16 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         error: false,
         duration: 2,
       );
-      // if (widget.isCourier!) {
-      //   _createCourierOrder();
-      // } else {
-      //   _createOrder();
-      // }
       widget.isCourier!
           ? _createCourierOrder()
           : (aliexpressCart != null &&
                 aliexpressCart!.cart.storeId == cart.storeId)
           ? _createAliexpressOrder()
           : _createOrder();
+      debugPrint(
+        '###[_boaVerify] Verification succeeded and order flow started',
+      );
+      return true;
     } else {
       setState(() {
         _loading = false;
@@ -608,13 +705,18 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           kifiyaMethod = 1;
         }
       });
+      debugPrint(
+        '###[_boaVerify] Verification failed or returned null: ${data ?? 'null'}',
+      );
       await useBorsa();
       Service.showMessage(
         context: context,
-        title: "${data['error']}! Please complete your payment!",
+        title:
+            "${data != null ? data['error'] : 'Verification failed'}! Please complete your payment!",
         error: true,
       );
       await Future.delayed(Duration(seconds: 3));
+      return false;
     }
   }
 
@@ -1998,71 +2100,71 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                       },
                                                     ),
                                                   ).then((value) async {
-                                                    // debugPrint( "Value: $value");
-                                                    // if (value != null) {
-                                                    //   if (value == false) {
-                                                    //     Service.showMessage(
-                                                    //       context: context,
-                                                    //       title:
-                                                    //           "Payment was not completed. Please choose your payment method and try again!.",
-                                                    //       error: true,
-                                                    //     );
-                                                    //   } else if ((value['code'] !=
-                                                    //               null &&
-                                                    //           value['code'] ==
-                                                    //               0) ||
-                                                    //       (value['status'] !=
-                                                    //               null &&
-                                                    //           value['status']
-                                                    //                   .toString()
-                                                    //                   .toLowerCase() ==
-                                                    //               "success")) {
-                                                    //     // debugPrint( "Payment Successful>>>");
-                                                    //     // SECURITY FIX: Validate images before creating courier order
-                                                    //     if (widget.isCourier!) {
-                                                    //       bool imagesValid =
-                                                    //           await _validateCourierImagesBeforePayment();
-                                                    //       if (!imagesValid) {
-                                                    //         Service.showMessage(
-                                                    //           context: context,
-                                                    //           title:
-                                                    //               "Payment successful but images are missing. Please contact support at 8707 for refund assistance.",
-                                                    //           error: true,
-                                                    //           duration: 5,
-                                                    //         );
-                                                    //         return;
-                                                    //       }
-                                                    //       _createCourierOrder();
-                                                    //     } else if (aliexpressCart !=
-                                                    //             null &&
-                                                    //         aliexpressCart!
-                                                    //                 .cart
-                                                    //                 .storeId ==
-                                                    //             cart.storeId) {
-                                                    //       _createAliexpressOrder();
-                                                    //     } else {
-                                                    //       _createOrder();
-                                                    //     }
-                                                    //   }
-                                                    // } else {
-                                                    //   // _boaVerify();
-                                                    //   Future.delayed(
-                                                    //     Duration(
-                                                    //       milliseconds: 100,
-                                                    //     ),
-                                                    //     () {
-                                                    //       if (mounted) {
-                                                    //         Service.showMessage(
-                                                    //           context: context,
-                                                    //           title:
-                                                    //               "Payment was not completed. Please choose your payment method and try again!.",
-                                                    //           error: true,
-                                                    //         );
-                                                    //       }
-                                                    //     },
-                                                    //   );
-                                                    // }
-                                                    _boaVerify();
+                                                    debugPrint(
+                                                      '###[Telebirr] Returned from in-app flow, checking with boaVerify() first',
+                                                    );
+                                                    final verified =
+                                                        await _boaVerify();
+
+                                                    debugPrint(
+                                                      '###[Telebirr] _boaVerify() result: $verified',
+                                                    );
+
+                                                    if (verified) {
+                                                      debugPrint(
+                                                        '###[Telebirr] _boaVerify succeeded; skipping polling fallback',
+                                                      );
+                                                      return;
+                                                    }
+
+                                                    // If verification failed, wait briefly then fallback to polling
+                                                    debugPrint(
+                                                      '###[Telebirr] _boaVerify did not confirm payment; delaying then polling',
+                                                    );
+                                                    await Future.delayed(
+                                                      Duration(seconds: 3),
+                                                    );
+
+                                                    final isPaid =
+                                                        await pollTelebirrStatus(
+                                                          merchOrderId:
+                                                              "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}",
+                                                        );
+
+                                                    debugPrint(
+                                                      '###[Telebirr] pollTelebirrStatus result: $isPaid',
+                                                    );
+
+                                                    if (isPaid) {
+                                                      Service.showMessage(
+                                                        context: context,
+                                                        title:
+                                                            "Telebirr payment confirmed.",
+                                                      );
+
+                                                      if (widget.isCourier!) {
+                                                        _createCourierOrder();
+                                                      } else if (aliexpressCart !=
+                                                              null &&
+                                                          aliexpressCart!
+                                                                  .cart
+                                                                  .storeId ==
+                                                              cart.storeId) {
+                                                        _createAliexpressOrder();
+                                                      } else {
+                                                        _createOrder();
+                                                      }
+                                                    } else {
+                                                      Service.showMessage(
+                                                        context: context,
+                                                        title:
+                                                            "Payment was not completed or timed out. Please try again or contact support.",
+                                                        error: true,
+                                                      );
+                                                      setState(() {
+                                                        kifiyaMethod = -1;
+                                                      });
+                                                    }
                                                   });
                                                 },
                                               ),
@@ -3387,11 +3489,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       Map data = {
         "user_id": userData['user']['_id'],
         "cart_id": userData['user']['cart_id'],
-        "is_schedule_order": cart.isSchedule != null ? cart.isSchedule : false,
-        "schedule_order_start_at":
-            cart.scheduleStart != null &&
-                cart.isSchedule != null &&
-                cart.isSchedule
+        "is_schedule_order": cart.isSchedule,
+        "schedule_order_start_at": cart.scheduleStart != null && cart.isSchedule
             ? cart.scheduleStart?.toUtc().toString()
             : "",
         "server_token": userData['user']['server_token'],

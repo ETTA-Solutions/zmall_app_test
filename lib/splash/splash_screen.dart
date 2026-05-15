@@ -34,6 +34,81 @@ class _SplashScreenState extends State<SplashScreen> {
   String _projectVersion = '';
   LocationPermission _permissionStatus = LocationPermission.denied;
 
+  String? _extractInternalAdRoute(String link) {
+    final trimmed = link.trim();
+    if (trimmed.isEmpty) return null;
+
+    if (trimmed.startsWith('store/') || trimmed.startsWith('item/')) {
+      return trimmed;
+    }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null) {
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if (segments.length >= 2) {
+        if (segments[0].toLowerCase() == 'store') {
+          return 'store/${segments[1]}';
+        }
+        if (segments[0].toLowerCase() == 'item') {
+          return 'item/${segments[1]}';
+        }
+      }
+
+      final qStore =
+          uri.queryParameters['store_id'] ?? uri.queryParameters['storeId'];
+      if (qStore != null && qStore.isNotEmpty) {
+        return 'store/$qStore';
+      }
+
+      final qItem =
+          uri.queryParameters['item_id'] ?? uri.queryParameters['itemId'];
+      if (qItem != null && qItem.isNotEmpty) {
+        return 'item/$qItem';
+      }
+    }
+
+    final storeMatch = RegExp(
+      r'(^|/)store/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(trimmed);
+    if (storeMatch != null && storeMatch.groupCount >= 2) {
+      return 'store/${storeMatch.group(2)!}';
+    }
+
+    final itemMatch = RegExp(
+      r'(^|/)item/([^/?#]+)',
+      caseSensitive: false,
+    ).firstMatch(trimmed);
+    if (itemMatch != null && itemMatch.groupCount >= 2) {
+      return 'item/${itemMatch.group(2)!}';
+    }
+
+    return null;
+  }
+
+  String _resolveAdUrlLink({
+    required String storeId,
+    required String itemId,
+    required String externalLink,
+  }) {
+    final normalizedStoreId = storeId.trim();
+    final normalizedItemId = itemId.trim();
+    final normalizedExternalLink = externalLink.trim();
+
+    final internalRoute = _extractInternalAdRoute(normalizedExternalLink);
+    if (internalRoute != null) return internalRoute;
+
+    if (normalizedStoreId.isNotEmpty) {
+      return 'store/$normalizedStoreId';
+    }
+
+    if (normalizedItemId.isNotEmpty) {
+      return 'item/$normalizedItemId';
+    }
+
+    return normalizedExternalLink;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -234,8 +309,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<String> getAd() async {
-    final baseUrl =
-        Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
     var url = Uri.parse("$baseUrl/admin/get_all_advertises");
     debugPrint("###[SPLASH] Fetching ads from: $url");
     try {
@@ -253,8 +327,12 @@ class _SplashScreenState extends State<SplashScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      debugPrint("###[SPLASH] HTTP status: ${response.statusCode}, content-type: ${response.headers['content-type']}");
-      debugPrint("###[SPLASH] Response body (first 300 chars): ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}");
+      debugPrint(
+        "###[SPLASH] HTTP status: ${response.statusCode}, content-type: ${response.headers['content-type']}",
+      );
+      debugPrint(
+        "###[SPLASH] Response body (first 300 chars): ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}",
+      );
       if (response.statusCode != 200) {
         debugPrint("###[SPLASH] Server returned status ${response.statusCode}");
         loader(5);
@@ -270,10 +348,11 @@ class _SplashScreenState extends State<SplashScreen> {
         return "failed";
       }
 
-      debugPrint("###[SPLASH] API response success: ${data['success']}, ads count: ${data['advertises']?.length ?? 0}");
+      debugPrint(
+        "###[SPLASH] API response success: ${data['success']}, ads count: ${data['advertises']?.length ?? 0}",
+      );
 
-      if (
-          data['success'] == true &&
+      if (data['success'] == true &&
           data['advertises'] != null &&
           data['advertises'].length > 0) {
         // Filter to only visible ads, then take the last one
@@ -281,7 +360,9 @@ class _SplashScreenState extends State<SplashScreen> {
         final visibleAds = allAds
             .where((ad) => ad['is_ads_visible'] == true)
             .toList();
-        debugPrint("###[SPLASH] Total ads: ${allAds.length}, Visible ads: ${visibleAds.length}");
+        debugPrint(
+          "###[SPLASH] Total ads: ${allAds.length}, Visible ads: ${visibleAds.length}",
+        );
 
         if (visibleAds.isEmpty) {
           debugPrint("###[SPLASH] No visible ads found");
@@ -291,8 +372,7 @@ class _SplashScreenState extends State<SplashScreen> {
         final ad = visibleAds.last;
         debugPrint("###[SPLASH] Full ad keys: ${ad.keys.toList()}");
         debugPrint("###[SPLASH] image_url: ${ad['image_url']}");
-        final rawImageUrl = ad['image_url']
-            ?.toString() ?? '';
+        final rawImageUrl = ad['image_url']?.toString() ?? '';
         final adImageUrl = rawImageUrl.startsWith('http')
             ? rawImageUrl
             : "$baseUrl/$rawImageUrl";
@@ -301,16 +381,38 @@ class _SplashScreenState extends State<SplashScreen> {
 
         if (!mounted) return "failed";
 
+        final storeId = ad['store_id']?.toString() ?? '';
+        final itemId = ad['item_id']?.toString() ?? '';
+        final externalLink =
+            ad['external_link']?.toString() ??
+            ad['url']?.toString() ??
+            ad['url_link']?.toString() ??
+            ad['link']?.toString() ??
+            '';
+
+        final urlLinkValue = _resolveAdUrlLink(
+          storeId: storeId,
+          itemId: itemId,
+          externalLink: externalLink,
+        );
+
+        debugPrint(
+          "###[SPLASH] Loaded ad -> image_url: $adImageUrl, store_id: $storeId, item_id: $itemId",
+        );
+        debugPrint(
+          "###[SPLASH] Routing ad -> store_id: $storeId, item_id: $itemId, external_link: $externalLink, final urlLink: $urlLinkValue",
+        );
+
         setState(() {
           imageUrl = adImageUrl;
-          urlLink = ad['store_id'] != null
-              ? 'store/${ad['store_id']}'
-              : 'item/${ad['item_id']}';
+          urlLink = urlLinkValue;
           adId = ad['_id'];
           loading = !loading;
         });
         loader(3);
-        debugPrint("###[SPLASH] Ad loaded successfully, showing splash container");
+        debugPrint(
+          "###[SPLASH] Ad loaded successfully, showing splash container",
+        );
       } else {
         debugPrint("###[SPLASH] No ads available or API failed");
       }
@@ -339,5 +441,4 @@ class _SplashScreenState extends State<SplashScreen> {
   //     return "failed";
   //   }
   // }
-
 }

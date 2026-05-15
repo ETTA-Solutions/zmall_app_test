@@ -1,4 +1,4 @@
-import 'dart:io' show Platform; // this line of code makes: 
+import 'dart:io' show Platform; // this line of code makes:
 import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -16,9 +16,7 @@ import 'package:zmall/splash/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(MyApp());
 }
 
@@ -234,7 +232,7 @@ class MyApp extends StatelessWidget {
 //           routes: routes,
 //           initialRoute: SplashScreen.routeName,
 //           navigatorObservers: [
-//             FirebaseAnalyticsObserver(analytics: MyApp.analytics),
+//             FirebaseAnalyticsObserver(analytics: MyApp.analytics),`
 //           ],
 //         ),
 //       ),

@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/gestures.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
-import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
@@ -218,233 +218,221 @@ class _GlobalScreenState extends State<GlobalScreen> {
         ),
       ),
       backgroundColor: kPrimaryColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Container(
-            padding: EdgeInsets.all(
-              getProportionateScreenWidth(kDefaultPadding),
-            ),
-            child: Form(
-              child: Center(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Text.rich(
-                        TextSpan(
-                          text: "Z",
-                          style: TextStyle(
-                            color: kSecondaryColor,
-                            fontSize: getProportionateScreenWidth(
-                              kDefaultPadding * 1.6,
-                            ),
-                            fontWeight: FontWeight.bold,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: "Mall Global",
-                              style: TextStyle(
-                                color: kBlackColor,
-                                fontSize: getProportionateScreenWidth(
-                                  kDefaultPadding * 1.6,
-                                ),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(
-                          kDefaultPadding * 2,
-                        ),
-                      ),
-                      Text(
-                        "Login",
+      body: SingleChildScrollView(
+        child: Container(
+          padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
+          child: Form(
+            child: Center(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text.rich(
+                      TextSpan(
+                        text: "Z",
                         style: TextStyle(
-                          color: kBlackColor,
+                          color: kSecondaryColor,
                           fontSize: getProportionateScreenWidth(
-                            kDefaultPadding * 1.3,
+                            kDefaultPadding * 1.6,
                           ),
                           fontWeight: FontWeight.bold,
                         ),
+                        children: [
+                          TextSpan(
+                            text: "Mall Global",
+                            style: TextStyle(
+                              color: kBlackColor,
+                              fontSize: getProportionateScreenWidth(
+                                kDefaultPadding * 1.6,
+                              ),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(kDefaultPadding),
-                      ),
-                      Text(
-                        "Phone Number",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding * 2),
+                    ),
+                    Text(
+                      "Login",
+                      style: TextStyle(
+                        color: kBlackColor,
+                        fontSize: getProportionateScreenWidth(
+                          kDefaultPadding * 1.3,
                         ),
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    Text(
+                      "Phone Number",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
-                      CustomTextField(
-                        // decoration: textFieldInputDecorator.copyWith(
-                        // labelText: "Phone Number",
-                        isPhoneWithFlag: true,
-                        initialSelection: 'US',
-                        favorite: ['US', 'FR'],
-                        hideSearch: false,
-                        onFlagChanged: onCountryCodeChanged,
-                        dialogSize: Size.fromHeight(
-                          getProportionateScreenHeight(double.maxFinite),
-                        ),
-                        hintText: "Enter your phone",
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    CustomTextField(
+                      // decoration: textFieldInputDecorator.copyWith(
+                      // labelText: "Phone Number",
+                      isPhoneWithFlag: true,
+                      initialSelection: 'US',
+                      favorite: ['US', 'FR'],
+                      hideSearch: false,
+                      onFlagChanged: onCountryCodeChanged,
+                      dialogSize: Size.fromHeight(
+                        getProportionateScreenHeight(double.maxFinite),
+                      ),
+                      hintText: "Enter your phone",
 
-                        keyboardType: TextInputType.phone,
-                        controller: _phoneController,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return "Please enter your phone number";
-                          } else if (value.length < 5) {
-                            return "Please enter a valid phone number";
-                          }
-                          return null;
-                        },
+                      keyboardType: TextInputType.phone,
+                      controller: _phoneController,
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return "Please enter your phone number";
+                        } else if (value.length < 5) {
+                          return "Please enter a valid phone number";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    Text(
+                      "Email",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                    CustomTextField(
+                      keyboardType: TextInputType.emailAddress,
+                      controller: _emailController,
+                      hintText: "Enter your email",
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return kEmailNullError;
+                        } else if (!emailValidatorRegExp.hasMatch(value)) {
+                          return kInvalidEmailError;
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    Text(
+                      "First name",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        "Email",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(
-                          kDefaultPadding / 2,
-                        ),
-                      ),
-                      CustomTextField(
-                        keyboardType: TextInputType.emailAddress,
-                        controller: _emailController,
-                        hintText: "Enter your email",
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return kEmailNullError;
-                          } else if (!emailValidatorRegExp.hasMatch(value)) {
-                            return kInvalidEmailError;
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(kDefaultPadding),
-                      ),
-                      Text(
-                        "First name",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(
-                          kDefaultPadding / 2,
-                        ),
-                      ),
-                      CustomTextField(
-                        controller: _firstName,
-                        keyboardType: TextInputType.name,
-                        hintText: "Enter your name",
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your name';
-                          }
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                    CustomTextField(
+                      controller: _firstName,
+                      keyboardType: TextInputType.name,
+                      hintText: "Enter your name",
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your name';
+                        }
 
-                          return null;
-                        },
+                        return null;
+                      },
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    Text(
+                      "Last name",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(kDefaultPadding),
-                      ),
-                      Text(
-                        "Last name",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(
-                          kDefaultPadding / 2,
-                        ),
-                      ),
-                      CustomTextField(
-                        controller: _lastName,
-                        keyboardType: TextInputType.name,
-                        hintText: "Enter your last name",
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your last';
-                          }
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                    CustomTextField(
+                      controller: _lastName,
+                      keyboardType: TextInputType.name,
+                      hintText: "Enter your last name",
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your last';
+                        }
 
-                          return null;
-                        },
+                        return null;
+                      },
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(
+                        kDefaultPadding * 1.5,
                       ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(
-                          kDefaultPadding * 1.5,
-                        ),
-                      ),
-                      CustomButton(
-                        isLoading: _loading,
-                        title: "Send Verification Code",
-                        color: kSecondaryColor,
-                        press: () {
-                          if (_formKey.currentState!.validate()) {
-                            var phone = _phoneController.text.trim();
-                            var email = _emailController.text.trim();
-                            var firstName = _firstName.text.trim();
-                            var lastName = _lastName.text.trim();
-                            setState(() {
-                              _loading = true;
+                    ),
+                    CustomButton(
+                      isLoading: _loading,
+                      title: "Send Verification Code",
+                      color: kSecondaryColor,
+                      press: () {
+                        if (_formKey.currentState!.validate()) {
+                          var phone = _phoneController.text.trim();
+                          var email = _emailController.text.trim();
+                          var firstName = _firstName.text.trim();
+                          var lastName = _lastName.text.trim();
+                          setState(() {
+                            _loading = true;
+                          });
+                          if (phone.isNotEmpty &&
+                              email.isNotEmpty &&
+                              firstName.isNotEmpty &&
+                              lastName.isNotEmpty) {
+                            phoneWithCountryCode = "$countryCode$phone";
+                            // debugPrint(phoneWithCountryCode);
+                            // debugPrint("$email $firstName $lastName");
+                            verifyAndLoginUser(
+                              phoneWithCountryCode,
+                              email,
+                              firstName,
+                              lastName,
+                            ).then((success) {
+                              if (success) {
+                                _loading = !_loading;
+                                _showOtpBottomSheet(
+                                  email: email,
+                                  lastName: lastName,
+                                  firstName: firstName,
+                                );
+                              }
                             });
-                            if (phone.isNotEmpty &&
-                                email.isNotEmpty &&
-                                firstName.isNotEmpty &&
-                                lastName.isNotEmpty) {
-                              phoneWithCountryCode = "$countryCode$phone";
-                              // debugPrint(phoneWithCountryCode);
-                              // debugPrint("$email $firstName $lastName");
-                              verifyAndLoginUser(
-                                phoneWithCountryCode,
-                                email,
-                                firstName,
-                                lastName,
-                              ).then((success) {
-                                if (success) {
-                                  _loading = !_loading;
-                                  _showOtpBottomSheet(
-                                    email: email,
-                                    lastName: lastName,
-                                    firstName: firstName,
-                                  );
-                                }
-                              });
-                            }
-
-                            // loginUser(phoneWithCountryCode, context);
-                            // } else {
-                            //   setState(() {
-                            //     _loading = false;
-                            //   });
-                            //   ScaffoldMessenger.of(context).showSnackBar(
-                            //       Service.showMessage1(
-                            //           "Phone number cannot be empty", true));
                           }
-                        },
-                      ),
-                    ],
-                  ),
+
+                          // loginUser(phoneWithCountryCode, context);
+                          // } else {
+                          //   setState(() {
+                          //     _loading = false;
+                          //   });
+                          //   ScaffoldMessenger.of(context).showSnackBar(
+                          //       Service.showMessage1(
+                          //           "Phone number cannot be empty", true));
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -462,118 +450,222 @@ class _GlobalScreenState extends State<GlobalScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: kPrimaryColor,
+      backgroundColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (builder) {
         return StatefulBuilder(
           builder: (context, StateSetter setState) {
-            return Padding(
+            return AnimatedPadding(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
               padding: EdgeInsets.only(
-                bottom:
-                    MediaQuery.of(context).viewInsets.bottom +
-                    kDefaultPadding, // Adjust for keyboard
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: SafeArea(
-                minimum: MediaQuery.of(context).viewInsets,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: kDefaultPadding,
-                    vertical: kDefaultPadding / 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: kPrimaryColor,
-                    borderRadius: BorderRadiusGeometry.circular(
-                      kDefaultPadding,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: kPrimaryColor,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: Offset(0, -4),
                     ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ],
+                ),
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: getProportionateScreenWidth(
+                          kDefaultPadding,
+                        ),
+                        vertical: getProportionateScreenHeight(kDefaultPadding),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            "Account Verification",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          // Header with close button
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Verify Your Email",
+                                  style: TextStyle(
+                                    fontSize: getProportionateScreenWidth(20),
+                                    fontWeight: FontWeight.bold,
+                                    color: kBlackColor,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  HeroiconsOutline.xCircle,
+                                  color: kGreyColor,
+                                ),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                            ],
+                          ),
+                          SizedBox(
+                            height: getProportionateScreenHeight(
+                              kDefaultPadding / 2,
                             ),
                           ),
-                          InkWell(
-                            onTap: () => Navigator.of(context).pop(),
-                            child: Icon(HeroiconsOutline.xCircle),
+                          // Description
+                          Text(
+                            "Enter the 6-digit code sent to your email",
+                            style: TextStyle(
+                              fontSize: getProportionateScreenWidth(14),
+                              color: kGreyColor,
+                              height: 1.5,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(
+                            height: getProportionateScreenHeight(
+                              kDefaultPadding * 2,
+                            ),
+                          ),
+                          // OTP Input Field
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: getProportionateScreenWidth(12),
+                              vertical: getProportionateScreenHeight(12),
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: kGreyColor.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: TextField(
+                              controller: _codeController,
+                              textAlign: TextAlign.center,
+                              keyboardType: TextInputType.number,
+                              maxLength: 6,
+                              style: TextStyle(
+                                fontSize: getProportionateScreenWidth(24),
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 8,
+                                color: kBlackColor,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "000000",
+                                hintStyle: TextStyle(
+                                  color: kGreyColor.withValues(alpha: 0.4),
+                                  fontSize: getProportionateScreenWidth(24),
+                                ),
+                                border: InputBorder.none,
+                                counterText: "",
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                              ),
+                              onChanged: (value) {
+                                setState(() {});
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            height: getProportionateScreenHeight(
+                              kDefaultPadding * 2,
+                            ),
+                          ),
+                          // Verify Button
+                          CustomButton(
+                            title: "Verify",
+                            color: kSecondaryColor,
+                            press: () async {
+                              final code = _codeController.text.trim();
+
+                              if (code.isEmpty) {
+                                Service.showMessage(
+                                  context: context,
+                                  title: "Please enter the verification code",
+                                  error: true,
+                                );
+                                return;
+                              }
+
+                              if (code == smsCode) {
+                                await Service.saveBool('is_global', true);
+                                await Service.save(
+                                  'global_user_id',
+                                  phoneWithCountryCode,
+                                );
+                                AbroadData abroadData = AbroadData(
+                                  abroadEmail: email,
+                                  abroadPhone: phoneWithCountryCode,
+                                  abroadName: "$firstName $lastName",
+                                );
+                                await Service.save("abroad_user", abroadData);
+                                Navigator.of(context).pop();
+                                setState(() {
+                                  _loading = true;
+                                });
+
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => GlobalHome(),
+                                  ),
+                                );
+                              } else {
+                                Service.showMessage(
+                                  context: context,
+                                  title:
+                                      "Invalid verification code. Please try again",
+                                  error: true,
+                                );
+                                _codeController.clear();
+                              }
+                            },
+                          ),
+                          SizedBox(
+                            height: getProportionateScreenHeight(
+                              kDefaultPadding / 2,
+                            ),
+                          ),
+                          // Resend Code
+                          Text.rich(
+                            TextSpan(
+                              text: "Didn't receive the code? ",
+                              style: TextStyle(
+                                fontSize: getProportionateScreenWidth(12),
+                                color: kGreyColor,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: "Resend",
+                                  style: TextStyle(
+                                    color: kSecondaryColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      // Add resend logic here
+                                      debugPrint("Resend OTP");
+                                    },
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(
+                            height: getProportionateScreenHeight(
+                              kDefaultPadding / 2,
+                            ),
                           ),
                         ],
                       ),
-                      Text(
-                        "Please enter the one time pin(OTP) sent to your email.",
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(
-                          kDefaultPadding * 2,
-                        ),
-                      ),
-                      CustomTextField(
-                        controller: _codeController,
-                        hintText: "Enter an OTP",
-                      ),
-                      SizedBox(
-                        height: getProportionateScreenHeight(kDefaultPadding),
-                      ),
-                      CustomButton(
-                        title: "Confirm",
-                        color: kSecondaryColor,
-                        press: () async {
-                          final code = _codeController.text.trim();
-
-                          if (code == smsCode) {
-                            await Service.saveBool('is_global', true);
-                            await Service.save(
-                              'global_user_id',
-                              phoneWithCountryCode,
-                            );
-                            AbroadData abroadData = AbroadData(
-                              abroadEmail: email,
-                              abroadPhone: phoneWithCountryCode,
-                              abroadName: "$firstName $lastName",
-                            );
-                            await Service.save("abroad_user", abroadData);
-                            Navigator.of(context).pop();
-                            setState(() {
-                              _loading = true;
-                            });
-
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => GlobalHome(),
-                              ),
-                            );
-                          } else {
-                            Service.showMessage(
-                              context: context,
-                              title:
-                                  "Error while verifying phone number. Please try again",
-                              error: true,
-                            );
-                            setState(() {
-                              _loading = false;
-                            });
-                            Navigator.of(context).pop();
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => LoginScreen(),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),

@@ -26,6 +26,10 @@ class CustomListTile extends StatelessWidget {
     bool isStoreOpen = isOpen != null && isOpen == true;
     return InkWell(
       onTap: press,
+      overlayColor: WidgetStateProperty.all(
+        kSecondaryColor.withValues(alpha: 0.12),
+      ),
+      splashColor: kSecondaryColor.withValues(alpha: 0.12),
       child: Container(
         padding: EdgeInsets.all(kDefaultPadding / 2),
         decoration: BoxDecoration(

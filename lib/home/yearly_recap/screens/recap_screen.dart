@@ -729,7 +729,7 @@ class _YearWrappedStoriesState extends State<RecapScreen>
                               ),
                             ],
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
@@ -737,8 +737,8 @@ class _YearWrappedStoriesState extends State<RecapScreen>
                                 color: Colors.white,
                                 size: 28,
                               ),
-                              SizedBox(width: 12),
-                              Text(
+                              const SizedBox(width: 12),
+                              const Text(
                                 'Share to Instagram Story',
                                 style: TextStyle(
                                   color: Colors.white,

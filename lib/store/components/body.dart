@@ -468,6 +468,18 @@ class BodyState extends State<Body> {
       itemCount: stores.length,
       padding: const EdgeInsets.all(kDefaultPadding / 2),
       itemBuilder: (context, index) {
+        // Safety check to prevent RangeError
+        if (index >= isOpen.length) {
+          return Column(
+            children: [
+              StoreLists(index: index),
+              SizedBox(
+                height: getProportionateScreenHeight(kDefaultPadding / 2),
+              ),
+            ],
+          );
+        }
+
         if (widget.filterOpenedStore == true && !allClosed) {
           return isOpen[index]
               ? Column(
@@ -500,6 +512,9 @@ class BodyState extends State<Body> {
       separatorBuilder: (context, index) =>
           Container(height: getProportionateScreenHeight(kDefaultPadding / 2)),
       itemBuilder: (context, index) {
+        // Safety check to prevent RangeError
+        final storeIsOpen = (index < isOpen.length) ? isOpen[index] : true;
+
         return Container(
           child: CustomListTile(
             press: () {
@@ -535,7 +550,7 @@ class BodyState extends State<Body> {
                           longitude: widget.longitude!,
                           store: _searchResult[index],
                           location: _searchResult[index]["location"],
-                          isOpen: isOpen[index],
+                          isOpen: storeIsOpen,
                         );
                       },
                     ),
@@ -554,7 +569,7 @@ class BodyState extends State<Body> {
                         longitude: widget.longitude!,
                         store: _searchResult[index],
                         location: _searchResult[index]["location"],
-                        isOpen: true,
+                        isOpen: storeIsOpen,
                       );
                     },
                   ),
@@ -562,7 +577,7 @@ class BodyState extends State<Body> {
               }
             },
             store: _searchResult[index],
-            isOpen: isOpen[index],
+            isOpen: storeIsOpen,
           ),
         );
       },
@@ -570,6 +585,9 @@ class BodyState extends State<Body> {
   }
 
   Widget StoreLists({required int index}) {
+    // Safety check to prevent RangeError
+    final storeIsOpen = (index < isOpen.length) ? isOpen[index] : true;
+
     return Container(
       child: CustomListTile(
         press: () {
@@ -626,7 +644,7 @@ class BodyState extends State<Body> {
                     longitude: widget.longitude!,
                     store: stores[index],
                     location: stores[index]["location"],
-                    isOpen: isOpen[index],
+                    isOpen: storeIsOpen,
                   );
                 },
               ),
@@ -634,7 +652,7 @@ class BodyState extends State<Body> {
           }
         },
         store: stores[index],
-        isOpen: isOpen[index],
+        isOpen: storeIsOpen,
       ),
     );
   }
@@ -707,16 +725,56 @@ class BodyState extends State<Body> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+
+      // DEBUG: Print raw response
+      debugPrint("Response Status: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+
+      // Check HTTP status code
+      if (response.statusCode != 200) {
+        throw Exception("HTTP Error: ${response.statusCode}");
+      }
+
+      // Check if response body is empty
+      if (response.body.isEmpty) {
+        throw Exception("Empty response body from server");
+      }
+
+      // Decode JSON
+      final decodedData = json.decode(response.body);
+      debugPrint("Decoded Data: $decodedData");
+
       setState(() {
-        this.responseData = json.decode(response.body);
+        this.responseData = decodedData;
       });
-      return json.decode(response.body);
+      return decodedData;
     } catch (e) {
-      // debugPrint(e);
-    } finally {
+      debugPrint("❌ Error in getStoreListByCompany: ${e.toString()}");
+      debugPrint("Stack trace: ${StackTrace.current}");
+
+      // Set error response for proper error handling downstream
       setState(() {
-        _loading = false;
+        this.responseData = {
+          'success': false,
+          'error_code': 'backend_error',
+          'message': e.toString(),
+        };
       });
+
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title: "Backend Error: ${e.toString()}",
+          error: true,
+          duration: 3,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -736,7 +794,7 @@ class BodyState extends State<Body> {
       "longitude": longitude,
     };
     var body = json.encode(data);
-    // print("body $body");
+    print("body $body");
     try {
       http.Response response = await http
           .post(
@@ -764,19 +822,58 @@ class BodyState extends State<Body> {
             },
           );
 
+      // DEBUG: Print raw response
+      debugPrint("Response Status: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+
+      // Check HTTP status code
+      if (response.statusCode != 200) {
+        throw Exception("HTTP Error: ${response.statusCode}");
+      }
+
+      // Check if response body is empty
+      if (response.body.isEmpty) {
+        throw Exception("Empty response body from server");
+      }
+
+      // Decode JSON
+      final decodedData = json.decode(response.body);
+      debugPrint("Decoded Data: $decodedData");
+
       setState(() {
-        this.responseData = json.decode(response.body);
+        this.responseData = decodedData;
       });
 
-      return json.decode(response.body);
+      return decodedData;
     } catch (e) {
-      // debugPrint(e);
+      debugPrint("❌ Error in getCompanyList: ${e.toString()}");
+      debugPrint("Stack trace: ${StackTrace.current}");
+
+      // Set error response for proper error handling downstream
+      setState(() {
+        this.responseData = {
+          'success': false,
+          'error_code': 'backend_error',
+          'message': e.toString(),
+        };
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Backend Error: ${e.toString()}"),
+            backgroundColor: kSecondaryColor,
+          ),
+        );
+      }
 
       return null;
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 

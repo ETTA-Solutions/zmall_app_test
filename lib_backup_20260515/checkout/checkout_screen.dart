@@ -1,0 +1,2171 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:heroicons_flutter/heroicons_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
+import 'package:provider/provider.dart';
+import 'package:zmall/services/address_validation_service.dart';
+import 'package:zmall/utils/constants.dart';
+import 'package:zmall/services/core_services.dart';
+import 'package:zmall/custom_widgets/custom_button.dart';
+import 'package:zmall/kifiya/kifiya_screen.dart';
+import 'package:zmall/login/login_screen.dart';
+import 'package:zmall/models/cart.dart';
+import 'package:zmall/models/language.dart';
+import 'package:zmall/models/metadata.dart';
+import 'package:zmall/services/service.dart';
+import 'package:zmall/utils/size_config.dart';
+import 'package:zmall/widgets/custom_text_field.dart';
+import 'package:zmall/widgets/order_status_row.dart';
+
+class CheckoutScreen extends StatefulWidget {
+  static String routeName = "checkout";
+
+  CheckoutScreen({
+    this.isForOthers = false,
+    this.receiverName = "",
+    this.receiverPhone = "",
+    this.vehicleId = "",
+  });
+
+  final bool isForOthers;
+  final String receiverPhone;
+  final String receiverName;
+  final String vehicleId;
+
+  @override
+  _CheckoutScreenState createState() => _CheckoutScreenState();
+}
+
+class _CheckoutScreenState extends State<CheckoutScreen> {
+  Cart? cart;
+  AliExpressCart? aliexpressCart;
+  bool _loading = true;
+  bool _placeOrder = false;
+  bool orderAsap = true;
+  bool scheduledOrder = false;
+  bool selfPickup = false;
+  bool promoCodeApplied = false;
+  bool? onlySelfPickup;
+  bool? onlyScheduledOrder;
+  bool? onlyCashless;
+  double? distance, time, tip = 0, tipTemp = 0;
+  var userData;
+  var responseData;
+  var paymentResponse;
+  var promoCodeData;
+  var storeDetail;
+  var etaResponse;
+  static final String androidKey = 'AIzaSyBzMHLnXLbtLMi9rVFOR0eo5pbouBtxyjg';
+  static final String iosKey = 'AIzaSyDAgZScAJfUHxahi_n4OpuI8HrTHVlirJk';
+  final apiKey = Platform.isAndroid ? androidKey : iosKey;
+  DateTime? _scheduledDate;
+  String promoCode = "";
+  DateTime? _etaLow;
+  DateTime? _etaHigh;
+
+  bool normalDelivery = true;
+  bool halfExpress = false;
+  bool nextDay = false;
+  bool threeHours = false;
+
+  //for dynamic laundry express options
+  List<dynamic> expressOptions = [];
+  String? selectedDeliveryId;
+  String selectedExpressOption = "normal";
+  // String expressOptionName = "Normal Delivery";
+  IconData expressIcon = Icons.timer_sharp;
+
+  Widget linearProgressIndicator = Container(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SpinKitWave(
+          color: kSecondaryColor,
+          size: getProportionateScreenWidth(kDefaultPadding),
+        ),
+        SizedBox(height: kDefaultPadding * 0.5),
+        Text("Loading...", style: TextStyle(color: kBlackColor)),
+      ],
+    ),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    getUser();
+  }
+
+  void getUser() async {
+    var data = await Service.read('user');
+    if (!mounted) return;
+    if (data != null) {
+      setState(() {
+        userData = data;
+      });
+      getCart();
+    }
+  }
+
+  void getCart() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+    });
+    var data = await Service.read('cart');
+    var aliCart = await Service.read('aliexpressCart');
+    if (!mounted) return;
+    if (data != null) {
+      setState(() {
+        cart = Cart.fromJson(data);
+        if (cart != null &&
+            cart!.destinationAddress?.name == "User Pickup") {
+          selfPickup = true;
+        }
+      });
+      if (aliCart != null) {
+        setState(() {
+          aliexpressCart = AliExpressCart.fromJson(aliCart);
+        });
+      }
+      _getStoreDetail();
+      _getTotalDistance(cart!);
+      // _getTotalDistanceGeoHash(cart!);
+    }
+  }
+
+  void _getStoreDetail() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+    });
+    var data = await getStoreDetail();
+    if (!mounted) return;
+    if (data != null && data['success']) {
+      setState(() {
+        storeDetail = data;
+        onlyCashless = storeDetail['store']['accept_only_cashless_payment'];
+        onlySelfPickup =
+            storeDetail['store']['accept_user_pickup_delivery_only'];
+        onlyScheduledOrder =
+            storeDetail['store']['accept_scheduled_order_only'];
+        if (onlyScheduledOrder != null && onlyScheduledOrder!) {
+          orderAsap = false;
+          scheduledOrder = true;
+        }
+        if (onlySelfPickup != null && onlySelfPickup!) {
+          selfPickup = onlySelfPickup!;
+        }
+        if (cart != null && cart!.isLaundryService) {
+          expressOptions = storeDetail['store']['express_options'];
+          if (expressOptions.isNotEmpty && selectedDeliveryId == null) {
+            selectedDeliveryId = expressOptions.first['_id'];
+            selectedExpressOption = 'normal';
+          }
+        }
+      });
+    } else {
+      if (data != null && data['error_code'] != null) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}",
+          error: true,
+        );
+      }
+    }
+  }
+
+  void _getTotalDistance(Cart cart) async {
+    var data = await getTotalDistance(cart);
+    if (!mounted) return;
+    if (data != null && data['rows'][0]['elements'][0]['status'] == 'OK') {
+      setState(() {
+        distance = data['rows'][0]['elements'][0]['distance']['value']
+            .toDouble();
+        time = data['rows'][0]['elements'][0]['duration']['value'].toDouble();
+      });
+      await Future.delayed(Duration(seconds: 1));
+      if (!mounted) return;
+      _getCartInvoice();
+      // debugPrint('### [GOOGLE Maps API Call]');
+    } else {
+      _fallbackHaversine(cart);
+      // debugPrint("### [Haversine Fallback]");
+    }
+  }
+
+  void _fallbackHaversine(Cart cart) {
+    final storeLat = cart.storeLocation?.lat;
+    final storeLng = cart.storeLocation?.long;
+    final destLat = cart.destinationAddress?.lat;
+    final destLng = cart.destinationAddress?.long;
+
+    if (storeLat == null || storeLng == null || destLat == null || destLng == null) return;
+
+    final distanceMeters = AddressValidationService.calculateDistanceInMeters(
+      storeLat, storeLng, destLat, destLng,
+    );
+    // Estimate time: ~2 min per km (urban average)
+    final estimatedTimeSeconds = (distanceMeters / 1000) * 120;
+
+    if (!mounted) return;
+    setState(() {
+      distance = distanceMeters;
+      time = estimatedTimeSeconds;
+    });
+    // debugPrint('### DEBUG: distance: ${distance} \t time: $time');
+    _getCartInvoice();
+  }
+
+  void _getTotalDistanceGeoHash(Cart cart) async {
+    var data = await getTotalDistanceGeoHash(cart);
+    if (!mounted) return;
+    if (data != null && data['success']) {
+      setState(() {
+        distance = data['results'][0].toDouble() * 1050;
+        time = data['results'][0].toDouble() * 500;
+      });
+      await Future.delayed(Duration(seconds: 1));
+      if (!mounted) return;
+      _getCartInvoice();
+    } else {
+      _getTotalDistance(cart);
+    }
+  }
+
+  void _applyPromoCode() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+    });
+    var data = await applyPromoCode();
+    if (!mounted) return;
+    if (data != null && data['success']) {
+      setState(() {
+        promoCodeApplied = true;
+      });
+    } else {
+      if (data != null && data['error_code'] != null) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['${data['error_code']}'] ?? 'Promo code failed'}",
+          error: true,
+        );
+      }
+    }
+  }
+
+  void _getETA() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+    });
+    var data = await getETA();
+    if (!mounted) return;
+    if (data != null) {
+      setState(() {
+        etaResponse = data['result'];
+        int diff = etaResponse['high'] - etaResponse['low'] > 65
+            ? 15
+            : etaResponse['high'] - etaResponse['low'] < 65 &&
+                  etaResponse['high'] - etaResponse['low'] > 55
+            ? 10
+            : 0;
+        _etaLow = DateTime.now().add(
+          Duration(minutes: etaResponse['low'].toInt()),
+        );
+        _etaHigh = DateTime.now().add(
+          Duration(minutes: etaResponse['high'].toInt() - diff),
+        );
+      });
+    } else {
+      _etaLow = DateTime.now().add(Duration(minutes: 30));
+      _etaHigh = DateTime.now().add(Duration(minutes: 45));
+    }
+    setState(() {
+      _loading = false;
+    });
+  }
+
+  void _getCartInvoice() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+    });
+    var data = await getCartInvoice();
+    if (!mounted) return;
+    if (data != null && data['success']) {
+      _getETA();
+    } else {
+      if (responseData != null && responseData['error_code'] == 999) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['${responseData['error_code']}']}!",
+          error: true,
+        );
+        await CoreServices.clearCache();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+      } else {
+        Service.showMessage(
+          context: context,
+          title: responseData != null
+              ? "${errorCodes['${responseData['message']}'] ?? 'Something went wrong'}"
+              : "Something went wrong! Please check your internet connection.",
+          error: true,
+        );
+      }
+    }
+  }
+
+  IconData getExressIcon({required String expressType}) {
+    expressType = expressType.toLowerCase();
+    return expressType.contains("normal delivery")
+        ? expressIcon = Icons.timer_sharp
+        : expressType.contains("half express")
+        ? expressIcon = Icons.fast_forward
+        : expressType.contains("next day")
+        ? expressIcon = Icons.today_outlined
+        : expressType.contains("three hour")
+        ? expressIcon = Icons.timer_3_select_sharp
+        : expressIcon = Icons.timer_sharp;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: kPrimaryColor,
+      appBar: AppBar(
+        title: Text(
+          Provider.of<ZLanguage>(context).checkout,
+          style: TextStyle(color: kBlackColor),
+        ),
+        // elevation: 1.0,
+      ),
+      bottomNavigationBar:
+          /////place order button
+          SafeArea(
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                vertical: getProportionateScreenHeight(kDefaultPadding / 4),
+                horizontal: getProportionateScreenHeight(kDefaultPadding),
+              ),
+              decoration: BoxDecoration(
+                color: kPrimaryColor,
+                border: Border(top: BorderSide(color: kWhiteColor)),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(kDefaultPadding),
+                  topRight: Radius.circular(kDefaultPadding),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                spacing: getProportionateScreenHeight(kDefaultPadding / 2),
+                children: [
+                  if (responseData != null && responseData['success'])
+                    Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "${Provider.of<ZLanguage>(context).total} :",
+                            style: TextStyle(
+                              fontSize: getProportionateScreenWidth(
+                                kDefaultPadding * .7,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: getProportionateScreenHeight(
+                              kDefaultPadding / 2,
+                            ),
+                          ),
+                          Text(
+                            promoCodeApplied
+                                ? "${Provider.of<ZMetaData>(context, listen: false).currency} ${promoCodeData['order_payment']['user_pay_payment'].toStringAsFixed(2)}"
+                                : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['user_pay_payment'].toStringAsFixed(2)}",
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  CustomButton(
+                    isLoading: _placeOrder,
+                    title: Provider.of<ZLanguage>(context).placeOrder,
+                    press: () {
+                      if (responseData == null || responseData['success'] != true) {
+                        Service.showMessage(
+                          context: context,
+                          title: "Please wait, your Invoice is being analyzed...",
+                          error: null,
+                        );
+                        return;
+                      }
+                      if (scheduledOrder) {
+                        if (_scheduledDate != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) {
+                                return KifiyaScreen(
+                                  price: promoCodeApplied
+                                      ? promoCodeData['order_payment']['user_pay_payment']
+                                            .toDouble()
+                                      : responseData['order_payment']['user_pay_payment']
+                                            .toDouble(),
+                                  orderPaymentId:
+                                      responseData['order_payment']['_id'],
+                                  orderPaymentUniqueId:
+                                      responseData['order_payment']['unique_id']
+                                          .toString(),
+                                  onlyCashless: onlyCashless,
+                                  vehicleId: responseData['vehicles'][0]['_id'],
+                                  userpickupWithSchedule:
+                                      cart!.isSchedule && selfPickup
+                                      ? true
+                                      : false,
+                                );
+                              },
+                            ),
+                          );
+                        } else {
+                          Service.showMessage(
+                            context: context,
+                            title: "Please select date & time for schedule",
+                            error: false,
+                            duration: 5,
+                          );
+                        }
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) {
+                              return KifiyaScreen(
+                                price: promoCodeApplied
+                                    ? promoCodeData['order_payment']['user_pay_payment']
+                                          .toDouble()
+                                    : responseData['order_payment']['user_pay_payment']
+                                          .toDouble(),
+                                orderPaymentId:
+                                    responseData['order_payment']['_id'],
+                                orderPaymentUniqueId:
+                                    responseData['order_payment']['unique_id']
+                                        .toString(),
+                                onlyCashless:
+                                    (onlyCashless ??
+                                        false) ////new, safest way of old method
+                                    ? true
+                                    : (selfPickup ? true : false),
+
+                                // onlyCashless: onlyCashless!  //old
+                                //     ? onlyCashless
+                                //     : selfPickup
+                                //         ? true
+                                //         : false,
+                                vehicleId: responseData['vehicles'][0]['_id'],
+                                userpickupWithSchedule:
+                                    cart!.isSchedule && selfPickup
+                                    ? true
+                                    : false,
+                              );
+                            },
+                          ),
+                        );
+                      }
+                    },
+                    color: kSecondaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+      body: ModalProgressHUD(
+        inAsyncCall: _loading,
+        color: kPrimaryColor,
+        progressIndicator: linearProgressIndicator,
+        child: SafeArea(
+          child: Column(
+            children: [
+              cart == null
+                  ? SizedBox.shrink()
+                  : Expanded(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding:
+                              EdgeInsets.symmetric(
+                                horizontal: getProportionateScreenWidth(
+                                  kDefaultPadding / 1.5,
+                                ),
+                              ).copyWith(
+                                bottom: getProportionateScreenHeight(
+                                  kDefaultPadding,
+                                ),
+                              ),
+                          child: Column(
+                            spacing: getProportionateScreenWidth(
+                              kDefaultPadding,
+                            ),
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                margin: EdgeInsets.only(
+                                  top: getProportionateScreenHeight(
+                                    kDefaultPadding / 2,
+                                  ),
+                                ),
+                                padding: EdgeInsets.all(
+                                  getProportionateScreenWidth(kDefaultPadding),
+                                ),
+                                decoration: BoxDecoration(
+                                  color: kPrimaryColor,
+                                  borderRadius: BorderRadius.circular(
+                                    getProportionateScreenWidth(
+                                      kDefaultPadding / 2,
+                                    ),
+                                  ),
+                                  boxShadow: [boxShadow],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    OrderStatusRow(
+                                      value: Provider.of<ZLanguage>(
+                                        context,
+                                      ).deliveryOptions,
+                                      title: "Preferred delivery option",
+                                      icon: HeroiconsOutline
+                                          .adjustmentsHorizontal,
+                                    ),
+                                    SizedBox(
+                                      height: getProportionateScreenHeight(
+                                        kDefaultPadding,
+                                      ),
+                                    ),
+                                    cart!.isLaundryService
+                                        ? Container()
+                                        : CheckboxListTile(
+                                            secondary: Icon(
+                                              // Icons.timelapse,
+                                              HeroiconsOutline.bolt,
+                                              size:
+                                                  getProportionateScreenHeight(
+                                                    18,
+                                                  ),
+                                            ),
+                                            title: Text(
+                                              Provider.of<ZLanguage>(
+                                                context,
+                                              ).asSoon,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.titleSmall,
+                                            ),
+                                            subtitle: Text(
+                                              Provider.of<ZLanguage>(
+                                                context,
+                                              ).expressOrder,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
+                                            ),
+                                            contentPadding: EdgeInsets.symmetric(
+                                              vertical: 0,
+                                              horizontal:
+                                                  getProportionateScreenWidth(
+                                                    kDefaultPadding / 2,
+                                                  ),
+                                            ),
+                                            activeColor: kSecondaryColor,
+                                            value: this.orderAsap,
+                                            onChanged: (bool? value) {
+                                              if (!onlyScheduledOrder!) {
+                                                if (value!) {
+                                                  setState(() {
+                                                    this.orderAsap = value;
+                                                    this.scheduledOrder = false;
+                                                    cart!.isSchedule = false;
+                                                    cart!.scheduleStart =
+                                                        DateTime.now();
+                                                  });
+                                                }
+                                                Service.save(
+                                                  'cart',
+                                                  cart!.toJson(),
+                                                );
+                                                getCart();
+                                              } else {
+                                                Service.showMessage(
+                                                  context: context,
+                                                  title:
+                                                      "Store only accepts scheduled orders. Please schedule your order!",
+                                                  error: false,
+                                                  duration: 5,
+                                                );
+                                                setState(() {
+                                                  this.orderAsap = false;
+                                                  this.scheduledOrder = true;
+                                                });
+                                              }
+                                            },
+                                          ),
+                                    CheckboxListTile(
+                                      secondary: Icon(
+                                        HeroiconsOutline.calendarDays,
+                                        // color: kSecondaryColor,
+                                        size: getProportionateScreenHeight(18),
+                                      ),
+                                      title: Text(
+                                        Provider.of<ZLanguage>(
+                                          context,
+                                        ).scheduleOrder,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleSmall,
+                                      ),
+                                      subtitle: Text(
+                                        Provider.of<ZLanguage>(
+                                          context,
+                                        ).preOrder,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                      activeColor: kSecondaryColor,
+                                      value: this.scheduledOrder,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        vertical: 0,
+                                        horizontal: getProportionateScreenWidth(
+                                          kDefaultPadding / 2,
+                                        ),
+                                      ),
+                                      onChanged: (bool? value) {
+                                        if (!onlyScheduledOrder!) {
+                                          if (value!) {
+                                            setState(() {
+                                              this.scheduledOrder = value;
+                                              this.orderAsap = false;
+                                            });
+                                          } else {
+                                            setState(() {
+                                              this.scheduledOrder = false;
+                                              this.orderAsap = true;
+                                              cart!.isSchedule = false;
+                                            });
+                                            Service.save(
+                                              "cart",
+                                              cart!.toJson(),
+                                            );
+                                          }
+                                        } else {
+                                          setState(() {
+                                            this.scheduledOrder =
+                                                onlyScheduledOrder!;
+                                            this.orderAsap = false;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                    scheduledOrder
+                                        ? Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceEvenly,
+                                            children: [
+                                              TextButton(
+                                                child: Text(
+                                                  _scheduledDate != null
+                                                      ? _scheduledDate
+                                                            .toString()
+                                                            .split('.')[0]
+                                                      : Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).addDate,
+                                                  style: TextStyle(
+                                                    color: kSecondaryColor,
+                                                  ),
+                                                ),
+                                                style: ButtonStyle(
+                                                  elevation:
+                                                      WidgetStateProperty.all(
+                                                        1.0,
+                                                      ),
+                                                  backgroundColor:
+                                                      WidgetStateProperty.all(
+                                                        kPrimaryColor,
+                                                      ),
+                                                ),
+                                                onPressed: () async {
+                                                  DateTime _now =
+                                                      DateTime.now();
+                                                  DateTime? pickedDate =
+                                                      await showDatePicker(
+                                                        context: context,
+                                                        initialDate:
+                                                            DateTime.now(),
+                                                        firstDate: _now,
+                                                        lastDate: _now.add(
+                                                          Duration(days: 7),
+                                                        ),
+                                                      );
+                                                  TimeOfDay?
+                                                  time = await showTimePicker(
+                                                    context: context,
+                                                    initialTime:
+                                                        TimeOfDay.fromDateTime(
+                                                          DateTime.now(),
+                                                        ),
+                                                  );
+                                                  setState(() {
+                                                    _scheduledDate = pickedDate!
+                                                        .add(
+                                                          Duration(
+                                                            hours: time!.hour,
+                                                            minutes:
+                                                                time.minute,
+                                                          ),
+                                                        );
+                                                    cart!.isSchedule = true;
+                                                    cart!.scheduleStart =
+                                                        _scheduledDate;
+                                                  });
+                                                  await Service.save(
+                                                    'cart',
+                                                    cart!.toJson(),
+                                                  );
+                                                  getCart();
+                                                },
+                                              ),
+                                            ],
+                                          )
+                                        : Container(),
+                                    cart!.isLaundryService
+                                        ? Container()
+                                        : CheckboxListTile(
+                                            secondary: Icon(
+                                              HeroiconsOutline.user,
+                                              // color: kSecondaryColor,
+                                              size:
+                                                  getProportionateScreenHeight(
+                                                    18,
+                                                  ),
+                                            ),
+                                            title: Text(
+                                              Provider.of<ZLanguage>(
+                                                context,
+                                              ).selfPickup,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.titleSmall,
+                                            ),
+                                            subtitle: Text(
+                                              Provider.of<ZLanguage>(
+                                                context,
+                                              ).diy,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
+                                            ),
+                                            activeColor: kSecondaryColor,
+                                            value: this.selfPickup,
+                                            contentPadding: EdgeInsets.symmetric(
+                                              vertical: 0,
+                                              horizontal:
+                                                  getProportionateScreenWidth(
+                                                    kDefaultPadding / 2,
+                                                  ),
+                                            ),
+                                            onChanged: (bool? value) {
+                                              if (!onlySelfPickup!) {
+                                                setState(() {
+                                                  this.selfPickup = value!;
+                                                });
+                                                getCart();
+                                              } else {
+                                                Service.showMessage(
+                                                  context: context,
+                                                  title:
+                                                      "Store only allows self pickup. No delivery fee",
+                                                  error: false,
+                                                  duration: 5,
+                                                );
+                                                setState(() {
+                                                  this.selfPickup =
+                                                      onlySelfPickup!;
+                                                });
+                                              }
+                                            },
+                                          ),
+
+                                    cart!.isLaundryService
+                                        ? Column(
+                                            children: expressOptions.map<Widget>((
+                                              option,
+                                            ) {
+                                              return CheckboxListTile(
+                                                secondary: Icon(
+                                                  getExressIcon(
+                                                    expressType:
+                                                        option['delivery_type'],
+                                                  ),
+                                                  size:
+                                                      getProportionateScreenHeight(
+                                                        18,
+                                                      ),
+                                                ),
+                                                title: Text(
+                                                  option['delivery_type'],
+                                                  style: Theme.of(
+                                                    context,
+                                                  ).textTheme.titleSmall,
+                                                ),
+                                                subtitle: Text(
+                                                  "Delivered within ${option['delivered_within']}",
+                                                  style: Theme.of(
+                                                    context,
+                                                  ).textTheme.bodySmall,
+                                                ),
+                                                activeColor: kSecondaryColor,
+                                                value:
+                                                    selectedDeliveryId ==
+                                                    option['_id'],
+                                                contentPadding:
+                                                    EdgeInsets.symmetric(
+                                                      vertical: 0,
+                                                      horizontal:
+                                                          getProportionateScreenWidth(
+                                                            kDefaultPadding / 2,
+                                                          ),
+                                                    ),
+                                                onChanged: (bool? value) {
+                                                  setState(() {
+                                                    selectedDeliveryId = value!
+                                                        ? option['_id']
+                                                        : null;
+                                                    selectedExpressOption =
+                                                        option['delivery_key'];
+                                                  });
+                                                  getCart();
+                                                },
+                                              );
+                                            }).toList(),
+                                          )
+                                        : Container(),
+
+                                    // cart!.isLaundryService
+                                    //     ? CheckboxListTile(
+                                    //         secondary: Icon(
+                                    //           Icons.timer_sharp,
+                                    //           // color: kSecondaryColor,
+                                    //           size: getProportionateScreenHeight(18),
+                                    //         ),
+                                    //         title: Text(
+                                    //           "Normal delivery",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.titleSmall,
+                                    //         ),
+                                    //         subtitle: Text(
+                                    //           "Delivered in 4-5 days",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.bodySmall,
+                                    //         ),
+                                    //         activeColor: kSecondaryColor,
+                                    //         value: normalDelivery,
+                                    //         contentPadding: EdgeInsets.symmetric(
+                                    //           vertical: 0,
+                                    //           horizontal: getProportionateScreenWidth(
+                                    //             kDefaultPadding / 2,
+                                    //           ),
+                                    //         ),
+                                    //         onChanged: (bool? value) {
+                                    //           setState(() {
+                                    //             normalDelivery = true;
+                                    //             halfExpress = false;
+                                    //             nextDay = false;
+                                    //             threeHours = false;
+                                    //           });
+                                    //           getCart();
+                                    //         },
+                                    //       )
+                                    //     : Container(),
+                                    // cart!.isLaundryService
+                                    //     ? CheckboxListTile(
+                                    //         secondary: Icon(
+                                    //           Icons.fast_forward_rounded,
+                                    //           // color: kSecondaryColor,
+                                    //           size: getProportionateScreenHeight(18),
+                                    //         ),
+                                    //         title: Text(
+                                    //           "Half express delivery",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.titleSmall,
+                                    //         ),
+                                    //         subtitle: Text(
+                                    //           "Delivered within 2 days",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.bodySmall,
+                                    //         ),
+                                    //         activeColor: kSecondaryColor,
+                                    //         value: halfExpress,
+                                    //         contentPadding: EdgeInsets.symmetric(
+                                    //           vertical: 0,
+                                    //           horizontal: getProportionateScreenWidth(
+                                    //             kDefaultPadding / 2,
+                                    //           ),
+                                    //         ),
+                                    //         onChanged: (bool? value) {
+                                    //           setState(() {
+                                    //             normalDelivery = false;
+                                    //             halfExpress = true;
+                                    //             nextDay = false;
+                                    //             threeHours = false;
+                                    //           });
+                                    //           getCart();
+                                    //         },
+                                    //       )
+                                    //     : Container(),
+                                    // cart!.isLaundryService
+                                    //     ? CheckboxListTile(
+                                    //         secondary: Icon(
+                                    //           Icons.today_outlined,
+                                    //           // color: kSecondaryColor,
+                                    //           size: getProportionateScreenHeight(18),
+                                    //         ),
+                                    //         title: Text(
+                                    //           "Next day delivery",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.titleSmall,
+                                    //         ),
+                                    //         subtitle: Text(
+                                    //           "Delivered the next day",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.bodySmall,
+                                    //         ),
+                                    //         activeColor: kSecondaryColor,
+                                    //         value: nextDay,
+                                    //         contentPadding: EdgeInsets.symmetric(
+                                    //           vertical: 0,
+                                    //           horizontal: getProportionateScreenWidth(
+                                    //             kDefaultPadding / 2,
+                                    //           ),
+                                    //         ),
+                                    //         onChanged: (bool? value) {
+                                    //           setState(() {
+                                    //             normalDelivery = false;
+                                    //             halfExpress = false;
+                                    //             nextDay = true;
+                                    //             threeHours = false;
+                                    //           });
+                                    //           getCart();
+                                    //         },
+                                    //       )
+                                    //     : Container(),
+                                    // cart!.isLaundryService
+                                    //     ? CheckboxListTile(
+                                    //         secondary: Icon(
+                                    //           Icons.timer_3_select_sharp,
+                                    //           // color: kSecondaryColor,
+                                    //           size: getProportionateScreenHeight(18),
+                                    //         ),
+                                    //         title: Text(
+                                    //           "Three hours delivery",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.titleSmall,
+                                    //         ),
+                                    //         subtitle: Text(
+                                    //           "Delivered within 3 hours",
+                                    //           style: Theme.of(
+                                    //             context,
+                                    //           ).textTheme.bodySmall,
+                                    //         ),
+                                    //         activeColor: kSecondaryColor,
+                                    //         value: threeHours,
+                                    //         contentPadding: EdgeInsets.symmetric(
+                                    //           vertical: 0,
+                                    //           horizontal: getProportionateScreenWidth(
+                                    //             kDefaultPadding / 2,
+                                    //           ),
+                                    //         ),
+                                    //         onChanged: (bool? value) {
+                                    //           setState(() {
+                                    //             normalDelivery = false;
+                                    //             halfExpress = false;
+                                    //             nextDay = false;
+                                    //             threeHours = true;
+                                    //           });
+                                    //           getCart();
+                                    //         },
+                                    //       )
+                                    //     : Container(),
+                                  ],
+                                ),
+                              ),
+                              /////delivery details section//////
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(
+                                  getProportionateScreenWidth(kDefaultPadding),
+                                ),
+                                decoration: BoxDecoration(
+                                  color: kPrimaryColor,
+                                  borderRadius: BorderRadius.circular(
+                                    getProportionateScreenWidth(
+                                      kDefaultPadding,
+                                    ),
+                                  ),
+                                  boxShadow: [boxShadow],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    OrderStatusRow(
+                                      value: Provider.of<ZLanguage>(
+                                        context,
+                                      ).deliveryDetails,
+                                      title: "Your Delivery Summary",
+                                      icon: HeroiconsOutline.informationCircle,
+                                    ),
+                                    SizedBox(
+                                      height: getProportionateScreenHeight(
+                                        kDefaultPadding,
+                                      ),
+                                    ),
+                                    DetailsRow(
+                                      title: Provider.of<ZLanguage>(
+                                        context,
+                                      ).name,
+                                      subtitle:
+                                          widget.receiverName.isNotEmpty &&
+                                              widget.isForOthers
+                                          ? widget.receiverName
+                                          : userData != null
+                                          ? "${userData['user']['first_name']} ${userData['user']['last_name']} "
+                                          : "",
+                                    ),
+                                    SizedBox(
+                                      height: getProportionateScreenHeight(
+                                        kDefaultPadding / 3,
+                                      ),
+                                    ),
+                                    DetailsRow(
+                                      title: Provider.of<ZLanguage>(
+                                        context,
+                                      ).phone,
+                                      subtitle:
+                                          widget.receiverPhone.isNotEmpty &&
+                                              widget.isForOthers
+                                          ? "${Provider.of<ZMetaData>(context, listen: false).areaCode} ${widget.receiverPhone}"
+                                          : userData != null
+                                          ? "${Provider.of<ZMetaData>(context, listen: false).areaCode} ${userData['user']['phone']}"
+                                          : "",
+                                    ),
+                                    SizedBox(
+                                      height: getProportionateScreenHeight(
+                                        kDefaultPadding / 3,
+                                      ),
+                                    ),
+                                    DetailsRow(
+                                      title: Provider.of<ZLanguage>(
+                                        context,
+                                      ).deliveryAddress,
+                                      subtitle: cart != null
+                                          ? "${cart!.destinationAddress?.name?.split(',')[0]}"
+                                          : "",
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              //////Order details section//////
+                              responseData != null && responseData['success']
+                                  ? Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: kPrimaryColor,
+                                        border: Border.all(color: kWhiteColor),
+                                        borderRadius: BorderRadius.circular(
+                                          getProportionateScreenWidth(
+                                            kDefaultPadding,
+                                          ),
+                                        ),
+                                        boxShadow: [kDefaultShadow],
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: getProportionateScreenWidth(
+                                          kDefaultPadding,
+                                        ),
+                                        vertical: getProportionateScreenHeight(
+                                          kDefaultPadding,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          OrderStatusRow(
+                                            value: Provider.of<ZLanguage>(
+                                              context,
+                                            ).orderDetail,
+                                            title: "Summary of your order",
+                                            icon: HeroiconsOutline.banknotes,
+                                          ),
+                                          SizedBox(
+                                            height:
+                                                getProportionateScreenHeight(
+                                                  kDefaultPadding,
+                                                ),
+                                          ),
+                                          DetailsRow(
+                                            title: Provider.of<ZLanguage>(
+                                              context,
+                                            ).servicePrice,
+                                            subtitle: promoCodeApplied
+                                                ? "${Provider.of<ZMetaData>(context, listen: false).currency} ${promoCodeData['order_payment']['total_delivery_price'].toStringAsFixed(2)}"
+                                                : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['total_delivery_price'].toStringAsFixed(2)}",
+                                          ),
+                                          SizedBox(
+                                            height:
+                                                getProportionateScreenHeight(
+                                                  kDefaultPadding / 3,
+                                                ),
+                                          ),
+                                          DetailsRow(
+                                            title: Provider.of<ZLanguage>(
+                                              context,
+                                            ).totalOrderPrice,
+                                            subtitle: promoCodeApplied
+                                                ? "${Provider.of<ZMetaData>(context, listen: false).currency} ${promoCodeData['order_payment']['total_order_price'].toStringAsFixed(2)}"
+                                                : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['total_order_price'].toStringAsFixed(2)}",
+                                          ),
+                                          // SizedBox(
+                                          //     height: getProportionateScreenHeight(
+                                          //         kDefaultPadding / 3)),
+                                          // DetailsRow(
+                                          //   title: Provider.of<ZLanguage>(context)
+                                          //       .promoPayment,
+                                          //   subtitle: promoCodeApplied
+                                          //       ? "${Provider.of<ZMetaData>(context, listen: false).currency} -${promoCodeData['order_payment']['promo_payment'].toStringAsFixed(2)}"
+                                          //       : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['promo_payment'].toStringAsFixed(2)}",
+                                          // ),
+                                          // SizedBox(
+                                          //     height: getProportionateScreenHeight(
+                                          //         kDefaultPadding / 3)),
+                                          // DetailsRow(
+                                          //   title:
+                                          //       Provider.of<ZLanguage>(context).tip,
+                                          //   subtitle:
+                                          //       "${Provider.of<ZMetaData>(context, listen: false).currency} ${tip!.toStringAsFixed(2)}",
+                                          // ),
+                                          SizedBox(
+                                            height:
+                                                getProportionateScreenHeight(
+                                                  kDefaultPadding / 3,
+                                                ),
+                                          ),
+                                          // aliexpressCart != null &&
+                                          //         aliexpressCart!.cart.storeId ==
+                                          //             cart!.storeId
+                                          //     ? SizedBox.shrink()
+                                          //     : Align(
+                                          //         alignment: Alignment.center,
+                                          //         child: Text(
+                                          //           textAlign: TextAlign.center,
+                                          //           Provider.of<ZLanguage>(context)
+                                          //               .orderTime,
+                                          //         ),
+                                          //       ),
+                                          DetailsRow(
+                                            title: Provider.of<ZLanguage>(
+                                              context,
+                                            ).promoPayment,
+                                            subtitle: promoCodeApplied
+                                                ? "${Provider.of<ZMetaData>(context, listen: false).currency} -${promoCodeData['order_payment']['promo_payment'].toStringAsFixed(2)}"
+                                                : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['promo_payment'].toStringAsFixed(2)}",
+                                            onTap: () {
+                                              _showApplyPromoCodeWidget();
+                                            },
+                                          ),
+                                          SizedBox(
+                                            height:
+                                                getProportionateScreenHeight(
+                                                  kDefaultPadding / 3,
+                                                ),
+                                          ),
+
+                                          DetailsRow(
+                                            title: Provider.of<ZLanguage>(
+                                              context,
+                                            ).tip,
+                                            subtitle:
+                                                "${tip!.toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                                            onTap: () {
+                                              _showTipWidget();
+                                            },
+                                          ),
+                                          SizedBox(
+                                            height:
+                                                getProportionateScreenHeight(
+                                                  kDefaultPadding / 3,
+                                                ),
+                                          ),
+                                          if (_etaLow != null ||
+                                              (aliexpressCart != null &&
+                                                  aliexpressCart!
+                                                          .cart
+                                                          .storeId !=
+                                                      cart!.storeId))
+                                            DetailsRow(
+                                              title: "Estimated Time",
+                                              subtitle:
+                                                  "${_etaLow.toString().split(" ")[1].split(".")[0]} - ${_etaHigh.toString().split(' ')[1].split('.')[0]}",
+                                            ),
+                                          // _etaLow == null ||
+                                          //         (aliexpressCart != null &&
+                                          //             aliexpressCart!
+                                          //                     .cart.storeId ==
+                                          //                 cart!.storeId)
+                                          //     ? SizedBox.shrink()
+                                          //     : Align(
+                                          //   alignment: Alignment.center,
+                                          //   child: Text(
+                                          //     "${_etaLow.toString().split(" ")[1].split(".")[0]} - ${_etaHigh.toString().split(' ')[1].split('.')[0]}",
+                                          //     style: Theme.of(context)
+                                          //         .textTheme
+                                          //         .bodyLarge
+                                          //         ?.copyWith(
+                                          //             fontWeight:
+                                          //                 FontWeight.w700),
+                                          //   ),
+                                          // ),
+                                          // : Container(),
+                                          SizedBox(
+                                            height:
+                                                getProportionateScreenHeight(
+                                                  kDefaultPadding / 2,
+                                                ),
+                                          ),
+                                          // Center(
+                                          //   child: Row(
+                                          //     mainAxisAlignment:
+                                          //         MainAxisAlignment.center,
+                                          //     children: [
+                                          //       Text(
+                                          //         "${Provider.of<ZLanguage>(context).total} :",
+                                          //         style: TextStyle(
+                                          //           fontSize:
+                                          //               getProportionateScreenWidth(
+                                          //                   kDefaultPadding * .7),
+                                          //         ),
+                                          //       ),
+                                          //       SizedBox(
+                                          //           width:
+                                          //               getProportionateScreenHeight(
+                                          //                   kDefaultPadding / 3)),
+                                          //       Text(
+                                          //         promoCodeApplied
+                                          //             ? "${Provider.of<ZMetaData>(context, listen: false).currency} ${promoCodeData['order_payment']['user_pay_payment'].toStringAsFixed(2)}"
+                                          //             : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['user_pay_payment'].toStringAsFixed(2)}",
+                                          //         style: Theme.of(context)
+                                          //             .textTheme
+                                          //             .headlineSmall
+                                          //             ?.copyWith(
+                                          //                 fontWeight:
+                                          //                     FontWeight.bold),
+                                          //       ),
+                                          //     ],
+                                          //   ),
+                                          // ),
+                                          // Center(
+                                          //   child: Column(
+                                          //     children: [
+                                          //       Text(
+                                          //         Provider.of<ZLanguage>(context).total,
+                                          //         style: TextStyle(
+                                          //           fontSize: getProportionateScreenWidth(
+                                          //               kDefaultPadding * .7),
+                                          //         ),
+                                          //       ),
+                                          //       SizedBox(
+                                          //           height: getProportionateScreenHeight(
+                                          //               kDefaultPadding / 3)),
+                                          //       Text(
+                                          //         promoCodeApplied
+                                          //             ? "${Provider.of<ZMetaData>(context, listen: false).currency} ${promoCodeData['order_payment']['user_pay_payment'].toStringAsFixed(2)}"
+                                          //             : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['user_pay_payment'].toStringAsFixed(2)}",
+                                          //         style: Theme.of(context)
+                                          //             .textTheme
+                                          //             .headlineSmall
+                                          //             ?.copyWith(
+                                          //                 fontWeight: FontWeight.bold),
+                                          //       ),
+                                          //     ],
+                                          //   ),
+                                          // ),
+                                          ////////////promo code and tip
+                                        ],
+                                      ),
+                                    )
+                                  : _loading
+                                  ? SpinKitDancingSquare(
+                                      color: kSecondaryColor,
+                                      size: getProportionateScreenHeight(
+                                        kDefaultPadding,
+                                      ),
+                                    )
+                                  : Container(
+                                      child: Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical:
+                                                getProportionateScreenHeight(
+                                                  kDefaultPadding,
+                                                ),
+                                          ),
+                                          child: Text(
+                                            responseData != null
+                                                ? "${errorCodes['${responseData['message']}'] ?? 'Something went wrong'}"
+                                                : "Loading...",
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                              // SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+              // SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget CustomContainerTag({required String title}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: kDefaultPadding / 2,
+        vertical: kDefaultPadding / 4,
+      ),
+      decoration: BoxDecoration(
+        color: kSecondaryColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(kDefaultPadding / 2),
+      ),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.labelMedium!.copyWith(
+          color: kSecondaryColor,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Future<dynamic> getTotalDistance(Cart cart) async {
+    setState(() {
+      linearProgressIndicator = Container(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SpinKitWave(
+              color: kSecondaryColor,
+              size: getProportionateScreenWidth(kDefaultPadding),
+            ),
+            SizedBox(height: kDefaultPadding * 0.5),
+            Text(
+              "Calculating distance...",
+              style: TextStyle(color: kBlackColor),
+            ),
+          ],
+        ),
+      );
+    });
+    var url =
+        "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${cart.storeLocation?.lat?.toStringAsFixed(6)},${cart.storeLocation?.long?.toStringAsFixed(6)}&destinations=${cart.destinationAddress?.lat},${cart.destinationAddress?.long}&key=$apiKey";
+    try {
+      http.Response response = await http
+          .get(Uri.parse(url))
+          .timeout(
+            Duration(seconds: 30),
+            onTimeout: () {
+              if (mounted) setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+
+      return json.decode(response.body);
+    } catch (e) {
+      if (mounted) setState(() {
+        this._loading = false;
+      });
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title: "Something went wrong! Check your internet and try again",
+          error: true,
+          duration: 3,
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<dynamic> getTotalDistanceGeoHash(Cart cart) async {
+    setState(() {
+      linearProgressIndicator = Container(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SpinKitWave(
+              color: kSecondaryColor,
+              size: getProportionateScreenWidth(kDefaultPadding),
+            ),
+            SizedBox(height: kDefaultPadding * 0.5),
+            Text(
+              "Calculating geohash distance...",
+              style: TextStyle(color: kBlackColor),
+            ),
+          ],
+        ),
+      );
+    });
+    var url = "http://167.172.180.220:5331/get_distance";
+    Map data = {
+      "locations": [
+        {
+          "pickup": [cart.storeLocation?.lat, cart.storeLocation?.long],
+          "destination": [
+            cart.destinationAddress?.lat,
+            cart.destinationAddress?.long,
+          ],
+        },
+      ],
+    };
+    var body = json.encode(data);
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              if (mounted) setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      return json.decode(response.body);
+    } catch (e) {
+      if (mounted) setState(() {
+        this._loading = false;
+      });
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title: "Something went wrong! Check your internet and try again",
+          error: true,
+          duration: 3,
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<dynamic> getCartInvoice() async {
+    setState(() {
+      linearProgressIndicator = Container(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SpinKitWave(
+              color: kSecondaryColor,
+              size: getProportionateScreenWidth(kDefaultPadding),
+            ),
+            SizedBox(height: kDefaultPadding * 0.5),
+            Text(
+              "Generating Order Invoice...",
+              style: TextStyle(color: kBlackColor),
+            ),
+          ],
+        ),
+      );
+    });
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_order_cart_invoice";
+    // debugPrint("in getCartInvoice selfPickup========  $selfPickup");
+    Map data = {
+      "user_id": cart!.userId,
+      "store_id": cart!.storeId,
+      "total_time": selfPickup ? 0 : time,
+      "total_distance": selfPickup ? 0 : distance,
+      "order_type": 7,
+      "is_user_pick_up_order": selfPickup,
+      "total_item_count": cart!.items?.length,
+      "is_user_drop_order": !cart!.isLaundryService,
+      "express_option": selectedExpressOption,
+      "server_token": cart!.serverToken,
+      "vehicle_id": widget.vehicleId,
+      "tip": tip,
+    };
+    var body = json.encode(data);
+    // debugPrint("invoice body $body");
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 30),
+            onTimeout: () {
+              if (mounted) setState(() {
+                this._loading = false;
+              });
+
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      final decoded = json.decode(response.body);
+      if (mounted) {
+        setState(() {
+          this.responseData = decoded;
+          this._loading = false;
+        });
+      }
+      return decoded;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title: "Order invoice failed! Check your internet and try again",
+          error: true,
+          duration: 4,
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<dynamic> applyPromoCode() async {
+    setState(() {
+      linearProgressIndicator = Container(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SpinKitWave(
+              color: kSecondaryColor,
+              size: getProportionateScreenWidth(kDefaultPadding),
+            ),
+            SizedBox(height: kDefaultPadding * 0.5),
+            Text(
+              "Applying promo code...",
+              style: TextStyle(color: kBlackColor),
+            ),
+          ],
+        ),
+      );
+    });
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/apply_promo_code";
+    Map data = {
+      "user_id": cart!.userId,
+      "promo_code_name": promoCode,
+      "order_payment_id": responseData['order_payment']['_id'],
+      "server_token": cart!.serverToken,
+    };
+    var body = json.encode(data);
+
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              if (mounted) setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      if (mounted) setState(() {
+        this.promoCodeData = json.decode(response.body);
+        this._loading = false;
+      });
+      return json.decode(response.body);
+    } catch (e) {
+      if (mounted) setState(() {
+        this._loading = false;
+      });
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title: "Apply promo code failed! Check your internet and try again",
+          error: true,
+          duration: 3,
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<dynamic> getETA() async {
+    linearProgressIndicator = Container(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SpinKitWave(
+            color: kSecondaryColor,
+            size: getProportionateScreenWidth(kDefaultPadding),
+          ),
+          SizedBox(height: kDefaultPadding * 0.5),
+          Text(
+            "Calculating delivery time...",
+            style: TextStyle(color: kBlackColor),
+          ),
+        ],
+      ),
+    );
+
+    final String url = "https://ethiopiataxi.com/order/eta_predict";
+    // final String url = "http://196.189.44.51:8069/order/eta_predict";
+    final orderPayment = responseData?['order_payment'];
+    Map data = {
+      "model_id": 1,
+      "cart_total": orderPayment?['total_order_price'] ?? 0,
+      "delivery_total": orderPayment?['total_delivery_price'] ?? 0,
+      "distance": (distance ?? 0) / 1000,
+      "hour": DateTime.now().hour,
+      "weekday": DateTime.now().weekday,
+    };
+    var body = json.encode(data);
+    // debugPrint("============");
+    // debugPrint("===getETA body=====$body");
+    // debugPrint("============");
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              if (mounted) setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      if (mounted) setState(() {
+        this.storeDetail = json.decode(response.body);
+      });
+      return json.decode(response.body);
+    } catch (e) {
+      if (mounted) setState(() {
+        this._loading = false;
+      });
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title:
+              "Unstable connection. Please check your internet and try again.",
+          error: true,
+          duration: 3,
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<dynamic> getStoreDetail() async {
+    linearProgressIndicator = Container(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SpinKitWave(
+            color: kSecondaryColor,
+            size: getProportionateScreenWidth(kDefaultPadding),
+          ),
+          SizedBox(height: kDefaultPadding * 0.5),
+          Text(
+            "Fetching merchant detail...",
+            style: TextStyle(color: kBlackColor),
+          ),
+        ],
+      ),
+    );
+
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/user_get_store_product_item_list";
+    Map data = {"store_id": cart!.storeId};
+    var body = json.encode(data);
+    // debugPrint("store detail data $body");
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              if (mounted) setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      if (mounted) setState(() {
+        this.storeDetail = json.decode(response.body);
+      });
+      return json.decode(response.body);
+    } catch (e) {
+      if (mounted) setState(() {
+        this._loading = false;
+      });
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title:
+              "Couldn't get store detail, check your internet and try again.",
+          error: true,
+          duration: 3,
+        );
+      }
+      return null;
+    }
+  }
+
+  ////Promo///////////////
+  void _showApplyPromoCodeWidget() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: kPrimaryColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(kDefaultPadding),
+        ),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
+                    kDefaultPadding, // Adjust for keyboard
+              ),
+              child: SafeArea(
+                minimum: EdgeInsets.symmetric(
+                  horizontal: getProportionateScreenWidth(kDefaultPadding),
+                  vertical: getProportionateScreenHeight(kDefaultPadding),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      Provider.of<ZLanguage>(context).applyPromoCode,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    CustomTextField(
+                      style: TextStyle(color: kBlackColor),
+                      keyboardType: TextInputType.text,
+                      onChanged: (val) {
+                        promoCode = val;
+                      },
+                      hintText: Provider.of<ZLanguage>(context).promoCode,
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                    _loading
+                        ? SpinKitWave(
+                            color: kSecondaryColor,
+                            size: getProportionateScreenWidth(kDefaultPadding),
+                          )
+                        : CustomButton(
+                            title: Provider.of<ZLanguage>(context).apply,
+                            color: kSecondaryColor,
+                            press: () async {
+                              if (promoCode.isNotEmpty) {
+                                setState(() {
+                                  _loading = true;
+                                });
+                                _applyPromoCode();
+                                Navigator.of(context).pop();
+                              } else {
+                                Navigator.of(context).pop();
+
+                                Service.showMessage(
+                                  context: context,
+                                  title: "Promo Code cannot be empty!",
+                                  error: false,
+                                );
+                              }
+                            },
+                          ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  ////////////////////Tip////////////////
+  void _showTipWidget() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: kPrimaryColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(kDefaultPadding),
+        ),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
+                    kDefaultPadding, // Adjust for keyboard
+              ),
+              child: SafeArea(
+                minimum: EdgeInsets.symmetric(
+                  horizontal: getProportionateScreenWidth(kDefaultPadding),
+                  vertical: getProportionateScreenHeight(kDefaultPadding),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    Text(
+                      Provider.of<ZLanguage>(context, listen: false).addTip,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    CustomTextField(
+                      style: TextStyle(color: kBlackColor),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        FilteringTextInputFormatter.singleLineFormatter,
+                        FilteringTextInputFormatter.deny(RegExp(r'^0')),
+                      ],
+                      onChanged: (val) {
+                        tipTemp = double.parse(val);
+                      },
+                      hintText: Provider.of<ZLanguage>(context).tip,
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        // InkWell(
+                        //   onTap: () {
+                        //     tip =
+                        //         20.00;
+                        //     Navigator.pop(
+                        //         context);
+                        //     _getCartInvoice();
+                        //   },
+                        //   child:
+                        //       CustomTag(
+                        //     text:
+                        //         "${Provider.of<ZLanguage>(context, listen: false).addTip} +20 ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                        //   ),
+                        // ),
+                        InkWell(
+                          onTap: () {
+                            tip = 20.00;
+                            Navigator.pop(context);
+                            _getCartInvoice();
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: kDefaultPadding / 2,
+                              vertical: kDefaultPadding / 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: kBlackColor,
+                              borderRadius: BorderRadius.circular(
+                                kDefaultPadding / 2,
+                              ),
+                            ),
+                            child: Text(
+                              "${Provider.of<ZLanguage>(context, listen: false).addTip} +20 ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                              style: Theme.of(context).textTheme.labelLarge!
+                                  .copyWith(color: kPrimaryColor),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            tip = 30.00;
+                            Navigator.pop(context);
+                            _getCartInvoice();
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: kDefaultPadding / 2,
+                              vertical: kDefaultPadding / 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: kBlackColor,
+                              borderRadius: BorderRadius.circular(
+                                kDefaultPadding / 2,
+                              ),
+                            ),
+                            child: Text(
+                              "${Provider.of<ZLanguage>(context, listen: false).addTip} +30 ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                              style: Theme.of(context).textTheme.labelLarge!
+                                  .copyWith(color: kPrimaryColor),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            tip = 40.00;
+                            Navigator.pop(context);
+                            _getCartInvoice();
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: kDefaultPadding / 2,
+                              vertical: kDefaultPadding / 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: kBlackColor,
+                              borderRadius: BorderRadius.circular(
+                                kDefaultPadding / 2,
+                              ),
+                            ),
+                            child: Text(
+                              "${Provider.of<ZLanguage>(context, listen: false).addTip} +40 ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                              style: Theme.of(context).textTheme.labelLarge!
+                                  .copyWith(color: kPrimaryColor),
+                            ),
+                          ),
+                        ),
+                        // InkWell(
+                        //   onTap: () {
+                        //     tip =
+                        //         40.00;
+                        //     Navigator.pop(
+                        //         context);
+                        //     _getCartInvoice();
+                        //   },
+                        //   child:
+                        //       CustomTag(
+                        //     text:
+                        //         "${Provider.of<ZLanguage>(context, listen: false).addTip} +40 ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                        //   ),
+                        // ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding),
+                    ),
+                    CustomButton(
+                      title: Provider.of<ZLanguage>(
+                        context,
+                        listen: false,
+                      ).submit,
+                      color: kSecondaryColor,
+                      press: () async {
+                        tip = tipTemp;
+                        Navigator.pop(context);
+                        _getCartInvoice();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      if (mounted) setState(() {});
+    });
+  }
+}
+
+class DetailsRow extends StatelessWidget {
+  const DetailsRow({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.textColor,
+    this.fontWeight,
+    this.onTap,
+  });
+  final String title, subtitle;
+  final Color? textColor;
+  final FontWeight? fontWeight;
+  final void Function()? onTap;
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.normal),
+        ),
+        onTap != null
+            ? Row(
+                spacing: kDefaultPadding / 2,
+                children: [
+                  InkWell(
+                    onTap: onTap,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: kDefaultPadding / 2,
+                        vertical: kDefaultPadding / 4,
+                      ),
+                      decoration: BoxDecoration(
+                        // color: kSecondaryColor.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(
+                          kDefaultPadding / 2,
+                        ),
+                      ),
+                      child: Icon(Icons.add, size: 18, color: kSecondaryColor),
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: textTheme.labelLarge?.copyWith(
+                      fontWeight: fontWeight ?? FontWeight.normal,
+                      color: textColor ?? kBlackColor,
+                    ),
+                    softWrap: true,
+                    textAlign: TextAlign.right,
+                  ),
+                ],
+              )
+            : Expanded(
+                child: Text(
+                  subtitle,
+                  style: textTheme.labelLarge?.copyWith(
+                    fontWeight: fontWeight ?? FontWeight.normal,
+                    color: textColor ?? kBlackColor,
+                  ),
+                  softWrap: true,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+      ],
+    );
+  }
+}
+// class DetailsRow extends StatelessWidget {
+//   const DetailsRow({
+//     Key? key,
+//     required this.title,
+//     required this.subtitle,
+//   }) : super(key: key);
+//   final String title, subtitle;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Row(
+//       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//       children: [
+//         Text(
+//           title,
+//           style: Theme.of(context).textTheme.titleSmall?.copyWith(
+//                 fontWeight: FontWeight.w500,
+//               ),
+//         ),
+//         Expanded(
+//           child: Text(
+//             subtitle,
+//             style: Theme.of(context).textTheme.titleMedium?.copyWith(
+//                   fontWeight: FontWeight.bold,
+//                   color: kSecondaryColor,
+//                 ),
+//             softWrap: true,
+//             textAlign: TextAlign.right,
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }

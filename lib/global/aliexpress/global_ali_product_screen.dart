@@ -197,8 +197,7 @@ class _AliProductListScreenState extends State<GlobalAliProductListScreen> {
                 padding: EdgeInsets.symmetric(
                     horizontal:
                         getProportionateScreenWidth(kDefaultPadding / 8)),
-                child: (products == null ||
-                            products.isEmpty ||
+                child: (products.isEmpty ||
                             (isLoading && products.isEmpty)) &&
                         categories.isEmpty
                     ? SizedBox.shrink()

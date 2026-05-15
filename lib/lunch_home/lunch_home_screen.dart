@@ -406,7 +406,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                         if (value != null) {
                                           DestinationAddress address = value;
                                           setState(() {
-                                            _controller.text = address!.name!;
+                                            _controller.text = address.name!;
                                             longitude = double.parse(address
                                                 .long!
                                                 .toStringAsFixed(6));

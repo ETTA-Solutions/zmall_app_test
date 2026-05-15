@@ -119,7 +119,7 @@ class _OrderRatingState extends State<OrderRating> {
                           height: getProportionateScreenHeight(
                               kDefaultPadding / 2)),
                       SmoothStarRating(
-                        rating: rating != null ? rating : 0.0,
+                        rating: rating,
                         size:
                             getProportionateScreenWidth(kDefaultPadding * 1.4),
                         starCount: 5,
@@ -159,11 +159,11 @@ class _OrderRatingState extends State<OrderRating> {
                   : CustomButton(
                       title: "SUBMIT",
                       press: () {
-                        if (rating != 0.0 && review != null) {
+                        if (rating != 0.0) {
                           _submitRating();
                         }
                       },
-                      color: rating != 0.0 && review != null
+                      color: rating != 0.0
                           ? kSecondaryColor
                           : kGreyColor,
                     )

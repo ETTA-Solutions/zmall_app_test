@@ -197,8 +197,7 @@ class _LocationScreenState extends State<LocationScreen> {
                   _loading = true;
                 });
                 //
-                if (cameraPosition!.target.longitude != null &&
-                    cameraPosition!.target.latitude != null) {
+                if (cameraPosition!.target.latitude != null) {
                   final sessionToken = Uuid().v4();
                   final location = await PlaceApiProvider(sessionToken)
                       .getPlaceDetailFromLatLng(cameraPosition!.target.latitude,

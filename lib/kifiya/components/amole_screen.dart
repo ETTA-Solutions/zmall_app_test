@@ -59,7 +59,7 @@ class _AmoleScreenState extends State<AmoleScreen> {
     setState(() {
       _loading = true;
     });
-    if (otp != null && otp.length == 4) {
+    if (otp.length == 4) {
       Navigator.pop(context, otp);
     } else {
       setState(() {

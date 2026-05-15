@@ -6,9 +6,7 @@ import 'package:zmall/help/components/help_action_cards.dart';
 import 'package:zmall/services/url_launcher_service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/profile/components/profile_list_tile.dart';
-import 'package:zmall/services/service.dart';
 // import 'package:zmall/help/support_chat/support_chat_screen.dart';
-import 'package:zmall/help/faq/faq_screen.dart';
 import 'package:zmall/utils/size_config.dart';
 
 class HelpScreen extends StatelessWidget {
@@ -270,7 +268,7 @@ class HelpScreen extends StatelessWidget {
                           title: "Website",
                           onTap: () async {
                             await UrlLauncherService.openInAppWebView(
-                              "https://www.zmalldelivery.com",
+                              "https://zmall.et/",
                             );
                           },
                         ),

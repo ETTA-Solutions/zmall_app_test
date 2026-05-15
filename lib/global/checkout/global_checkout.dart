@@ -354,7 +354,7 @@ class _GlobalCheckoutState extends State<GlobalCheckout> {
                                     _scheduledDate = pickedDate!.add(
                                       Duration(
                                         hours: time!.hour,
-                                        minutes: time!.minute,
+                                        minutes: time.minute,
                                       ),
                                     );
                                     cart!.scheduleStart = _scheduledDate;

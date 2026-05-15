@@ -1,0 +1,809 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
+import 'package:provider/provider.dart';
+import 'package:zmall/utils/constants.dart';
+import 'package:zmall/controllers/controllers.dart';
+import 'package:zmall/services/app_update_service.dart';
+import 'package:zmall/custom_widgets/custom_button.dart';
+import 'package:zmall/models/language.dart';
+import 'package:zmall/models/metadata.dart';
+import 'package:zmall/product/product_screen.dart';
+import 'package:zmall/services/service.dart';
+import 'package:zmall/utils/size_config.dart';
+import 'package:zmall/widgets/custom_search_bar.dart';
+import 'package:zmall/widgets/linear_loading_indicator.dart';
+import 'package:zmall/widgets/shimmer_widget.dart';
+import 'package:zmall/store/store_screen.dart';
+import 'custom_list_tile.dart';
+
+class Body extends StatefulWidget {
+  Body({
+    super.key,
+    @required this.cityId,
+    @required this.storeDeliveryId,
+    @required this.latitude,
+    @required this.longitude,
+    @required this.isStore,
+    @required this.category,
+    @required this.companyId,
+    this.controller,
+    @required this.filterOpenedStore,
+    // New callback parameter
+    this.onAllClosedChanged,
+    this.onSearching,
+  });
+
+  final String? cityId, storeDeliveryId;
+  final double? longitude, latitude;
+  final bool? isStore, filterOpenedStore;
+  final category;
+  final int? companyId;
+  final Controller? controller;
+  // Callback to notify parent
+  final Function(bool)? onAllClosedChanged;
+  final Function(bool)? onSearching;
+
+  @override
+  BodyState createState() => BodyState(this.controller!);
+}
+
+class BodyState extends State<Body> {
+  bool _loading = true;
+  var responseData;
+  var stores;
+  List<bool> isOpen = [];
+  TextEditingController controller = TextEditingController();
+  List<dynamic> _searchResult = [];
+  bool isLoggedIn = false;
+  var userData;
+  var appOpen;
+  var appClose;
+  List<dynamic> tagFilters = [];
+  List<dynamic> selectedTagFilters = [];
+
+  BodyState(Controller controller) {
+    controller.getStores = getElements;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getAppKeys();
+    widget.isStore! ? _getStoreListByCompany() : _getCompanyList();
+    isLogged();
+  }
+
+  Future<void> _onRefresh() async {
+    getAppKeys();
+    widget.isStore! ? _getStoreListByCompany() : _getCompanyList();
+    isLogged();
+  }
+
+  dynamic getElements() {
+    if (_loading || stores == null) {
+      return null;
+    }
+    return {
+      "stores": (_searchResult.length != 0 || controller.text.isNotEmpty)
+          ? _searchResult
+          : stores,
+      "isOpen": isOpen,
+    };
+  }
+
+  _getStoreListByCompany() async {
+    setState(() {
+      _loading = true;
+    });
+
+    await getStoreListByCompany(
+      widget.cityId!,
+      widget.storeDeliveryId!,
+      widget.latitude!,
+      widget.longitude!,
+      widget.companyId!,
+    );
+
+    if (responseData != null && responseData['success']) {
+      stores = responseData['stores'];
+      storeOpen(stores);
+    } else if (mounted && responseData != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "${errorCodes['${responseData['error_code']}'] ?? 'Something went wrong.'}",
+          ),
+        ),
+      );
+    }
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  void _getCompanyList() async {
+    setState(() {
+      _loading = true;
+    });
+    _getAppKeys();
+    await getCompanyList(
+      widget.cityId!,
+      widget.storeDeliveryId!,
+      widget.latitude!,
+      widget.longitude!,
+    );
+    if (responseData != null && responseData['success']) {
+      stores = responseData['stores'];
+
+      storeOpen(stores);
+
+      getTags(stores);
+      setState(() {
+        this._loading = false;
+        _notifyAllClosed(); // Notify parent after updating isOpen
+      });
+    } else if (mounted && responseData != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "${errorCodes['${responseData['error_code']}'] ?? 'Something went wrong.'}",
+          ),
+        ),
+      );
+    }
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  void getAppKeys() async {
+    await AppUpdateService.fetchAndCheck(context, showDialogIfNeeded: false);
+    appClose = await Service.read('app_close');
+    appOpen = await Service.read('app_open');
+    if (mounted) setState(() {});
+  }
+
+  void getTags(List stores) {
+    tagFilters.clear();
+    var storeTags = {};
+    stores.forEach((store) {
+      var tags = store['famous_products_tags'];
+      // var tags = store['store_tags'].toString().split(',');
+      tags.forEach((tag) {
+        String t = tag.trim().toLowerCase();
+        if (storeTags.containsKey(t)) {
+          storeTags[t] += 1;
+        } else {
+          if (t.isNotEmpty && t != "null" && t != "undefined") {
+            storeTags[t] = 1;
+          }
+        }
+      });
+    });
+    storeTags.forEach((key, value) {
+      if (value > 0) {
+        tagFilters.add(key);
+      }
+    });
+  }
+
+  void _getAppKeys() async {
+    await AppUpdateService.fetchAndCheck(context, showDialogIfNeeded: false);
+    appClose = await Service.read('app_close');
+    appOpen = await Service.read('app_open');
+    if (mounted) setState(() {});
+  }
+
+  void storeOpen(List stores) async {
+    // Use Service method to determine which stores are open
+    isOpen = await Service.storeOpen(stores);
+  }
+
+  void isLogged() async {
+    var data = await Service.readBool('logged');
+    if (data != null) {
+      setState(() {
+        isLoggedIn = data;
+      });
+      getUser();
+    } else {
+      // debugPrint("No logged user found");
+    }
+  }
+
+  void getUser() async {
+    var data = await Service.read('user');
+    if (data != null) {
+      setState(() {
+        userData = data;
+      });
+    }
+  }
+
+  void filterUsingTag() {
+    _searchResult.clear();
+    if (selectedTagFilters.length == 0) {
+      controller.text = "";
+      setState(() {
+        storeOpen(stores);
+      });
+      return;
+    }
+    stores.forEach((store) {
+      selectedTagFilters.forEach((selectedTag) {
+        if (store['famous_products_tags'].contains(selectedTag)) {
+          if (!(_searchResult.contains(store))) {
+            _searchResult.add(store);
+          }
+        }
+      });
+    });
+    String filterText = "Filtered with: ";
+    selectedTagFilters.forEach((tag) {
+      filterText += "$tag, ";
+    });
+    int x = filterText.lastIndexOf(',');
+    filterText = filterText.replaceRange(x, x + 1, "");
+    controller.text = filterText;
+    setState(() {
+      storeOpen(_searchResult);
+    });
+  }
+
+  //////////// Notify parent ////////////////
+  void _notifyAllClosed() {
+    final allClosed = isOpen.isNotEmpty && !isOpen.any((open) => open);
+    widget.onAllClosedChanged?.call(allClosed);
+  }
+
+  void _notifyOnSearch() {
+    final isSearching = _searchResult.isNotEmpty || controller.text.isNotEmpty;
+    widget.onSearching?.call(isSearching);
+  }
+
+  //////////// Notify parent ////////////////
+
+  @override
+  Widget build(BuildContext context) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    double screenWidth = MediaQuery.of(context).size.width;
+    return GestureDetector(
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: RefreshIndicator(
+        color: kPrimaryColor,
+        backgroundColor: kSecondaryColor,
+        onRefresh: _onRefresh,
+        child: ModalProgressHUD(
+          inAsyncCall: _loading,
+          color: kPrimaryColor,
+          // progressIndicator: CustomLinearProgressIndicator(
+          //   message: "Gathering Stores...",
+          // ),
+          progressIndicator: stores != null
+              ? LinearLoadingIndicator()
+              : SingleChildScrollView(
+                  child: Column(
+                    spacing: getProportionateScreenHeight(kDefaultPadding),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: kDefaultPadding),
+                        child: SearchButtonShimmer(width: screenWidth * 0.9),
+                      ),
+                      Container(
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding * 5,
+                        ),
+                        child: ItemTagShimmer(),
+                      ),
+                      SizedBox(
+                        width: getProportionateScreenHeight(kDefaultPadding),
+                      ),
+                      Container(
+                        height: screenHeight * 0.7,
+                        child: ProductListShimmer(),
+                      ),
+                    ],
+                  ),
+                ),
+          child: stores != null
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: kDefaultPadding),
+                  child: Column(
+                    children: [
+                      if (!widget.isStore!)
+                        CustomSearchBar(
+                          controller: controller,
+                          hintText: Provider.of<ZLanguage>(context).search,
+                          onChanged: onSearchTextChanged,
+                          onSubmitted: (value) {
+                            onSearchTextChanged(value);
+                          },
+                          onClearButtonTap: () {
+                            controller.clear();
+                            onSearchTextChanged('');
+                            setState(() {
+                              storeOpen(stores);
+                            });
+                          },
+                        ),
+                      tagFilters.length != 0
+                          ? Container(
+                              height: getProportionateScreenHeight(
+                                kDefaultPadding * 3,
+                              ),
+                              child: ListView.separated(
+                                itemCount: tagFilters.length,
+                                scrollDirection: Axis.horizontal,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: kDefaultPadding,
+                                  vertical: kDefaultPadding / 2,
+                                ),
+                                separatorBuilder:
+                                    (BuildContext context, int index) =>
+                                        SizedBox(
+                                          width: getProportionateScreenWidth(
+                                            kDefaultPadding / 2,
+                                          ),
+                                        ),
+                                itemBuilder: (context, index) {
+                                  bool isSelected = selectedTagFilters.contains(
+                                    tagFilters[index],
+                                  );
+                                  return InkWell(
+                                    onTap: () {
+                                      if (isSelected) {
+                                        selectedTagFilters.remove(
+                                          tagFilters[index],
+                                        );
+                                      } else {
+                                        selectedTagFilters.add(
+                                          tagFilters[index],
+                                        );
+                                      }
+                                      filterUsingTag();
+                                    },
+                                    child: Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? kSecondaryColor.withValues(
+                                                alpha: 0.3,
+                                              )
+                                            : kPrimaryColor,
+                                        borderRadius: BorderRadius.circular(
+                                          getProportionateScreenWidth(
+                                            kDefaultPadding / 2,
+                                          ),
+                                        ),
+                                        border: Border.all(
+                                          width: isSelected ? 1.0 : 2.0,
+                                          color: isSelected
+                                              ? kSecondaryColor.withValues(
+                                                  alpha: 0.6,
+                                                )
+                                              : kWhiteColor,
+                                        ),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: getProportionateScreenWidth(
+                                          kDefaultPadding / 2,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            Service.capitalizeFirstLetters(
+                                              tagFilters[index].toString(),
+                                            ),
+                                            // .toUpperCase(),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
+                                                  color: isSelected
+                                                      ? kSecondaryColor
+                                                      : kBlackColor,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                          : Container(),
+                      Expanded(
+                        child:
+                            _searchResult.isNotEmpty ||
+                                controller.text.isNotEmpty
+                            ? _buildSearchList()
+                            : _buildStoreList(),
+                      ),
+                    ],
+                  ),
+                )
+              : !_loading
+              ? Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: getProportionateScreenWidth(
+                      kDefaultPadding * 4,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomButton(
+                        title: "Retry",
+                        press: () {
+                          widget.isStore!
+                              ? _getStoreListByCompany()
+                              : _getCompanyList();
+                        },
+                        color: kSecondaryColor,
+                      ),
+                    ],
+                  ),
+                )
+              : Container(),
+        ),
+      ),
+    );
+  }
+
+  //////////////////////////newly added
+  Widget _buildStoreList() {
+    final allClosed = isOpen.isNotEmpty && !isOpen.any((open) => open);
+    return ListView.builder(
+      itemCount: stores.length,
+      padding: const EdgeInsets.all(kDefaultPadding / 2),
+      itemBuilder: (context, index) {
+        if (widget.filterOpenedStore == true && !allClosed) {
+          return isOpen[index]
+              ? Column(
+                  children: [
+                    StoreLists(index: index),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                  ],
+                )
+              : const SizedBox();
+        } else {
+          return Column(
+            children: [
+              StoreLists(index: index),
+              SizedBox(
+                height: getProportionateScreenHeight(kDefaultPadding / 2),
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildSearchList() {
+    return ListView.separated(
+      itemCount: _searchResult.length,
+      padding: const EdgeInsets.all(kDefaultPadding / 2),
+      separatorBuilder: (context, index) =>
+          Container(height: getProportionateScreenHeight(kDefaultPadding / 2)),
+      itemBuilder: (context, index) {
+        return Container(
+          child: CustomListTile(
+            press: () {
+              try {
+                if (_searchResult[index]['store_count'] > 1) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) {
+                        return StoreScreen(
+                          cityId: widget.cityId,
+                          storeDeliveryId: widget.storeDeliveryId,
+                          category: widget.category,
+                          latitude: widget.latitude,
+                          longitude: widget.longitude,
+                          isStore: true,
+                          companyId: _searchResult[index]['company_id'],
+                        );
+                      },
+                    ),
+                  );
+                } else {
+                  if (isLoggedIn) {
+                    storeClicked(_searchResult[index]);
+                  }
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) {
+                        return ProductScreen(
+                          latitude: widget.latitude!,
+                          longitude: widget.longitude!,
+                          store: _searchResult[index],
+                          location: _searchResult[index]["location"],
+                          isOpen: isOpen[index],
+                        );
+                      },
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (isLoggedIn) {
+                  storeClicked(_searchResult[index]);
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return ProductScreen(
+                        latitude: widget.latitude!,
+                        longitude: widget.longitude!,
+                        store: _searchResult[index],
+                        location: _searchResult[index]["location"],
+                        isOpen: true,
+                      );
+                    },
+                  ),
+                );
+              }
+            },
+            store: _searchResult[index],
+            isOpen: isOpen[index],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget StoreLists({required int index}) {
+    return Container(
+      child: CustomListTile(
+        press: () {
+          // debugPrint("Navigate to store....");
+          try {
+            if (stores[index]['store_count'] > 1) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return StoreScreen(
+                      cityId: widget.cityId,
+                      storeDeliveryId: widget.storeDeliveryId,
+                      category: widget.category,
+                      latitude: widget.latitude,
+                      longitude: widget.longitude,
+                      isStore: true,
+                      companyId: stores[index]['company_id'],
+                    );
+                  },
+                ),
+              );
+            } else {
+              if (isLoggedIn) {
+                storeClicked(stores[index]);
+              }
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return ProductScreen(
+                      latitude: widget.latitude!,
+                      longitude: widget.longitude!,
+                      store: stores[index],
+                      location: stores[index]["location"],
+                      isOpen: isOpen[index],
+                    );
+                  },
+                ),
+              );
+            }
+          } catch (e) {
+            if (isLoggedIn) {
+              storeClicked(stores[index]);
+            }
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) {
+                  return ProductScreen(
+                    latitude: widget.latitude!,
+                    longitude: widget.longitude!,
+                    store: stores[index],
+                    location: stores[index]["location"],
+                    isOpen: isOpen[index],
+                  );
+                },
+              ),
+            );
+          }
+        },
+        store: stores[index],
+        isOpen: isOpen[index],
+      ),
+    );
+  }
+
+  ///////////////////////////////////////
+  onSearchTextChanged(String text) async {
+    _searchResult.clear();
+    if (text.isEmpty) {
+      selectedTagFilters.clear();
+      setState(() {
+        storeOpen(stores);
+        _notifyOnSearch();
+      });
+      return;
+    }
+
+    stores.forEach((store) {
+      if (store['name'].toString().toLowerCase().contains(text.toLowerCase())) {
+        _searchResult.add(store);
+      }
+    });
+
+    setState(() {
+      storeOpen(_searchResult);
+      _notifyOnSearch();
+    });
+  }
+
+  Future<dynamic> getStoreListByCompany(
+    String cityId,
+    String storeDeliveryId,
+    double latitude,
+    double longitude,
+    int companyId,
+  ) async {
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_store_list_by_company";
+    Map data = {
+      "city_id": cityId,
+      "store_delivery_id": storeDeliveryId,
+      "latitude": latitude,
+      "longitude": longitude,
+      "company_id": companyId,
+    };
+    var body = json.encode(data);
+
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 15),
+            onTimeout: () {
+              if (mounted) {
+                Service.showMessage(
+                  context: context,
+                  title:
+                      "Something went wrong! Check your internet and try again",
+                  error: true,
+                  duration: 3,
+                );
+              }
+
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      setState(() {
+        this.responseData = json.decode(response.body);
+      });
+      return json.decode(response.body);
+    } catch (e) {
+      // debugPrint(e);
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  Future<dynamic> getCompanyList(
+    String cityId,
+    String storeDeliveryId,
+    double latitude,
+    double longitude,
+  ) async {
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_company_list";
+
+    Map data = {
+      "city_id": cityId,
+      "store_delivery_id": storeDeliveryId,
+      "latitude": latitude,
+      "longitude": longitude,
+    };
+    var body = json.encode(data);
+    // print("body $body");
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 15),
+            onTimeout: () {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "Something went wrong! Check your internet and try again",
+                    ),
+                    backgroundColor: kSecondaryColor,
+                  ),
+                );
+              }
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+
+      setState(() {
+        this.responseData = json.decode(response.body);
+      });
+
+      return json.decode(response.body);
+    } catch (e) {
+      // debugPrint(e);
+
+      return null;
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  void storeClicked(dynamic store) async {
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/admin/add_user_and_store";
+    Map data = {
+      "store_id": store['_id'],
+      "user_id": userData['user']['_id'],
+      "latitude": widget.latitude,
+      "longitude": widget.longitude,
+      "last_opened": "2020-04-17T06:45:55.873Z",
+      "is_promotional": false,
+    };
+    var body = json.encode(data);
+    try {
+      http.Response response = await http.post(
+        Uri.parse(url),
+        headers: <String, String>{
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
+      // debugPrint("Store clicked");
+    } catch (e) {
+      // debugPrint(e);
+    }
+  }
+}

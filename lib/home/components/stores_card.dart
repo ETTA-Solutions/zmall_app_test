@@ -1,6 +1,5 @@
 ///updated
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/service.dart';

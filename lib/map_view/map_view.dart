@@ -4,6 +4,7 @@ import 'package:fl_location/fl_location.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:logger/logger.dart';
+
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
@@ -120,8 +121,10 @@ class _StoreMapViewState extends State<StoreMapView> {
         latitude = currentLocation.latitude;
         longitude = currentLocation.longitude;
       });
-      Provider.of<ZMetaData>(context, listen: false)
-          .setLocation(currentLocation.latitude, currentLocation.longitude);
+      Provider.of<ZMetaData>(
+        context,
+        listen: false,
+      ).setLocation(currentLocation.latitude, currentLocation.longitude);
     }
   }
 
@@ -139,15 +142,17 @@ class _StoreMapViewState extends State<StoreMapView> {
       final Marker marker = Marker(
         markerId: MarkerId(widget.stores[i]['_id']),
         position: LatLng(
-            double.parse(widget.stores[i]['location'][0].toString()),
-            double.parse(widget.stores[i]['location'][1].toString())),
+          double.parse(widget.stores[i]['location'][0].toString()),
+          double.parse(widget.stores[i]['location'][1].toString()),
+        ),
         icon: BitmapDescriptor.fromBytes(storeImageData),
         infoWindow: InfoWindow(
-            title: widget.stores[i]['name'],
-            snippet: widget.isOpen[i] ? "Open" : "Closed",
-            onTap: () {
-              _onMarkerTap(widget.stores[i], widget.isOpen[i]);
-            }),
+          title: widget.stores[i]['name'],
+          snippet: widget.isOpen[i] ? "Open" : "Closed",
+          onTap: () {
+            _onMarkerTap(widget.stores[i], widget.isOpen[i]);
+          },
+        ),
       );
       setState(() {
         _markers.add(marker);
@@ -216,8 +221,10 @@ class _StoreMapViewState extends State<StoreMapView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.categoryTitle['delivery_name'],
-            style: TextStyle(color: kBlackColor)),
+        title: Text(
+          widget.categoryTitle['delivery_name'],
+          style: TextStyle(color: kBlackColor),
+        ),
         elevation: 1.0,
       ),
       body: ModalProgressHUD(

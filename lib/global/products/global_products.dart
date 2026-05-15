@@ -332,7 +332,7 @@ class _GlobalProductState extends State<GlobalProduct> {
                                                 ),
                                           ),
                                         Text(
-                                          "${_getPrice(_searchResult[index]) != null ? _getPrice(_searchResult[index]) : 0} Birr",
+                                          "${_getPrice(_searchResult[index])} Birr",
                                           style: Theme.of(context)
                                               .textTheme
                                               .titleMedium!
@@ -508,7 +508,7 @@ class _GlobalProductState extends State<GlobalProduct> {
                                                                 kDefaultPadding /
                                                                     5)),
                                                     Text(
-                                                      "${_getPrice(products[index]['items'][idx]) != null ? _getPrice(products[index]['items'][idx]) : 0} Birr",
+                                                      "${_getPrice(products[index]['items'][idx])} Birr",
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .titleSmall!

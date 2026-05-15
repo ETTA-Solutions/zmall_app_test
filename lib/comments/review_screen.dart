@@ -48,9 +48,10 @@ class _CommentsScreenState extends State<CommentsScreen> {
       });
     } else {
       Service.showMessage(
-          context: context,
-          title: "${errorCodes['${data['error_code']}']}!",
-          error: true);
+        context: context,
+        title: "${errorCodes['${data['error_code']}']}!",
+        error: true,
+      );
       if (data['error_code'] == 999) {
         await CoreServices.clearCache();
         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
@@ -70,11 +71,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Reviews",
-        ),
-      ),
+      appBar: AppBar(title: Text("Reviews")),
       body: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: getProportionateScreenHeight(kDefaultPadding / 2),
@@ -82,63 +79,64 @@ class _CommentsScreenState extends State<CommentsScreen> {
         ),
         child: ModalProgressHUD(
           inAsyncCall: _loading,
-          progressIndicator:
-              CustomLinearProgressIndicator(message: "Loading reviews..."),
+          progressIndicator: CustomLinearProgressIndicator(
+            message: "Loading reviews...",
+          ),
           color: kPrimaryColor,
           child: reviews != null
               ? reviews['store_review_list'].length > 0
-                  ? ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: reviews['store_review_list'].length,
-                      itemBuilder: (context, index) {
-                        return CommentContainer(
-                          press: () {
-                            // debugPrint(reviews['store_review_list'][index]);
-                          },
-                          comment: reviews['store_review_list'][index]
-                              ['user_review_to_store'],
-                          rating: reviews['store_review_list'][index]
-                                  ['user_rating_to_store']
-                              .toDouble(),
-                          dateTime: reviews['store_review_list'][index]
-                                  ['created_at']
-                              .toString(),
-                          userName:
-                              "${reviews['store_review_list'][index]['user_detail']['first_name']} ${reviews['store_review_list'][index]['user_detail']['last_name']}",
-                        );
-                      },
-                      separatorBuilder: (BuildContext context, int index) =>
-                          SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 4),
-                      ),
-                    )
-                  : Center(
-                      child: Text("No comments for this store!"),
-                    )
-              : !_loading
-                  ? Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal:
-                            getProportionateScreenWidth(kDefaultPadding * 4),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CustomButton(
-                            title: "Retry",
+                    ? ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: reviews['store_review_list'].length,
+                        itemBuilder: (context, index) {
+                          return CommentContainer(
                             press: () {
-                              setState(() {
-                                _loading = true;
-                              });
-                              _getStoreReviews();
+                              // debugPrint(reviews['store_review_list'][index]);
                             },
-                            color: kSecondaryColor,
-                          ),
-                        ],
+                            comment:
+                                reviews['store_review_list'][index]['user_review_to_store'],
+                            rating:
+                                reviews['store_review_list'][index]['user_rating_to_store']
+                                    .toDouble(),
+                            dateTime:
+                                reviews['store_review_list'][index]['created_at']
+                                    .toString(),
+                            userName:
+                                "${reviews['store_review_list'][index]['user_detail']['first_name']} ${reviews['store_review_list'][index]['user_detail']['last_name']}",
+                          );
+                        },
+                        separatorBuilder: (BuildContext context, int index) =>
+                            SizedBox(
+                              height: getProportionateScreenHeight(
+                                kDefaultPadding / 4,
+                              ),
+                            ),
+                      )
+                    : Center(child: Text("No comments for this store!"))
+              : !_loading
+              ? Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: getProportionateScreenWidth(
+                      kDefaultPadding * 4,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomButton(
+                        title: "Retry",
+                        press: () {
+                          setState(() {
+                            _loading = true;
+                          });
+                          _getStoreReviews();
+                        },
+                        color: kSecondaryColor,
                       ),
-                    )
-                  : Container(),
+                    ],
+                  ),
+                )
+              : Container(),
         ),
       ),
     );
@@ -150,32 +148,29 @@ class _CommentsScreenState extends State<CommentsScreen> {
     });
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/user_get_store_review_list";
-    Map data = {
-      "user_id": widget.userId,
-      "store_id": widget.storeId,
-    };
+    Map data = {"user_id": widget.userId, "store_id": widget.storeId};
 
     var body = json.encode(data);
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 20),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
+            Duration(seconds: 20),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
 
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         this._loading = false;
       });
@@ -186,9 +181,10 @@ class _CommentsScreenState extends State<CommentsScreen> {
         this._loading = false;
       });
       Service.showMessage(
-          context: context,
-          title: "Your internet connection is unstable. Please try again...",
-          error: true);
+        context: context,
+        title: "Your internet connection is unstable. Please try again...",
+        error: true,
+      );
       return null;
     }
   }
