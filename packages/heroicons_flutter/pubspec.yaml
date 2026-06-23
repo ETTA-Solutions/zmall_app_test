@@ -1,0 +1,37 @@
+name: heroicons_flutter
+description:
+  Heroicons from Tailwind Labs as Flutter icons set. Includes all solid,
+  outline, micro and mini Heroicons.
+version: 0.4.0
+repository: https://github.com/tunnandaaung/heroicons_flutter
+homepage: https://heroicons-flutter.vercel.app
+
+environment:
+  sdk: '>=2.18.2 <4.0.0'
+  flutter: '>=1.17.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+# The following section is specific to Flutter packages.
+flutter:
+  fonts:
+    - family: Heroicons Solid
+      fonts:
+        - asset: assets/fonts/heroicons-solid.ttf
+    - family: Heroicons Outline
+      fonts:
+        - asset: assets/fonts/heroicons-outline.ttf
+    - family: Heroicons Mini
+      fonts:
+        - asset: assets/fonts/heroicons-mini.ttf
+    - family: Heroicons Micro
+      fonts:
+        - asset: assets/fonts/heroicons-micro.ttf

@@ -37,55 +37,12 @@ class _SplashContainerState extends State<SplashContainer> {
   ({String type, String id})? _extractTarget(String link) {
     final trimmed = link.trim();
     if (trimmed.isEmpty) return null;
-
-    final direct = RegExp(
+    final match = RegExp(
       r'^(store|item)/([^/?#]+)$',
       caseSensitive: false,
     ).firstMatch(trimmed);
-    if (direct != null) {
-      return (type: direct.group(1)!.toLowerCase(), id: direct.group(2)!);
-    }
-
-    final uri = Uri.tryParse(trimmed);
-    if (uri != null) {
-      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-      if (segments.length >= 2) {
-        final first = segments[0].toLowerCase();
-        if (first == 'store' || first == 'item') {
-          return (type: first, id: segments[1]);
-        }
-      }
-
-      final qStore =
-          uri.queryParameters['store_id'] ?? uri.queryParameters['storeId'];
-      if (qStore != null && qStore.isNotEmpty) {
-        return (type: 'store', id: qStore);
-      }
-
-      final qItem =
-          uri.queryParameters['item_id'] ?? uri.queryParameters['itemId'];
-      if (qItem != null && qItem.isNotEmpty) {
-        return (type: 'item', id: qItem);
-      }
-    }
-
-    final storeInPath = RegExp(
-      r'(^|/)store/([^/?#]+)',
-      caseSensitive: false,
-    ).firstMatch(trimmed);
-    if (storeInPath != null && storeInPath.groupCount >= 2) {
-      return (type: 'store', id: storeInPath.group(2)!);
-    }
-
-    final itemInPath = RegExp(
-      r'(^|/)item/([^/?#]+)',
-      caseSensitive: false,
-    ).firstMatch(trimmed);
-    if (itemInPath != null && itemInPath.groupCount >= 2) {
-      return (type: 'item', id: itemInPath.group(2)!);
-    }
-
-    return null;
+    if (match == null) return null;
+    return (type: match.group(1)!.toLowerCase(), id: match.group(2)!);
   }
 
   void _getItemInformation(String itemId) async {
@@ -177,7 +134,7 @@ class _SplashContainerState extends State<SplashContainer> {
               ),
             ),
             errorWidget: (context, url, error) {
-              debugPrint("###[SPLASH] Image load error: $error, url: $url");
+              // debugPrint("###[SPLASH] Image load error: $error, url: $url");
               return Container(
                 color: kSecondaryColor,
                 child: Center(

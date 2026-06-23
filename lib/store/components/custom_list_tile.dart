@@ -45,8 +45,9 @@ class CustomListTile extends StatelessWidget {
               child: Row(
                 children: [
                   ImageContainer(
-                    url:
-                        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${store['image_url']}",
+                    url: (store['image_url'] != null && store['image_url'].toString().isNotEmpty)
+                        ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${store['image_url']}"
+                        : null,
                   ),
                   SizedBox(width: kDefaultPadding * 1.3),
                   StoreInfo(
@@ -157,9 +158,9 @@ class FavoriteCustomListTile extends StatelessWidget {
             child: Column(
               children: [
                 FavoriteImageContainer(
-                  url:
-                      "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${store['image_url']}",
-                  //  "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${store['image_url']}",
+                  url: (store['image_url'] != null && store['image_url'].toString().isNotEmpty)
+                      ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${store['image_url']}"
+                      : null,
                 ),
                 SizedBox(height: kDefaultPadding / 4),
                 FavoriteStoreInfo(

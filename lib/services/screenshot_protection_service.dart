@@ -99,7 +99,7 @@ class ScreenshotProtectionService {
       _isProtectionEnabled = true;
       return result ?? true;
     } catch (e) {
-      print('Error enabling screenshot protection: $e');
+      // print('Error enabling screenshot protection: $e');
       return false;
     }
   }
@@ -114,7 +114,7 @@ class ScreenshotProtectionService {
       _isProtectionEnabled = false;
       return result ?? true;
     } catch (e) {
-      print('Error disabling screenshot protection: $e');
+      // print('Error disabling screenshot protection: $e');
       return false;
     }
   }

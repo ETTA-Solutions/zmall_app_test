@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
-import 'package:http/http.dart' as http;
+// http is no longer used directly; networking is handled by CoreServices
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
@@ -250,60 +250,23 @@ class _SearchScreenState extends State<SearchScreen>
     storeOpen(_searchResult);
   }
 
+  // Delegates to CoreServices.searchItemGlobal
   Future<dynamic> searchItem(searchQuery) async {
-    setState(() {
-      _loading = true;
-    });
-    var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/search_item_global";
-    Map data = {"name": searchQuery};
-
-    var body = json.encode(data);
-    try {
-      var response = await http
-          .post(
-            Uri.parse(url),
-            body: body,
-            headers: <String, String>{
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-            },
-          )
-          .timeout(Duration(seconds: 30));
-      return json.decode(response.body);
-    } catch (error) {
-      // print(error);
-      return null;
-    }
+    return CoreServices.searchItemGlobal(
+      query: searchQuery,
+      context: context,
+    );
   }
 
+  // Delegates to CoreServices.getCompanyList
   Future<dynamic> getCompanyList() async {
-    var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_company_list";
-
-    Map data = {
-      "city_id": widget.cityId!,
-      "store_delivery_id": storeDeliveryId,
-      "latitude": widget.latitude!,
-      "longitude": widget.longitude!,
-    };
-    var body = json.encode(data);
-    try {
-      var response = await http
-          .post(
-            Uri.parse(url),
-            body: body,
-            headers: <String, String>{
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-            },
-          )
-          .timeout(Duration(seconds: 30));
-      return json.decode(response.body);
-    } catch (error) {
-      // print(error);
-      return null;
-    }
+    return CoreServices.getCompanyList(
+      cityId: widget.cityId!,
+      storeDeliveryId: storeDeliveryId,
+      latitude: widget.latitude!,
+      longitude: widget.longitude!,
+      context: context,
+    );
   }
 
   onSearchTextChanged({required String query}) async {

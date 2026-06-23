@@ -1107,16 +1107,16 @@ class _BorsaScreenState extends State<BorsaScreen> {
 
   void _onRefundTap(BuildContext context, dynamic transaction) {
     final meta = Provider.of<ZMetaData>(context, listen: false);
-    debugPrint('### REFUND TAP ====');
-    debugPrint('### user_id: ${widget.userData['user']['_id']}');
-    debugPrint('### phone: ${widget.userData['user']['phone']}');
-    debugPrint('### baseUrl: ${meta.baseUrl}');
-    debugPrint('### transaction: $transaction');
-    debugPrint('### can_refund: ${transaction['can_refund']}');
-    debugPrint('### is_refund_available: ${responseData['is_refund_available']}');
-    debugPrint('### unique_id: ${transaction['unique_id']}');
-    debugPrint('### from_amount: ${transaction['from_amount']}');
-    debugPrint('### ======================');
+    // debugPrint('### REFUND TAP ====');
+    // debugPrint('### user_id: ${widget.userData['user']['_id']}');
+    // debugPrint('### phone: ${widget.userData['user']['phone']}');
+    // debugPrint('### baseUrl: ${meta.baseUrl}');
+    // debugPrint('### transaction: $transaction');
+    // debugPrint('### can_refund: ${transaction['can_refund']}');
+    // debugPrint('### is_refund_available: ${responseData['is_refund_available']}');
+    // debugPrint('### unique_id: ${transaction['unique_id']}');
+    // debugPrint('### from_amount: ${transaction['from_amount']}');
+    // debugPrint('### ======================');
     final service = RefundService(
       userId: widget.userData['user']['_id'],
       phone: widget.userData['user']['phone'],
@@ -1402,9 +1402,9 @@ class _BorsaScreenState extends State<BorsaScreen> {
     };
     var body = json.encode(data);
 
-    debugPrint('### [WALLET_HISTORY] REQUEST page=$page, limit=$_pageLimit');
-    debugPrint('### [WALLET_HISTORY] URL: $url');
-    debugPrint('### [WALLET_HISTORY] BODY: $body');
+    // debugPrint('### [WALLET_HISTORY] REQUEST page=$page, limit=$_pageLimit');
+    // debugPrint('### [WALLET_HISTORY] URL: $url');
+    // debugPrint('### [WALLET_HISTORY] BODY: $body');
 
     try {
       http.Response response = await http
@@ -1430,11 +1430,11 @@ class _BorsaScreenState extends State<BorsaScreen> {
           );
 
       var decoded = json.decode(response.body);
-      debugPrint('### [WALLET_HISTORY] RESPONSE (page $page): $decoded');
+      // debugPrint('### [WALLET_HISTORY] RESPONSE (page $page): $decoded');
 
       if (decoded != null && decoded['success'] == true) {
         List newItems = decoded['wallet_history'] ?? [];
-        debugPrint('### [WALLET_HISTORY] items received: ${newItems.length}, hasMore: ${newItems.length >= _pageLimit}');
+        // debugPrint('### [WALLET_HISTORY] items received: ${newItems.length}, hasMore: ${newItems.length >= _pageLimit}');
 
         if (!mounted) return decoded;
 
@@ -1450,7 +1450,7 @@ class _BorsaScreenState extends State<BorsaScreen> {
           responseData['wallet_history'] = _walletHistory;
         });
       } else {
-        debugPrint('### [WALLET_HISTORY] FAILED response: $decoded');
+        // debugPrint('### [WALLET_HISTORY] FAILED response: $decoded');
         if (!isLoadMore) {
           responseData = decoded;
         }
@@ -1458,7 +1458,7 @@ class _BorsaScreenState extends State<BorsaScreen> {
 
       return decoded;
     } catch (e) {
-      debugPrint('### [WALLET_HISTORY] ERROR: $e');
+      // debugPrint('### [WALLET_HISTORY] ERROR: $e');
       return null;
     } finally {
       if (!isLoadMore) {

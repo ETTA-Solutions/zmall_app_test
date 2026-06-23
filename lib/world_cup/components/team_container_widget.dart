@@ -7,14 +7,24 @@ class TeamContainer extends StatelessWidget {
   const TeamContainer({
     super.key,
     required this.teamName,
+    required this.gameType,
   });
 
   final String teamName;
+  // Added: needed to distinguish between World Cup (nation/) and club (pl_logos/) logos
+  final String gameType;
+
+  // Routes to nation/ folder for World Cup, pl_logos/ for club games
+  String get _logoPath {
+    final code = teamName.trim(); // trim any trailing/leading spaces from API data
+    if (gameType.toLowerCase().contains('world')) {
+      return "images/pl_logos/nation/${code.toUpperCase()}.png"; // e.g. nation/GER.png
+    }
+    return "images/pl_logos/${code.toLowerCase()}.png"; // e.g. pl_logos/che.png
+  }
 
   @override
   Widget build(BuildContext context) {
-    // DateTime euroPredictStart = DateTime(2024, 06, 10);
-    // DateTime euroPredictEnd = DateTime(2024, 07, 15);
     return Expanded(
       child: Column(
         children: [
@@ -23,8 +33,7 @@ class TeamContainer extends StatelessWidget {
             width: getProportionateScreenWidth(kDefaultPadding * 3),
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(
-                    "images/pl_logos/${teamName.toString().toLowerCase()}.png"),
+                image: AssetImage(_logoPath),
                 fit: BoxFit.fill,
               ),
               shape: BoxShape.rectangle,

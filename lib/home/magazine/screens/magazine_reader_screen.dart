@@ -413,17 +413,17 @@ class _MagazineReaderScreenState extends State<MagazineReaderScreen> {
                 });
               },
               onReceivedHttpError: (controller, request, response) {
-                debugPrint(
-                  'HTTP Error: ${response.statusCode} for ${request.url}',
-                );
+                // debugPrint(
+                //   'HTTP Error: ${response.statusCode} for ${request.url}',
+                // );
               },
               onConsoleMessage: (controller, consoleMessage) {
-                debugPrint(
-                  'WebView Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}',
-                );
+                // debugPrint(
+                //   'WebView Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}',
+                // );
               },
               shouldOverrideUrlLoading: (controller, navigationAction) async {
-                debugPrint('Navigation to: ${navigationAction.request.url}');
+                // debugPrint('Navigation to: ${navigationAction.request.url}');
                 return NavigationActionPolicy.ALLOW;
               },
             ),

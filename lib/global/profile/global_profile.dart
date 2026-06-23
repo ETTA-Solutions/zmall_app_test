@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:iconsx_plus/iconsx_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
@@ -57,7 +57,8 @@ class _GlobalProfileState extends State<GlobalProfile> {
                     username = val;
                   },
                   decoration: textFieldInputDecorator.copyWith(
-                      labelText: username.isNotEmpty ? username : "Full Name"),
+                    labelText: username.isNotEmpty ? username : "Full Name",
+                  ),
                 ),
                 Container(
                   height: getProportionateScreenHeight(kDefaultPadding),
@@ -69,7 +70,8 @@ class _GlobalProfileState extends State<GlobalProfile> {
                     email = val;
                   },
                   decoration: textFieldInputDecorator.copyWith(
-                      labelText: email.isNotEmpty ? email : "Email"),
+                    labelText: email.isNotEmpty ? email : "Email",
+                  ),
                 ),
               ],
             ),
@@ -85,9 +87,10 @@ class _GlobalProfileState extends State<GlobalProfile> {
                 onPressed: () async {
                   if (username.isNotEmpty && email.isNotEmpty) {
                     var abroadUser = AbroadData(
-                        abroadName: username,
-                        abroadEmail: email,
-                        abroadPhone: user.phoneNumber);
+                      abroadName: username,
+                      abroadEmail: email,
+                      abroadPhone: user.phoneNumber,
+                    );
                     setState(() {
                       abroadData = abroadUser;
                     });
@@ -122,10 +125,7 @@ class _GlobalProfileState extends State<GlobalProfile> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text(
-          "Profile",
-          style: TextStyle(color: kBlackColor),
-        ),
+        title: Text("Profile", style: TextStyle(color: kBlackColor)),
         elevation: 1.0,
       ),
       body: Padding(
@@ -136,8 +136,9 @@ class _GlobalProfileState extends State<GlobalProfile> {
         child: Column(
           children: [
             Container(
-              padding:
-                  EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
+              padding: EdgeInsets.all(
+                getProportionateScreenWidth(kDefaultPadding),
+              ),
               width: double.infinity,
               decoration: BoxDecoration(
                 color: kPrimaryColor,
@@ -148,27 +149,28 @@ class _GlobalProfileState extends State<GlobalProfile> {
               child: Column(
                 children: [
                   ImageContainer(
-                      url:
-                          "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/"),
+                    url:
+                        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/",
+                  ),
                   SizedBox(
-                      height:
-                          getProportionateScreenHeight(kDefaultPadding / 2)),
+                    height: getProportionateScreenHeight(kDefaultPadding / 2),
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         abroadData != null ? abroadData!.abroadName! : "",
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       abroadData != null && abroadData!.abroadPhone != null
                           ? Icon(
                               Icons.verified_outlined,
                               color: kSecondaryColor,
-                              size:
-                                  getProportionateScreenWidth(kDefaultPadding),
+                              size: getProportionateScreenWidth(
+                                kDefaultPadding,
+                              ),
                             )
                           : Container(),
                     ],
@@ -202,56 +204,45 @@ class _GlobalProfileState extends State<GlobalProfile> {
             ),
             SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
             ProfileListTile(
-              icon: Icon(
-                Icons.shopping_bag_rounded,
-                color: kSecondaryColor,
-              ),
+              icon: Icon(Icons.shopping_bag_rounded, color: kSecondaryColor),
               title: "My Orders",
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return GlobalOrder();
-                }));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return GlobalOrder();
+                    },
+                  ),
+                );
               },
             ),
-            SizedBox(
-              height: getProportionateScreenHeight(kDefaultPadding / 2),
-            ),
+            SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
             ProfileListTile(
-              icon: Icon(
-                Icons.help,
-                color: kSecondaryColor,
-              ),
+              icon: Icon(Icons.help, color: kSecondaryColor),
               title: "Help",
               onTap: () {
                 Navigator.pushNamed(context, HelpScreen.routeName);
               },
             ),
-            SizedBox(
-              height: getProportionateScreenHeight(kDefaultPadding / 2),
-            ),
+            SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
             ProfileListTile(
-              icon: Icon(
-                FontAwesomeIcons.instagram,
-                color: kSecondaryColor,
-              ),
+              icon: Icon(FontAwesome.instagram_brand, color: kSecondaryColor),
               title: "Follow us on Instagram",
               onTap: () {
                 Service.launchInWebViewOrVC(
-                    "https://www.instagram.com/zmall_delivery/?hl=en");
+                  "https://www.instagram.com/zmall_delivery/?hl=en",
+                );
               },
             ),
-            SizedBox(
-              height: getProportionateScreenHeight(kDefaultPadding / 2),
-            ),
+            SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
             ProfileListTile(
-              icon: Icon(
-                Icons.facebook,
-                color: kSecondaryColor,
-              ),
+              icon: Icon(Icons.facebook, color: kSecondaryColor),
               title: "Follow us on Facebook",
               onTap: () {
                 Service.launchInWebViewOrVC(
-                    "https://www.facebook.com/Zmallshop/");
+                  "https://www.facebook.com/Zmallshop/",
+                );
               },
             ),
             Spacer(),
@@ -301,10 +292,7 @@ class _GlobalProfileState extends State<GlobalProfile> {
               },
             ),
             TextButton(
-              child: Text(
-                "Sure",
-                style: TextStyle(color: kBlackColor),
-              ),
+              child: Text("Sure", style: TextStyle(color: kBlackColor)),
               onPressed: () async {
                 Navigator.of(context).pop();
                 await Service.remove("abroad_user");

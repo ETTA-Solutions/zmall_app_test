@@ -14,6 +14,7 @@ import 'package:zmall/models/biometric_credential.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/services/biometric_services/biometric_credentials_manager.dart';
+import 'package:zmall/mcp/mcp_cart_screen.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/utils/tab_screen.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
@@ -649,6 +650,19 @@ class _OtpScreenState extends State<OtpScreen>
 
   ////////login//////
 
+  Future<bool> _resumePendingAiCartIfAny() async {
+    final cartId = await Service.consumePendingAiCart();
+    if (cartId != null && mounted) {
+      Navigator.pushReplacementNamed(
+        context,
+        McpCartScreen.routeName,
+        arguments: {'cartId': cartId},
+      );
+      return true;
+    }
+    return false;
+  }
+
   // get responseData => null;
   void _login({required String phone, required String password}) async {
     var loginResponseData = await login(phone, password, context);
@@ -656,8 +670,13 @@ class _OtpScreenState extends State<OtpScreen>
       if (loginResponseData['success']) {
         if (loginResponseData['user']['is_approved']) {
           Future.delayed(Duration(milliseconds: 300), () async {
-            Service.save('user', responseData);
-            Service.saveBool('logged', true);
+            await Service.save('user', responseData);
+            await Service.saveBool('logged', true);
+
+            final redirectedToPendingCart = await _resumePendingAiCartIfAny();
+            if (redirectedToPendingCart) {
+              return;
+            }
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

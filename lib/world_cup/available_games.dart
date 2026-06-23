@@ -23,6 +23,19 @@ class _AvailableGamesState extends State<AvailableGames> {
   DateTime euroPredictStart = DateTime(2024, 06, 10);
   DateTime euroPredictEnd = DateTime(2024, 07, 15);
   DateTime now = DateTime.now();
+
+  // Returns the correct logo asset path based on game type.
+  // World Cup games use national team logos (UPPERCASE) from the nation/ folder.
+  // All other games (Premier League, UCL, etc.) use club logos (lowercase) from pl_logos/.
+  String _teamLogoPath(String teamCode, String gameType) {
+    final code = teamCode
+        .trim(); // trim any trailing/leading spaces from API data
+    if (gameType.toLowerCase().contains('world')) {
+      return "images/pl_logos/nation/${code.toUpperCase()}.png"; // e.g. nation/GER.png
+    }
+    return "images/pl_logos/${code.toLowerCase()}.png"; // e.g. pl_logos/che.png
+  }
+
   bool _isLoading = false;
   bool predicted = false;
   var userPredictions;
@@ -55,22 +68,23 @@ class _AvailableGamesState extends State<AvailableGames> {
       _isLoading = true;
     });
     var data = await getGames();
-    // debugPrint("getGames data: $data");
+    debugPrint('[GAMES] parsed response: $data');
+    debugPrint('[GAMES] success: ${data?['success']}');
+    debugPrint(
+      '[GAMES] games count: ${(data?['games'] as List?)?.length ?? 'null'}',
+    );
     if (data != null && data['success']) {
       setState(() {
         _isLoading = false;
         games = data['games'];
       });
     } else {
+      debugPrint(
+        '[GAMES] failed or null — error_code: ${data?['error_code']}, message: ${data?['message']}',
+      );
       setState(() {
         _isLoading = false;
       });
-
-      // Service.showMessage(
-      //   error: false,
-      //   context: context,
-      //   title: "No new games available...",
-      // );
     }
   }
 
@@ -79,21 +93,22 @@ class _AvailableGamesState extends State<AvailableGames> {
       _isLoading = true;
     });
     var data = await getPredictions();
-    // debugPrint("_getPredictions data: $data");
+    debugPrint('[PREDICTIONS] parsed response success: ${data?['success']}');
+    debugPrint(
+      '[PREDICTIONS] scores count: ${(data?['scores'] as List?)?.length ?? 'null'}',
+    );
     if (data != null && data['success']) {
       setState(() {
         _isLoading = false;
         userPredictions = data;
       });
     } else {
+      debugPrint(
+        '[PREDICTIONS] failed — error_code: ${data?['error_code']}, message: ${data?['message']}',
+      );
       setState(() {
         _isLoading = false;
       });
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(
-      //     content: Text("${errorCodes['${data['error_code']}']}"),
-      //   ),
-      // );
     }
   }
 
@@ -140,10 +155,11 @@ class _AvailableGamesState extends State<AvailableGames> {
                       );
                     }
 
-                    // Skip games that are predicted AND not finished
-                    if (predicted && !game['is_finished']) {
-                      return const SizedBox.shrink(); // More efficient than Container(height: 0)
+                    // Skip games that the user already predicted
+                    if (predicted) {
+                      return const SizedBox.shrink();
                     }
+
                     DateTime gameTime = DateTime.parse(
                       game['game_time'],
                     ).toLocal();
@@ -165,11 +181,11 @@ class _AvailableGamesState extends State<AvailableGames> {
                       homeClubName: game['home_team'],
                       homeClubLogo:
                           game['home_team_logo'] ??
-                          "images/pl_logos/${game['home_team'].toLowerCase()}.png",
+                          _teamLogoPath(game['home_team'], game['type'] ?? ''),
                       awayClubName: game['away_team'],
                       awayClubLogo:
                           game['away_team_logo'] ??
-                          "images/pl_logos/${game['away_team'].toLowerCase()}.png",
+                          _teamLogoPath(game['away_team'], game['type'] ?? ''),
                       status: game['is_finished'] || isGameTimeFinished
                           ? "FT"
                           : isLive
@@ -194,10 +210,14 @@ class _AvailableGamesState extends State<AvailableGames> {
                               //     ? "images/pl_logos/banner.png"
                               //     : "images/pl_logos/pl_bg_dr.png",
                             ),
-                      homeErrorClubLogo:
-                          "images/pl_logos/${game['home_team'].toString().toLowerCase()}.png",
-                      awayErrorClubLogo:
-                          "images/pl_logos/${game['away_team'].toString().toLowerCase()}.png",
+                      homeErrorClubLogo: _teamLogoPath(
+                        game['home_team'].toString(),
+                        game['type'] ?? '',
+                      ),
+                      awayErrorClubLogo: _teamLogoPath(
+                        game['away_team'].toString(),
+                        game['type'] ?? '',
+                      ),
                       onPredictTap: () {
                         // Lock prediction if 1 hour or less before kickoff
                         bool isLocked =
@@ -274,6 +294,7 @@ class _AvailableGamesState extends State<AvailableGames> {
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/admin/get_game_user_history";
     Map data = {};
     var body = json.encode(data);
+    debugPrint('[GAMES] POST $url');
 
     try {
       http.Response response = await http
@@ -289,7 +310,7 @@ class _AvailableGamesState extends State<AvailableGames> {
             Duration(seconds: 15),
             onTimeout: () {
               setState(() {
-                this._isLoading = false;
+                _isLoading = false;
               });
 
               Service.showMessage(
@@ -301,24 +322,12 @@ class _AvailableGamesState extends State<AvailableGames> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
-        _isLoading = false;
-      });
-
+      debugPrint('[GAMES] status: ${response.statusCode}');
+      debugPrint('[GAMES] body: ${response.body}');
       return json.decode(response.body);
     } catch (e) {
-      // debugPrint(e);
-      if (mounted) {
-        setState(() {
-          this._isLoading = false;
-        });
-      }
-
+      debugPrint('[GAMES] exception: $e');
       return null;
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -332,6 +341,8 @@ class _AvailableGamesState extends State<AvailableGames> {
       "search_value": userData['user']["_id"],
     };
     var body = json.encode(data);
+    debugPrint('[PREDICTIONS] POST $url');
+    debugPrint('[PREDICTIONS] body: $body');
     try {
       http.Response response = await http
           .post(
@@ -346,7 +357,7 @@ class _AvailableGamesState extends State<AvailableGames> {
             Duration(seconds: 15),
             onTimeout: () {
               setState(() {
-                this._isLoading = false;
+                _isLoading = false;
               });
 
               Service.showMessage(
@@ -358,24 +369,12 @@ class _AvailableGamesState extends State<AvailableGames> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      setState(() {
-        _isLoading = false;
-      });
-
+      debugPrint('[PREDICTIONS] status: ${response.statusCode}');
+      debugPrint('[PREDICTIONS] body: ${response.body}');
       return json.decode(response.body);
     } catch (e) {
-      // debugPrint(e);
-      if (mounted) {
-        setState(() {
-          this._isLoading = false;
-        });
-      }
-
+      debugPrint('[PREDICTIONS] exception: $e');
       return null;
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 }

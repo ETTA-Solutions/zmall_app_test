@@ -88,21 +88,36 @@ class _NotificationStoreState extends State<NotificationStore> {
     _getAppKeys();
     await getStoreProductList();
     if (responseData != null && responseData['success']) {
-      isOpen = await Service.isStoreOpen(responseData['store']);
+      if (responseData['store'] != null && responseData['products'] != null) {
+        isOpen = await Service.isStoreOpen(responseData['store']);
+        if (mounted) {
+          setState(() {
+            store = responseData['store'];
+            products = responseData['products'];
+            storeName = responseData['store']['name'];
+          });
+        }
+      } else {
+        if (mounted) {
+          Service.showMessage(
+            context: context,
+            title: "Products are not available for this store yet.",
+            error: true,
+          );
+        }
+      }
+    } else {
       if (mounted) {
         setState(() {
-          store = responseData['store'];
-          products = responseData['products'];
-          storeName = responseData['store']['name'];
+          _loading = false;
         });
+        final code = responseData?['error_code']?.toString() ?? '';
+        final msg =
+            responseData?['message']?.toString() ?? 'Failed to load products';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
-      // debugPrint("Is open : $isOpen");
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${errorCodes['${responseData['error_code']}']}"),
-        ),
-      );
     }
   }
 
@@ -244,9 +259,14 @@ class _NotificationStoreState extends State<NotificationStore> {
                                 ),
                               ),
                               title: Text(
-                                "${Service.capitalizeFirstLetters(products[index]["_id"]["name"])}",
+                                Service.capitalizeFirstLetters(
+                                  products[index]["_id"]["name"].toString(),
+                                ),
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(fontWeight: FontWeight.w700),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
                               ),
                               children: [
                                 ListView.separated(
@@ -729,12 +749,31 @@ class _NotificationStoreState extends State<NotificationStore> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      var decodedResponse = json.decode(response.body);
+
+      // debugPrint("=== PRODUCTS RESPONSE ===");
+      // debugPrint("Response: ${json.encode(decodedResponse)}");
+
+      if (decodedResponse['products'] != null) {
+        // debugPrint("Products count: ${decodedResponse['products'].length}");
+        if (decodedResponse['products'].isNotEmpty) {
+          // debugPrint(
+          //   "First product structure: ${json.encode(decodedResponse['products'][0])}",
+          // );
+          if (decodedResponse['products'][0]['_id'] != null) {
+            // debugPrint(
+            //   "First category: ${decodedResponse['products'][0]['_id']['name']}",
+            // );
+          }
+        }
+      }
+
       setState(() {
-        this.responseData = json.decode(response.body);
+        this.responseData = decodedResponse;
         this._loading = false;
       });
 
-      return json.decode(response.body);
+      return decodedResponse;
     } catch (e) {
       // debugPrint(e);
       if (mounted) {

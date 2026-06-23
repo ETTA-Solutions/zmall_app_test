@@ -9,6 +9,8 @@ class ScorePredictionWidget extends StatelessWidget {
   final bool isPredicted;
   final String homeTeam;
   final String awayTeam;
+  // Added: passed down to TeamContainer to select the correct logo folder
+  final String gameType;
   final int homeScore;
   final int awayScore;
   final VoidCallback onHomeIncrement;
@@ -20,6 +22,7 @@ class ScorePredictionWidget extends StatelessWidget {
     super.key,
     required this.homeTeam,
     required this.awayTeam,
+    required this.gameType,
     required this.homeScore,
     required this.awayScore,
     required this.onHomeIncrement,
@@ -145,7 +148,7 @@ class ScorePredictionWidget extends StatelessWidget {
           SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
           Row(
             children: [
-              TeamContainer(teamName: homeTeam),
+              TeamContainer(teamName: homeTeam, gameType: gameType),
               buildScoreColumn(
                 score: homeScore,
                 onIncrement: onHomeIncrement,
@@ -159,7 +162,7 @@ class ScorePredictionWidget extends StatelessWidget {
                 onDecrement: onAwayDecrement,
                 context: context,
               ),
-              TeamContainer(teamName: awayTeam),
+              TeamContainer(teamName: awayTeam, gameType: gameType),
             ],
           ),
         ],

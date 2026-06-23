@@ -1,13 +1,43 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- package="com.enigma.zmall"> -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <!-- Email (mailto:) — required for canLaunchUrl/openEmail on Android 11+ -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <!-- Phone dialer (tel:) -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <!-- SMS (sms:) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="sms" />
+        </intent>
+    </queries>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- ChatGPT/AI Chatbot Permissions -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <application
         android:label="ZMall"
         android:usesCleartextTraffic="true"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -43,16 +73,43 @@
                 <action android:name="FLUTTER_NOTIFICATION_CLICK" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Deep linking -->
-            <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
+            <!-- Deep linking handled by app_links package, not Flutter built-in -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:host="zmall.page.link" />
                 <data android:scheme="https" />
+            </intent-filter> 
+            <!-- zmall://cart/{cartId} — AI cart deep link from ChatGPT -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="zmall" android:host="cart" />
             </intent-filter>
-
+            <!-- https://testapp.zmall.et/ai-cart/{cartId} — HTTPS AI cart link -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/ai-cart" />
+            </intent-filter>
+            <!-- https://testapp.zmall.et/go/cart/{cartId} — new cart deeplink format -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/cart" />
+            </intent-filter>
+            <!-- https://zmall-web.vercel.app/ai-cart/{cartId} — Vercel web AI cart link -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="zmall-web.vercel.app" android:pathPrefix="/ai-cart" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
@@ -76,5 +133,13 @@
         <meta-data
             android:name="com.facebook.sdk.ClientToken"
             android:value="3167abc63899705752c31bea73fae744" />
+        
+        <!-- ChatGPT/AI Chatbot Configuration -->
+        <meta-data
+            android:name="chatgpt_enabled"
+            android:value="true" />
+        <meta-data
+            android:name="chatgpt_service_name"
+            android:value="ZMall AI Support" />
     </application>
 </manifest>

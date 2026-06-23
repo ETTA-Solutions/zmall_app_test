@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:iconsx_plus/iconsx_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -72,11 +72,9 @@ class _EventsScreenState extends State<EventsScreen> {
       getTags(events);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Events not found..."),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Events not found...")));
       }
     }
     setState(() {
@@ -131,10 +129,9 @@ class _EventsScreenState extends State<EventsScreen> {
     }
     events.forEach((event) {
       selectedTagFilters.forEach((selectedTag) {
-        if (event['event_tags']
-            .toString()
-            .toLowerCase()
-            .contains(selectedTag)) {
+        if (event['event_tags'].toString().toLowerCase().contains(
+          selectedTag,
+        )) {
           if (!(_searchResult.contains(event))) {
             _searchResult.add(event);
           }
@@ -197,8 +194,8 @@ class _EventsScreenState extends State<EventsScreen> {
                   ),
                   GestureDetector(
                     onTap: () {},
-                    child: Icon(FontAwesomeIcons.ticketSimple),
-                  )
+                    child: Icon(FontAwesome.ticket_simple_solid),
+                  ),
                 ],
               ),
             ),
@@ -217,7 +214,7 @@ class _EventsScreenState extends State<EventsScreen> {
                 color: kPrimaryColor,
                 blurRadius: 10.0,
                 spreadRadius: 1.0,
-              )
+              ),
             ],
           ),
         ),
@@ -247,11 +244,11 @@ class _EventsScreenState extends State<EventsScreen> {
                           Container(
                             decoration: BoxDecoration(
                               image: DecorationImage(
-                                image: NetworkImage(events[index]["image_url"]
-                                            .length >
-                                        1
-                                    ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${events[index]['image_url'][1]}"
-                                    : "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${events[index]['image_url'][0]}"),
+                                image: NetworkImage(
+                                  events[index]["image_url"].length > 1
+                                      ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${events[index]['image_url'][1]}"
+                                      : "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${events[index]['image_url'][0]}",
+                                ),
                                 fit: BoxFit.cover,
                               ),
                             ),
@@ -260,9 +257,11 @@ class _EventsScreenState extends State<EventsScreen> {
                             height: size.height * 0.45,
                             padding: EdgeInsets.symmetric(
                               vertical: getProportionateScreenHeight(
-                                  kDefaultPadding / 2),
-                              horizontal:
-                                  getProportionateScreenWidth(kDefaultPadding),
+                                kDefaultPadding / 2,
+                              ),
+                              horizontal: getProportionateScreenWidth(
+                                kDefaultPadding,
+                              ),
                             ),
                             decoration: BoxDecoration(
                               color: kPrimaryColor,
@@ -277,7 +276,8 @@ class _EventsScreenState extends State<EventsScreen> {
                               borderRadius: BorderRadius.only(
                                 bottomRight: Radius.circular(
                                   getProportionateScreenWidth(
-                                      kDefaultPadding * 10),
+                                    kDefaultPadding * 10,
+                                  ),
                                 ),
                                 bottomLeft: Radius.circular(
                                   getProportionateScreenWidth(kDefaultPadding),
@@ -292,7 +292,8 @@ class _EventsScreenState extends State<EventsScreen> {
                                 children: [
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 2),
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
                                   Row(
                                     children: [
@@ -303,14 +304,16 @@ class _EventsScreenState extends State<EventsScreen> {
                                           Icons.verified,
                                           color: kSecondaryColor,
                                           size: getProportionateScreenWidth(
-                                              kDefaultPadding),
+                                            kDefaultPadding,
+                                          ),
                                         ),
                                       if (events[index]['is_featured'] !=
                                               null &&
                                           events[index]['is_featured'])
                                         SizedBox(
                                           width: getProportionateScreenWidth(
-                                              kDefaultPadding / 2),
+                                            kDefaultPadding / 2,
+                                          ),
                                         ),
                                       Expanded(
                                         child: Text(
@@ -330,80 +333,86 @@ class _EventsScreenState extends State<EventsScreen> {
                                   ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 4),
+                                      kDefaultPadding / 4,
+                                    ),
                                   ),
                                   Text(
                                     events[index]['description'].toString(),
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleSmall
-                                        ?.copyWith(
-                                          color: kBlackColor,
-                                        ),
+                                        ?.copyWith(color: kBlackColor),
                                     textAlign: TextAlign.left,
                                   ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 2),
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
                                   DescriptionRow(
-                                      title: events[index]
-                                          ['organization_detail']['name'],
-                                      iconData: Icons.perm_identity),
+                                    title:
+                                        events[index]['organization_detail']['name'],
+                                    iconData: Icons.perm_identity,
+                                  ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 2),
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
                                   DescriptionRow(
-                                      title: events[index]['address'],
-                                      iconData: FontAwesomeIcons.mapPin),
+                                    title: events[index]['address'],
+                                    iconData: FontAwesome.map_pin_solid,
+                                  ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 2),
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
                                   DescriptionRow(
                                     title: events[index]['start_date']
                                         .toString()
                                         .split("T")[0],
-                                    iconData: FontAwesomeIcons.calendar,
+                                    iconData: FontAwesome.calendar,
                                   ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 2),
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
                                   DescriptionRow(
                                     title: events[index]['event_tags'],
-                                    iconData: FontAwesomeIcons.tag,
+                                    iconData: FontAwesome.tag_solid,
                                   ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding),
+                                      kDefaultPadding,
+                                    ),
                                   ),
-// Container(
-//                               margin: EdgeInsets.only(
-//                                 left: kDefaultPadding,
-//                                 top: kDefaultPadding / 2,
-//                               ),
-//                               width: kDefaultPadding * 10,
-//                               height: getProportionateScreenHeight(
-//                                   kDefaultPadding * 3),
-//                               child: CustomButton(
-//                                 title:
+                                  // Container(
+                                  //                               margin: EdgeInsets.only(
+                                  //                                 left: kDefaultPadding,
+                                  //                                 top: kDefaultPadding / 2,
+                                  //                               ),
+                                  //                               width: kDefaultPadding * 10,
+                                  //                               height: getProportionateScreenHeight(
+                                  //                                   kDefaultPadding * 3),
+                                  //                               child: CustomButton(
+                                  //                                 title:
                                   // ticketPrices[index] > 0
                                   //     ? "From ETB ${ticketPrices[index].toStringAsFixed(2)}"
                                   //     : "Free",
-//                                 press: () {
-//                                   Navigator.push(
-//                                       context,
-//                                       MaterialPageRoute(
-//                                           builder: (context) =>
-//                                               EventSantimPayScreen(
-//                                                 url: events[index]
-//                                                     ['ticket_url'],
-//                                                 title: events[index]['name'],
-//                                               )));
-//                                 },
-//
+                                  //                                 press: () {
+                                  //                                   Navigator.push(
+                                  //                                       context,
+                                  //                                       MaterialPageRoute(
+                                  //                                           builder: (context) =>
+                                  //                                               EventSantimPayScreen(
+                                  //                                                 url: events[index]
+                                  //                                                     ['ticket_url'],
+                                  //                                                 title: events[index]['name'],
+                                  //                                               )));
+                                  //                                 },
+                                  //
                                   // setState(() {
                                   //   isSelected = -1;
                                   //   selectedPrice = 0.0;
@@ -723,7 +732,8 @@ class _EventsScreenState extends State<EventsScreen> {
                           ),
                           SizedBox(
                             height: getProportionateScreenHeight(
-                                kDefaultPadding / 2),
+                              kDefaultPadding / 2,
+                            ),
                           ),
                           Align(
                             alignment: Alignment.centerLeft,
@@ -734,7 +744,8 @@ class _EventsScreenState extends State<EventsScreen> {
                               ),
                               width: kDefaultPadding * 10,
                               height: getProportionateScreenHeight(
-                                  kDefaultPadding * 3),
+                                kDefaultPadding * 3,
+                              ),
                               child: CustomButton(
                                 title: 'Get ticket',
                                 // ticketPrices[index] > 0
@@ -742,14 +753,15 @@ class _EventsScreenState extends State<EventsScreen> {
                                 //     : "Free",
                                 press: () {
                                   Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              EventSantimPayScreen(
-                                                url: events[index]
-                                                    ['ticket_url'],
-                                                title: events[index]['name'],
-                                              )));
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          EventSantimPayScreen(
+                                            url: events[index]['ticket_url'],
+                                            title: events[index]['name'],
+                                          ),
+                                    ),
+                                  );
                                 },
                                 color: kBlackColor,
                               ),
@@ -758,14 +770,15 @@ class _EventsScreenState extends State<EventsScreen> {
                           if (events.length - index != 1)
                             Padding(
                               padding: EdgeInsets.all(
-                                  getProportionateScreenWidth(kDefaultPadding)),
+                                getProportionateScreenWidth(kDefaultPadding),
+                              ),
                               child: Align(
                                 alignment: Alignment.bottomCenter,
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     Icon(
-                                      FontAwesomeIcons.circleUp,
+                                      FontAwesome.circle_up,
                                       color: kSecondaryColor,
                                     ),
                                     Text(
@@ -773,9 +786,7 @@ class _EventsScreenState extends State<EventsScreen> {
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyLarge
-                                          ?.copyWith(
-                                            color: kSecondaryColor,
-                                          ),
+                                          ?.copyWith(color: kSecondaryColor),
                                       textAlign: TextAlign.center,
                                       softWrap: true,
                                     ),
@@ -787,15 +798,14 @@ class _EventsScreenState extends State<EventsScreen> {
                       ),
                     ),
                   );
-                })
+                },
+              )
             : _loading
-                ? SpinKitWave(
-                    color: kSecondaryColor,
-                    size: getProportionateScreenWidth(kDefaultPadding),
-                  )
-                : Center(
-                    child: Text("Loading Events"),
-                  ),
+            ? SpinKitWave(
+                color: kSecondaryColor,
+                size: getProportionateScreenWidth(kDefaultPadding),
+              )
+            : Center(child: Text("Loading Events")),
       ),
     );
   }
@@ -817,31 +827,32 @@ class _EventsScreenState extends State<EventsScreen> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 15),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          if (mounted) {
-            Service.showMessage(
-              context: context,
-              title: "Something went wrong! Check your internet and try again",
-              error: true,
-              duration: 3,
-            );
-          }
+            Duration(seconds: 15),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              if (mounted) {
+                Service.showMessage(
+                  context: context,
+                  title:
+                      "Something went wrong! Check your internet and try again",
+                  error: true,
+                  duration: 3,
+                );
+              }
 
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         this.eventsData = json.decode(response.body);
         this._loading = false;

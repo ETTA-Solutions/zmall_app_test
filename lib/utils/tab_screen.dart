@@ -102,7 +102,7 @@ class _TabScreenState extends State<TabScreen> {
       ),
       if (_isChatbotEnabled)
         BottomNavigationBarItem(
-          // icon: FaIcon(FontAwesomeIcons.robot, size: 22),
+          // icon: FaIcon(FontAwesome.robot, size: 22),
           icon: Icon(HeroiconsOutline.chatBubbleLeftEllipsis),
           activeIcon: Icon(HeroiconsMini.chatBubbleLeftEllipsis),
           label: Provider.of<ZLanguage>(context).chatbot,

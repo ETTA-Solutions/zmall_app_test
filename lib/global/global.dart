@@ -651,7 +651,7 @@ class _GlobalScreenState extends State<GlobalScreen> {
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
                                       // Add resend logic here
-                                      debugPrint("Resend OTP");
+                                      // debugPrint("Resend OTP");
                                     },
                                 ),
                               ],

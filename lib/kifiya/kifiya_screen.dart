@@ -120,7 +120,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     required String merchOrderId,
     int intervalSeconds = 3,
   }) async {
-    debugPrint('🔍 Polling Telebirr status for merchOrderId: $merchOrderId');
+    // debugPrint('🔍 Polling Telebirr status for merchOrderId: $merchOrderId');
 
     if (!mounted) return false;
 
@@ -175,9 +175,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           message = data['message']?.toString();
         }
 
-        debugPrint(
-          '📊 Telebirr poll #$attempt => status: $status, success: $success, message: $message',
-        );
+        // debugPrint(
+        //   '📊 Telebirr poll #$attempt => status: $status, success: $success, message: $message',
+        // );
 
         if (status != null) {
           final upperStatus = status.toUpperCase();
@@ -196,7 +196,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           }
         }
       } catch (e) {
-        debugPrint('⚠️ Telebirr poll error (retrying): $e');
+        // debugPrint('⚠️ Telebirr poll error (retrying): $e');
       }
 
       await Future.delayed(Duration(seconds: intervalSeconds));
@@ -642,7 +642,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   }
 
   Future<bool> _boaVerify() async {
-    debugPrint('###[_boaVerify] Starting BOA verification');
+    // debugPrint('###[_boaVerify] Starting BOA verification');
     if (!mounted) return false;
     setState(() {
       _loading = true;
@@ -669,9 +669,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           error: true,
           duration: 5,
         );
-        debugPrint(
-          '###[_boaVerify] Images invalid after verification - aborting',
-        );
+        // debugPrint(
+        //   '###[_boaVerify] Images invalid after verification - aborting',\n        // );
         return false;
       }
 
@@ -691,9 +690,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                 aliexpressCart!.cart.storeId == cart.storeId)
           ? _createAliexpressOrder()
           : _createOrder();
-      debugPrint(
-        '###[_boaVerify] Verification succeeded and order flow started',
-      );
+      // debugPrint(
+      //   '###[_boaVerify] Verification succeeded and order flow started',
+      // );
       return true;
     } else {
       setState(() {
@@ -705,9 +704,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           kifiyaMethod = 1;
         }
       });
-      debugPrint(
-        '###[_boaVerify] Verification failed or returned null: ${data ?? 'null'}',
-      );
+      // debugPrint(
+      //   '###[_boaVerify] Verification failed or returned null: ${data ?? 'null'}',
+      // );
       await useBorsa();
       Service.showMessage(
         context: context,
@@ -2100,30 +2099,27 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                       },
                                                     ),
                                                   ).then((value) async {
-                                                    debugPrint(
-                                                      '###[Telebirr] Returned from in-app flow, checking with boaVerify() first',
-                                                    );
-                                                    final verified =
-                                                        await _boaVerify();
-
-                                                    debugPrint(
-                                                      '###[Telebirr] _boaVerify() result: $verified',
-                                                    );
-
-                                                    if (verified) {
-                                                      debugPrint(
-                                                        '###[Telebirr] _boaVerify succeeded; skipping polling fallback',
-                                                      );
-                                                      return;
-                                                    }
-
-                                                    // If verification failed, wait briefly then fallback to polling
-                                                    debugPrint(
-                                                      '###[Telebirr] _boaVerify did not confirm payment; delaying then polling',
-                                                    );
-                                                    await Future.delayed(
-                                                      Duration(seconds: 3),
-                                                    );
+                                                    // DISABLED: _boaVerify callback — using query/polling only
+                                                    // debugPrint(
+                                                    //   '###[Telebirr] Returned from in-app flow, checking with boaVerify() first',
+                                                    // );
+                                                    // final verified =
+                                                    //     await _boaVerify();
+                                                    // debugPrint(
+                                                    //   '###[Telebirr] _boaVerify() result: $verified',
+                                                    // );
+                                                    // if (verified) {
+                                                    //   debugPrint(
+                                                    //     '###[Telebirr] _boaVerify succeeded; skipping polling fallback',
+                                                    //   );
+                                                    //   return;
+                                                    // }
+                                                    // debugPrint(
+                                                    //   '###[Telebirr] _boaVerify did not confirm payment; delaying then polling',
+                                                    // );
+                                                    // await Future.delayed(
+                                                    //   Duration(seconds: 3),
+                                                    // );
 
                                                     final isPaid =
                                                         await pollTelebirrStatus(
@@ -2131,9 +2127,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                               "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}",
                                                         );
 
-                                                    debugPrint(
-                                                      '###[Telebirr] pollTelebirrStatus result: $isPaid',
-                                                    );
+                                                    // debugPrint(
+                                                    //   '###[Telebirr] pollTelebirrStatus result: $isPaid',
+                                                    // );
 
                                                     if (isPaid) {
                                                       Service.showMessage(
@@ -2278,12 +2274,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                   ///*******************************Addis Pay*******************************
                                   ///
                                   ///
-                                  //////
                                   ///*******************************Yagout Pay*******************************
-                                  else if (paymentResponse['payment_gateway'][index]['name']
-                                          .toString()
-                                          .toLowerCase() ==
-                                      "yagoutpay") {
+                                  else if (paymentName == "yagoutpay") {
                                     var data = await useBorsa();
                                     if (data != null && data['success']) {
                                       showDialog(
@@ -3079,7 +3071,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       //   "SECURITY: Logged failed order after payment - ID: ${widget.orderPaymentId}, Amount: $amount, Reason: $reason",
       // );
     } catch (e) {
-      debugPrint("Error logging failed order: $e");
+      // debugPrint("Error logging failed order: $e");
     }
   }
 
@@ -3240,7 +3232,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                         "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}!",
                     error: true,
                   );
-                print("else error>>> ${data['error_code']}");
+                // print("else error>>> ${data['error_code']}");
 
                 // SECURITY: Log failed order when API returns error
                 await _logFailedOrderAfterPayment(
@@ -3287,7 +3279,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             },
           );
     } catch (e) {
-      print("catch error>>> $e");
+      // print("catch error>>> $e");
 
       String errorMessage =
           "Something went wrong. Please check your internet connection!";

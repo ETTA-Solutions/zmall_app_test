@@ -137,15 +137,28 @@ class _ProductScreenState extends State<ProductScreen> {
       _loading = true;
     });
     await getStoreProductList();
-    // debugPrint("products>>>: $responseData");
     if (responseData != null && responseData['success']) {
-      products = responseData['products'];
+      if (responseData['products'] != null) {
+        products = responseData['products'];
+      } else {
+        // Backend returned a stores list instead of products (misaka store IDs
+        // are not yet supported by user_get_store_product_item_list).
+        if (mounted) {
+          Service.showMessage(
+            context: context,
+            title: "Products are not available for this store yet.",
+            error: true,
+          );
+        }
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${errorCodes['${responseData['error_code']}']}"),
-        ),
-      );
+      if (mounted) {
+        final code = responseData?['error_code']?.toString() ?? '';
+        final msg = (code.isNotEmpty && errorCodes.containsKey(code))
+            ? errorCodes[code]
+            : responseData?['message']?.toString() ?? 'Failed to load products';
+        Service.showMessage(context: context, title: msg, error: true);
+      }
     }
   }
 

@@ -27,14 +27,9 @@ class Service {
   static const String _savedPasswordKey = 'saved_password';
 
   static Future<void> launchInWebViewOrVC(String url) async {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(
-        Uri.parse(url),
-        // forceSafariVC: true,
-        // forceWebView: true,
-      );
-    } else {
-      throw 'Could not launch $url';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -128,6 +123,30 @@ class Service {
   static Future<dynamic> save(String key, value) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString(key, json.encode(value));
+  }
+
+  /// Append a structured log entry to a persistent list stored under 'service_logs'.
+  /// Keeps the most recent 200 entries to avoid unbounded growth.
+  static Future<void> appendServiceLog(Map<String, dynamic> entry) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existing = prefs.getString('service_logs');
+      List logs = existing != null ? json.decode(existing) as List : [];
+
+      // Augment with local timestamp
+      entry['logged_at'] = DateTime.now().toIso8601String();
+
+      logs.insert(0, entry);
+
+      // Trim to last 200 entries
+      if (logs.length > 200) {
+        logs = logs.sublist(0, 200);
+      }
+
+      prefs.setString('service_logs', json.encode(logs));
+    } catch (e) {
+      // ignore logging failures to avoid impacting app flow
+    }
   }
 
   static Future<dynamic> remove(String key) async {
@@ -583,28 +602,43 @@ class Service {
     DateFormat dateFormat = DateFormat.Hm();
     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
 
-    // Read app open/close times from storage if not provided
+    // Read app open/close times from storage; use defaults if missing or invalid
+    final appOpenRaw = await read('app_open');
+    final appCloseRaw = await read('app_close');
+    final String appOpenStr = (appOpenRaw is String && appOpenRaw.isNotEmpty)
+        ? appOpenRaw
+        : '00:00';
+    final String appCloseStr = (appCloseRaw is String && appCloseRaw.isNotEmpty)
+        ? appCloseRaw
+        : '23:59';
 
-    var appOpen = await read('app_open');
-    var appClose = await read('app_close');
+    DateTime zmallOpen;
+    DateTime zmallClose;
+    try {
+      final parsedOpen = dateFormat.parse(appOpenStr);
+      zmallOpen = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        parsedOpen.hour,
+        parsedOpen.minute,
+      );
+    } catch (_) {
+      zmallOpen = DateTime(now.year, now.month, now.day, 0, 0);
+    }
 
-    DateTime zmallOpen = dateFormat.parse(appOpen!);
-    DateTime zmallClose = dateFormat.parse(appClose!);
-
-    zmallOpen = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      zmallOpen.hour,
-      zmallOpen.minute,
-    );
-    zmallClose = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      zmallClose.hour,
-      zmallClose.minute,
-    );
+    try {
+      final parsedClose = dateFormat.parse(appCloseStr);
+      zmallClose = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        parsedClose.hour,
+        parsedClose.minute,
+      );
+    } catch (_) {
+      zmallClose = DateTime(now.year, now.month, now.day, 23, 59);
+    }
 
     stores.forEach((store) {
       bool isStoreOpen = false;
@@ -677,23 +711,23 @@ class Service {
           }
         }
       } else {
-        DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
-        DateTime zmallClose = DateTime(now.year, now.month, now.day, 21, 00);
-        DateFormat dateFormat = DateFormat.Hm();
-        if (appClose != null) {
-          zmallClose = dateFormat.parse(appClose);
-        }
-
-        zmallClose = DateTime(
-          now.year,
-          now.month,
-          now.day,
-          zmallClose.hour,
-          zmallClose.minute,
+        // No store_time provided: use app-wide open/close times computed above
+        final current = DateTime.now().toUtc().add(Duration(hours: 3));
+        final truncatedNow = DateTime(
+          current.year,
+          current.month,
+          current.day,
+          current.hour,
+          current.minute,
         );
-        now = DateTime(now.year, now.month, now.day, now.hour, now.minute);
 
-        now.isAfter(zmallClose) ? isStoreOpen = false : isStoreOpen = true;
+        // zmallClose and zmallOpen were computed earlier with safe defaults
+        if (truncatedNow.isAfter(zmallClose) ||
+            truncatedNow.isBefore(zmallOpen)) {
+          isStoreOpen = false;
+        } else {
+          isStoreOpen = true;
+        }
       }
       isOpen.add(isStoreOpen);
     });
@@ -731,9 +765,7 @@ class Service {
         List ordersList = response['orders'] ?? [];
         List<Map<String, dynamic>> proximityItems = [];
         var radiusKm = response['comparsion_km'] ?? radius;
-        debugPrint(
-          "### [DEBUG] response: $response \n### [DEBUG] radiusKm: $radiusKm \n### [DEBUG] ordersList: $ordersList",
-        );
+        // debugPrint(\n        //   \"### [DEBUG] response: $response \\n### [DEBUG] radiusKm: $radiusKm \\n### [DEBUG] ordersList: $ordersList\",\n        // );
         for (var order in ordersList) {
           // Get destination location
           var cartDetail = order['cart_detail'];
@@ -956,4 +988,23 @@ class Service {
   // }
 
   ///////////////////////////Proximity Order Methods Closed ==////////////////////
+
+  /// Reads and clears a pending AI cart saved before login.
+  /// Returns the cartId if one exists and is less than 2 hours old, else null.
+  static Future<String?> consumePendingAiCart() async {
+    final pendingRaw = await Service.read('pending_ai_cart');
+    if (pendingRaw == null) return null;
+
+    final pending =
+        pendingRaw is Map ? pendingRaw : jsonDecode(pendingRaw.toString());
+    final savedAt = pending['saved_at'] as int? ?? 0;
+    final ageMs = DateTime.now().millisecondsSinceEpoch - savedAt;
+
+    await Service.remove('pending_ai_cart');
+
+    if (ageMs < 2 * 60 * 60 * 1000) {
+      return pending['cart_id'] as String?;
+    }
+    return null;
+  }
 }

@@ -17,6 +17,7 @@ import 'package:zmall/utils/tab_screen.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:zmall/login/login_screen.dart';
+import 'package:zmall/utils/navigator_key.dart';
 import 'component/loader.dart';
 import 'component/splash_container.dart';
 
@@ -31,83 +32,9 @@ class _SplashScreenState extends State<SplashScreen> {
   bool logged = false;
   late String imageUrl, urlLink, adId;
   bool loading = true;
+  bool _hasNavigatedAway = false;
   String _projectVersion = '';
   LocationPermission _permissionStatus = LocationPermission.denied;
-
-  String? _extractInternalAdRoute(String link) {
-    final trimmed = link.trim();
-    if (trimmed.isEmpty) return null;
-
-    if (trimmed.startsWith('store/') || trimmed.startsWith('item/')) {
-      return trimmed;
-    }
-
-    final uri = Uri.tryParse(trimmed);
-    if (uri != null) {
-      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-      if (segments.length >= 2) {
-        if (segments[0].toLowerCase() == 'store') {
-          return 'store/${segments[1]}';
-        }
-        if (segments[0].toLowerCase() == 'item') {
-          return 'item/${segments[1]}';
-        }
-      }
-
-      final qStore =
-          uri.queryParameters['store_id'] ?? uri.queryParameters['storeId'];
-      if (qStore != null && qStore.isNotEmpty) {
-        return 'store/$qStore';
-      }
-
-      final qItem =
-          uri.queryParameters['item_id'] ?? uri.queryParameters['itemId'];
-      if (qItem != null && qItem.isNotEmpty) {
-        return 'item/$qItem';
-      }
-    }
-
-    final storeMatch = RegExp(
-      r'(^|/)store/([^/?#]+)',
-      caseSensitive: false,
-    ).firstMatch(trimmed);
-    if (storeMatch != null && storeMatch.groupCount >= 2) {
-      return 'store/${storeMatch.group(2)!}';
-    }
-
-    final itemMatch = RegExp(
-      r'(^|/)item/([^/?#]+)',
-      caseSensitive: false,
-    ).firstMatch(trimmed);
-    if (itemMatch != null && itemMatch.groupCount >= 2) {
-      return 'item/${itemMatch.group(2)!}';
-    }
-
-    return null;
-  }
-
-  String _resolveAdUrlLink({
-    required String storeId,
-    required String itemId,
-    required String externalLink,
-  }) {
-    final normalizedStoreId = storeId.trim();
-    final normalizedItemId = itemId.trim();
-    final normalizedExternalLink = externalLink.trim();
-
-    final internalRoute = _extractInternalAdRoute(normalizedExternalLink);
-    if (internalRoute != null) return internalRoute;
-
-    if (normalizedStoreId.isNotEmpty) {
-      return 'store/$normalizedStoreId';
-    }
-
-    if (normalizedItemId.isNotEmpty) {
-      return 'item/$normalizedItemId';
-    }
-
-    return normalizedExternalLink;
-  }
 
   @override
   void initState() {
@@ -245,6 +172,12 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   onDoneLoading() async {
+    if (_hasNavigatedAway || !mounted || isProcessingDeepLinkCart) {
+      return;
+    }
+
+    _hasNavigatedAway = true;
+
     bool? isGlobal = await Service.readBool('is_global');
     var abroadData = await Service.read('abroad_user');
     if (mounted) {
@@ -288,6 +221,25 @@ class _SplashScreenState extends State<SplashScreen> {
         // debugPrint("No logged user found");
       }
     }
+
+    // DEBUG: print user credentials for deeplink testing
+    var userData = await Service.read('user');
+    if (userData != null) {
+      // print('\n');
+      // print('╔═══════════════════════════════════════════════════════════');
+      // print('║  DEEPLINK TEST CREDENTIALS — from splash isLogged()');
+      // print('║  user_id      : ${userData['user']?['_id']}');
+      // print('║  server_token : ${userData['user']?['server_token']}');
+      // print('║  phone        : ${userData['user']?['phone']}');
+      // print('║  cart_id      : ${userData['user']?['cart_id']}');
+      // print('║');
+      // print('║  Create a test AI cart with:');
+      // print('║  curl -X POST $BASE_URL/api/ai/cart \\');
+      // print('║    -H "Content-Type: application/json" \\');
+      // print('║    -d \'{"user_id":"${userData['user']?['_id']}","server_token":"${userData['user']?['server_token']}","store_id":"<storeId>","items":[...]}\' ');
+      // print('║  Then fire:  adb shell am start -a android.intent.action.VIEW -d "zmall://cart/<returned_cart_id>"');
+      // print('╚═══════════════════════════════════════════════════════════\n');
+    }
   }
 
   @override
@@ -311,7 +263,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<String> getAd() async {
     final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
     var url = Uri.parse("$baseUrl/admin/get_all_advertises");
-    debugPrint("###[SPLASH] Fetching ads from: $url");
+    // debugPrint("###[SPLASH] Fetching ads from: $url");
     try {
       http.Response response = await http
           .post(
@@ -327,14 +279,14 @@ class _SplashScreenState extends State<SplashScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      debugPrint(
-        "###[SPLASH] HTTP status: ${response.statusCode}, content-type: ${response.headers['content-type']}",
-      );
-      debugPrint(
-        "###[SPLASH] Response body (first 300 chars): ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}",
-      );
+      // debugPrint(
+      //   "###[SPLASH] HTTP status: ${response.statusCode}, content-type: ${response.headers['content-type']}",
+      // );
+      // debugPrint(
+      //   "###[SPLASH] Response body (first 300 chars): ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}",
+      // );
       if (response.statusCode != 200) {
-        debugPrint("###[SPLASH] Server returned status ${response.statusCode}");
+        // debugPrint("###[SPLASH] Server returned status ${response.statusCode}");
         loader(5);
         return "failed";
       }
@@ -343,65 +295,36 @@ class _SplashScreenState extends State<SplashScreen> {
       try {
         data = json.decode(response.body);
       } on FormatException catch (e) {
-        debugPrint("###[SPLASH] JSON parse error: $e");
+        // debugPrint("###[SPLASH] JSON parse error: $e");
         loader(5);
         return "failed";
       }
 
-      debugPrint(
-        "###[SPLASH] API response success: ${data['success']}, ads count: ${data['advertises']?.length ?? 0}",
-      );
-
       if (data['success'] == true &&
           data['advertises'] != null &&
           data['advertises'].length > 0) {
-        // Filter to only visible ads, then take the last one
         final allAds = data['advertises'] as List;
         final visibleAds = allAds
             .where((ad) => ad['is_ads_visible'] == true)
             .toList();
-        debugPrint(
-          "###[SPLASH] Total ads: ${allAds.length}, Visible ads: ${visibleAds.length}",
-        );
 
-        if (visibleAds.isEmpty) {
-          debugPrint("###[SPLASH] No visible ads found");
-          return "success";
-        }
+        if (visibleAds.isEmpty) return "success";
 
-        final ad = visibleAds.last;
-        debugPrint("###[SPLASH] Full ad keys: ${ad.keys.toList()}");
-        debugPrint("###[SPLASH] image_url: ${ad['image_url']}");
+        final ad = visibleAds.first;
         final rawImageUrl = ad['image_url']?.toString() ?? '';
         final adImageUrl = rawImageUrl.startsWith('http')
             ? rawImageUrl
             : "$baseUrl/$rawImageUrl";
-        debugPrint("###[SPLASH] Selected ad ID: ${ad['_id']}");
-        debugPrint("###[SPLASH] Final Image URL: $adImageUrl");
 
         if (!mounted) return "failed";
 
-        final storeId = ad['store_id']?.toString() ?? '';
-        final itemId = ad['item_id']?.toString() ?? '';
-        final externalLink =
-            ad['external_link']?.toString() ??
-            ad['url']?.toString() ??
-            ad['url_link']?.toString() ??
-            ad['link']?.toString() ??
-            '';
+        final urlLinkValue = (ad['url_link'] != null && ad['url_link'].toString().isNotEmpty)
+            ? ad['url_link']
+            : ad['store_id'] != null
+                ? 'store/${ad['store_id']}'
+                : 'item/${ad['item_id']}';
 
-        final urlLinkValue = _resolveAdUrlLink(
-          storeId: storeId,
-          itemId: itemId,
-          externalLink: externalLink,
-        );
-
-        debugPrint(
-          "###[SPLASH] Loaded ad -> image_url: $adImageUrl, store_id: $storeId, item_id: $itemId",
-        );
-        debugPrint(
-          "###[SPLASH] Routing ad -> store_id: $storeId, item_id: $itemId, external_link: $externalLink, final urlLink: $urlLinkValue",
-        );
+        if (isProcessingDeepLinkCart) return "success";
 
         setState(() {
           imageUrl = adImageUrl;
@@ -410,15 +333,10 @@ class _SplashScreenState extends State<SplashScreen> {
           loading = !loading;
         });
         loader(3);
-        debugPrint(
-          "###[SPLASH] Ad loaded successfully, showing splash container",
-        );
-      } else {
-        debugPrint("###[SPLASH] No ads available or API failed");
       }
       return "success";
     } catch (e) {
-      debugPrint("###[SPLASH] ERROR: $e");
+      // debugPrint("###[SPLASH] ERROR: $e");
       loader(5);
       return "failed";
     }

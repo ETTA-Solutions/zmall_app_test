@@ -27,6 +27,8 @@ import 'package:zmall/profile/profile_screen.dart';
 import 'package:zmall/register/register_screen.dart';
 import 'package:zmall/report/report_screen.dart';
 import 'package:zmall/splash/splash_screen.dart';
+import 'package:zmall/mcp/mcp_cart_screen.dart';
+import 'package:zmall/debug/service_logs_screen.dart';
 // import 'package:zmall/help/support_chat/support_chat_screen.dart';
 import 'package:zmall/utils/tab_screen.dart';
 import 'package:zmall/store/store_screen.dart';
@@ -63,6 +65,13 @@ final Map<String, WidgetBuilder> routes = {
   GlobalDelivery.routeName: (context) => GlobalDelivery(),
   EventsScreen.routeName: (context) => EventsScreen(),
   SubscribeScreen.routeName: (context) => SubscribeScreen(),
+  McpCartScreen.routeName: (context) {
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+
+    return McpCartScreen(cartId: args['cartId']);
+  },
+  ServiceLogsScreen.routeName: (context) => ServiceLogsScreen(),
   // SupportChatScreen.routeName: (context) => SupportChatScreen(),
   FAQScreen.routeName: (context) => FAQScreen(),
   // ScannerScreen.routeName: (context) => ScannerScreen(),

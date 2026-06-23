@@ -35,6 +35,19 @@ class _PredictScreenState extends State<PredictScreen> {
   bool predicted = false;
   DateTime euroPredictStart = DateTime(2024, 06, 10);
   DateTime euroPredictEnd = DateTime(2024, 07, 15);
+
+  // Returns the correct logo asset path based on game type.
+  // World Cup games use national team logos (UPPERCASE) from the nation/ folder.
+  // All other games (Premier League, UCL, etc.) use club logos (lowercase) from pl_logos/.
+  String _teamLogoPath(String teamCode, String gameType) {
+    final code = teamCode
+        .trim(); // trim any trailing/leading spaces from API data
+    if (gameType.toLowerCase().contains('world')) {
+      return "images/pl_logos/nation/${code.toUpperCase()}.png"; // e.g. nation/GER.png
+    }
+    return "images/pl_logos/${code.toLowerCase()}.png"; // e.g. pl_logos/che.png
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,10 +105,11 @@ class _PredictScreenState extends State<PredictScreen> {
     var data = await predictGame();
     if (data != null && data['success']) {
       Service.showMessage(
-          context: context,
-          title: "Prediction submitted successfully! Good luck...",
-          error: false,
-          duration: 4);
+        context: context,
+        title: "Prediction submitted successfully! Good luck...",
+        error: false,
+        duration: 4,
+      );
       setState(() {
         _isLoading = false;
       });
@@ -105,9 +119,7 @@ class _PredictScreenState extends State<PredictScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${errorCodes['${data['error_code']}']}"),
-        ),
+        SnackBar(content: Text("${errorCodes['${data['error_code']}']}")),
       );
     }
   }
@@ -120,14 +132,9 @@ class _PredictScreenState extends State<PredictScreen> {
         backgroundColor: kBlackColor,
         title: Text(
           "Predict & Win",
-          style: TextStyle(
-            color: kPrimaryColor,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold),
         ),
-        leading: BackButton(
-          color: kPrimaryColor,
-        ),
+        leading: BackButton(color: kPrimaryColor),
         elevation: 1.0,
       ),
       body: SafeArea(
@@ -143,10 +150,7 @@ class _PredictScreenState extends State<PredictScreen> {
                   size: getProportionateScreenWidth(kDefaultPadding),
                 ),
                 SizedBox(height: kDefaultPadding * 0.5),
-                Text(
-                  "Loading...",
-                  style: TextStyle(color: kPrimaryColor),
-                ),
+                Text("Loading...", style: TextStyle(color: kPrimaryColor)),
               ],
             ),
           ),
@@ -178,9 +182,10 @@ class _PredictScreenState extends State<PredictScreen> {
                     children: [
                       ///game type section////
                       CustomTag(
-                          // color: Colors.lightBlueAccent,
-                          color: kBlackColor.withValues(alpha: 0.5),
-                          text: widget.game['type'].toString().toUpperCase()),
+                        // color: Colors.lightBlueAccent,
+                        color: kBlackColor.withValues(alpha: 0.5),
+                        text: widget.game['type'].toString().toUpperCase(),
+                      ),
 
                       ///clubs logo section////
                       Container(
@@ -192,13 +197,19 @@ class _PredictScreenState extends State<PredictScreen> {
                                 children: [
                                   Container(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding * 3),
+                                      kDefaultPadding * 3,
+                                    ),
                                     width: getProportionateScreenWidth(
-                                        kDefaultPadding * 3),
+                                      kDefaultPadding * 3,
+                                    ),
                                     decoration: BoxDecoration(
                                       image: DecorationImage(
                                         image: AssetImage(
-                                            "images/pl_logos/${widget.game['home_team'].toString().toLowerCase()}.png"),
+                                          _teamLogoPath(
+                                            widget.game['home_team'].toString(),
+                                            widget.game['type'] ?? '',
+                                          ),
+                                        ),
                                         fit: BoxFit.fill,
                                       ),
                                       shape: BoxShape.circle,
@@ -207,7 +218,8 @@ class _PredictScreenState extends State<PredictScreen> {
                                   ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 2),
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
                                   CustomTag(
                                     color: kBlackColor.withValues(alpha: 0.8),
@@ -221,12 +233,14 @@ class _PredictScreenState extends State<PredictScreen> {
                             ),
                             Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: kDefaultPadding / 4,
-                                  vertical: kDefaultPadding / 8),
+                                horizontal: kDefaultPadding / 4,
+                                vertical: kDefaultPadding / 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: kBlackColor.withValues(alpha: 0.4),
-                                borderRadius:
-                                    BorderRadius.circular(kDefaultPadding / 2),
+                                borderRadius: BorderRadius.circular(
+                                  kDefaultPadding / 2,
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -272,13 +286,18 @@ class _PredictScreenState extends State<PredictScreen> {
                                 children: [
                                   Container(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding * 3),
+                                      kDefaultPadding * 3,
+                                    ),
                                     width: getProportionateScreenWidth(
-                                        kDefaultPadding * 3),
+                                      kDefaultPadding * 3,
+                                    ),
                                     decoration: BoxDecoration(
                                       image: DecorationImage(
                                         image: AssetImage(
-                                          "images/pl_logos/${widget.game['away_team'].toString().toLowerCase()}.png",
+                                          _teamLogoPath(
+                                            widget.game['away_team'].toString(),
+                                            widget.game['type'] ?? '',
+                                          ),
                                         ),
                                         fit: BoxFit.fill,
                                       ),
@@ -287,7 +306,8 @@ class _PredictScreenState extends State<PredictScreen> {
                                   ),
                                   SizedBox(
                                     height: getProportionateScreenHeight(
-                                        kDefaultPadding / 2),
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
                                   CustomTag(
                                     color: kBlackColor.withValues(alpha: 0.8),
@@ -306,38 +326,44 @@ class _PredictScreenState extends State<PredictScreen> {
                       ///game time section////
                       Container(
                         padding: EdgeInsets.symmetric(
-                            horizontal: kDefaultPadding / 2,
-                            vertical: kDefaultPadding / 4),
+                          horizontal: kDefaultPadding / 2,
+                          vertical: kDefaultPadding / 4,
+                        ),
                         decoration: BoxDecoration(
-                            color: kBlackColor.withValues(alpha: 0.5),
-                            borderRadius:
-                                BorderRadius.circular(kDefaultPadding / 2)),
+                          color: kBlackColor.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(
+                            kDefaultPadding / 2,
+                          ),
+                        ),
                         child: Text(
                           "${widget.game['game_time'].split('T')[0]} ${widget.game['game_time'].split('T')[1].split(".")[0]}",
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: kWhiteColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: kWhiteColor,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                       ),
 
                       ///game stadium section////
                       Container(
                         padding: EdgeInsets.symmetric(
-                            horizontal: kDefaultPadding / 2,
-                            vertical: kDefaultPadding / 4),
+                          horizontal: kDefaultPadding / 2,
+                          vertical: kDefaultPadding / 4,
+                        ),
                         decoration: BoxDecoration(
-                            color: kBlackColor.withValues(alpha: 0.5),
-                            borderRadius:
-                                BorderRadius.circular(kDefaultPadding / 2)),
+                          color: kBlackColor.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(
+                            kDefaultPadding / 2,
+                          ),
+                        ),
                         child: Text(
                           widget.game['stadium'].toString().toUpperCase(),
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: kWhiteColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: kWhiteColor,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                       ),
                     ],
@@ -347,8 +373,10 @@ class _PredictScreenState extends State<PredictScreen> {
                 ////who will win the cgame section////
                 Padding(
                   padding: EdgeInsets.symmetric(
-                      horizontal:
-                          getProportionateScreenWidth(kDefaultPadding / 2)),
+                    horizontal: getProportionateScreenWidth(
+                      kDefaultPadding / 2,
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -356,11 +384,14 @@ class _PredictScreenState extends State<PredictScreen> {
                         "Who will win the game?",
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500, color: kPrimaryColor),
+                          fontWeight: FontWeight.w500,
+                          color: kPrimaryColor,
+                        ),
                       ),
                       SizedBox(
-                        height:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                       ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -368,7 +399,8 @@ class _PredictScreenState extends State<PredictScreen> {
                           InkWell(
                             borderRadius: BorderRadius.circular(
                               getProportionateScreenWidth(
-                                  kDefaultPadding / 1.5),
+                                kDefaultPadding / 1.5,
+                              ),
                             ),
                             onTap: () {
                               if (userData != null && !predicted) {
@@ -383,15 +415,15 @@ class _PredictScreenState extends State<PredictScreen> {
                                   // debugPrint("User not logged in...");
 
                                   Service.showMessage(
-                                      context: context,
-                                      title: "Please login in...",
-                                      error: true);
+                                    context: context,
+                                    title: "Please login in...",
+                                    error: true,
+                                  );
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => LoginScreen(
-                                        firstRoute: false,
-                                      ),
+                                      builder: (context) =>
+                                          LoginScreen(firstRoute: false),
                                     ),
                                   ).then((value) => getUser());
                                 }
@@ -403,23 +435,23 @@ class _PredictScreenState extends State<PredictScreen> {
                               ),
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                    color: homeWin
-                                        ? kSecondaryColor
-                                        : Colors.transparent,
-                                    width: 3),
+                                  color: homeWin
+                                      ? kSecondaryColor
+                                      : Colors.transparent,
+                                  width: 3,
+                                ),
                                 color: Colors.green,
                                 borderRadius: BorderRadius.circular(
                                   getProportionateScreenWidth(
-                                      kDefaultPadding * 1.5),
+                                    kDefaultPadding * 1.5,
+                                  ),
                                 ),
                                 boxShadow: [boxShadow],
                               ),
                               child: Text(
                                 "HOME",
                                 textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
+                                style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       color: kPrimaryColor,
                                       fontWeight: FontWeight.bold,
@@ -430,7 +462,8 @@ class _PredictScreenState extends State<PredictScreen> {
                           InkWell(
                             borderRadius: BorderRadius.circular(
                               getProportionateScreenWidth(
-                                  kDefaultPadding / 1.5),
+                                kDefaultPadding / 1.5,
+                              ),
                             ),
                             onTap: () {
                               if (userData != null && !predicted) {
@@ -445,15 +478,15 @@ class _PredictScreenState extends State<PredictScreen> {
                                   // debugPrint("User not logged in...");
 
                                   Service.showMessage(
-                                      context: context,
-                                      title: "Please login in...",
-                                      error: true);
+                                    context: context,
+                                    title: "Please login in...",
+                                    error: true,
+                                  );
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => LoginScreen(
-                                        firstRoute: false,
-                                      ),
+                                      builder: (context) =>
+                                          LoginScreen(firstRoute: false),
                                     ),
                                   ).then((value) => getUser());
                                 }
@@ -464,26 +497,27 @@ class _PredictScreenState extends State<PredictScreen> {
                                 getProportionateScreenWidth(kDefaultPadding),
                               ),
                               width: getProportionateScreenWidth(
-                                  kDefaultPadding * 5),
+                                kDefaultPadding * 5,
+                              ),
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                    color: draw
-                                        ? kSecondaryColor
-                                        : Colors.transparent,
-                                    width: 3),
+                                  color: draw
+                                      ? kSecondaryColor
+                                      : Colors.transparent,
+                                  width: 3,
+                                ),
                                 color: kGreyColor,
                                 borderRadius: BorderRadius.circular(
                                   getProportionateScreenWidth(
-                                      kDefaultPadding * 1.5),
+                                    kDefaultPadding * 1.5,
+                                  ),
                                 ),
                                 boxShadow: [boxShadow],
                               ),
                               child: Text(
                                 "X",
                                 textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyLarge
+                                style: Theme.of(context).textTheme.bodyLarge
                                     ?.copyWith(
                                       color: kPrimaryColor,
                                       fontWeight: FontWeight.bold,
@@ -494,7 +528,8 @@ class _PredictScreenState extends State<PredictScreen> {
                           InkWell(
                             borderRadius: BorderRadius.circular(
                               getProportionateScreenWidth(
-                                  kDefaultPadding / 1.5),
+                                kDefaultPadding / 1.5,
+                              ),
                             ),
                             onTap: () {
                               if (userData != null && !predicted) {
@@ -509,15 +544,15 @@ class _PredictScreenState extends State<PredictScreen> {
                                   // debugPrint("User not logged in...");
 
                                   Service.showMessage(
-                                      context: context,
-                                      title: "Please login in...",
-                                      error: true);
+                                    context: context,
+                                    title: "Please login in...",
+                                    error: true,
+                                  );
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => LoginScreen(
-                                        firstRoute: false,
-                                      ),
+                                      builder: (context) =>
+                                          LoginScreen(firstRoute: false),
                                     ),
                                   ).then((value) => getUser());
                                 }
@@ -530,22 +565,22 @@ class _PredictScreenState extends State<PredictScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.blue,
                                 border: Border.all(
-                                    color: awayWin
-                                        ? kSecondaryColor
-                                        : Colors.transparent,
-                                    width: 3),
+                                  color: awayWin
+                                      ? kSecondaryColor
+                                      : Colors.transparent,
+                                  width: 3,
+                                ),
                                 borderRadius: BorderRadius.circular(
                                   getProportionateScreenWidth(
-                                      kDefaultPadding * 1.5),
+                                    kDefaultPadding * 1.5,
+                                  ),
                                 ),
                                 boxShadow: [boxShadow],
                               ),
                               child: Text(
                                 "AWAY",
                                 textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
+                                style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       color: kPrimaryColor,
                                       fontWeight: FontWeight.bold,
@@ -554,7 +589,7 @@ class _PredictScreenState extends State<PredictScreen> {
                             ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -564,6 +599,7 @@ class _PredictScreenState extends State<PredictScreen> {
                   isPredicted: predicted,
                   homeTeam: widget.game['home_team'],
                   awayTeam: widget.game['away_team'],
+                  gameType: widget.game['type'] ?? '',
                   homeScore: homeScore,
                   awayScore: awayScore,
                   onHomeIncrement: () => setState(() => homeScore++),
@@ -576,16 +612,15 @@ class _PredictScreenState extends State<PredictScreen> {
                   }),
                 ),
 
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding),
-                ),
+                SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
 
                 ///winning percenrtage section///
                 if (predicted)
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal:
-                          getProportionateScreenWidth(kDefaultPadding / 2),
+                      horizontal: getProportionateScreenWidth(
+                        kDefaultPadding / 2,
+                      ),
                     ),
                     child: WinPercentageWidget(
                       homeTeam: widget.game['home_team'],
@@ -597,10 +632,9 @@ class _PredictScreenState extends State<PredictScreen> {
                       drawColor: Colors.grey,
                       awayColor: Colors.blue,
                       padding: getProportionateScreenWidth(kDefaultPadding),
-                      textStyle: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: kPrimaryColor),
+                      textStyle: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: kPrimaryColor),
                     ),
                   ),
 
@@ -608,8 +642,9 @@ class _PredictScreenState extends State<PredictScreen> {
                 if (!predicted)
                   Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal:
-                          getProportionateScreenWidth(kDefaultPadding / 2),
+                      horizontal: getProportionateScreenWidth(
+                        kDefaultPadding / 2,
+                      ),
                     ),
                     child: CustomButton(
                       title: "Submit",
@@ -641,15 +676,16 @@ class _PredictScreenState extends State<PredictScreen> {
                           _predictGame();
                         } else {
                           Service.showMessage(
-                              context: context,
-                              title:
-                                  "Please log in to join the prediction and stand a chance to win!",
-                              error: true,
-                              duration: 4);
+                            context: context,
+                            title:
+                                "Please log in to join the prediction and stand a chance to win!",
+                            error: true,
+                            duration: 4,
+                          );
                         }
                       },
                     ),
-                  )
+                  ),
               ],
             ),
           ),
@@ -673,28 +709,29 @@ class _PredictScreenState extends State<PredictScreen> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 15),
-        onTimeout: () {
-          setState(() {
-            this._isLoading = false;
-          });
+            Duration(seconds: 15),
+            onTimeout: () {
+              setState(() {
+                this._isLoading = false;
+              });
 
-          Service.showMessage(
-              context: context,
-              title: "Something went wrong!",
-              error: true,
-              duration: 3);
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+              Service.showMessage(
+                context: context,
+                title: "Something went wrong!",
+                error: true,
+                duration: 3,
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         _isLoading = false;
       });
@@ -725,35 +762,36 @@ class _PredictScreenState extends State<PredictScreen> {
       "home_win": homeWin,
       "draw": draw,
       "penalties": false,
-      "penalty_score": 0
+      "penalty_score": 0,
     };
     // debugPrint('data>>>>>>> $data');
     var body = json.encode(data);
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 15),
-        onTimeout: () {
-          setState(() {
-            this._isLoading = false;
-          });
+            Duration(seconds: 15),
+            onTimeout: () {
+              setState(() {
+                this._isLoading = false;
+              });
 
-          Service.showMessage(
-              context: context,
-              title: "Something went wrong!",
-              error: true,
-              duration: 3);
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+              Service.showMessage(
+                context: context,
+                title: "Something went wrong!",
+                error: true,
+                duration: 3,
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         _isLoading = false;
       });

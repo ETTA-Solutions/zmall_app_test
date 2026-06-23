@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:iconsx_plus/iconsx_plus.dart';
 import 'dart:math' as math;
 import 'dart:io';
 import 'dart:typed_data';
@@ -733,7 +733,7 @@ class _YearWrappedStoriesState extends State<RecapScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                FontAwesomeIcons.instagram,
+                                FontAwesome.instagram_brand,
                                 color: Colors.white,
                                 size: 28,
                               ),

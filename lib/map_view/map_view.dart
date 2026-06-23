@@ -1,10 +1,7 @@
 import 'dart:typed_data';
-
 import 'package:fl_location/fl_location.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:logger/logger.dart';
-
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
@@ -39,7 +36,6 @@ class _StoreMapViewState extends State<StoreMapView> {
   LocationPermission _permissionStatus = LocationPermission.denied;
   late GoogleMapController _mapController;
   Set<Marker> _markers = {};
-  Logger logger = Logger();
   bool _loading = false;
   double? latitude, longitude;
 

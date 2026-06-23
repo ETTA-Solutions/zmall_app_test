@@ -1,31 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)",
-      "Bash(flutter analyze:*)",
-      "Read(//Users/apple/Documents/Personal-Projects/banking_app_challenge/**)",
-      "Bash(mkdir:*)",
-      "Bash(flutter pub:*)",
-      "Bash(flutter packages pub run:*)",
-      "Read(//Users/apple/Documents/Personal-Projects/**)",
-      "Read(//Users/apple/Documents/ZMall-Projects/zoorya_main/**)",
-      "Read(//Users/apple/Documents/Work-Projects/emawa_shopping/**)",
-      "Bash(dart analyze:*)",
-      "Bash(dart pub:*)",
-      "Bash(flutter test:*)",
-      "Bash(timeout 30 flutter test:*)",
-      "Bash(./gradlew tasks:*)",
-      "Bash(flutter build:*)",
-      "Bash(flutter clean:*)",
-      "WebFetch(domain:www.figma.com)",
-      "Bash(tree:*)",
-      "Bash(awk:*)",
-      "Bash(find:*)",
-      "WebFetch(domain:pub.dev)",
-      "mcp__ide__getDiagnostics",
-      "Bash(flutter run:*)"
-    ],
-    "deny": [],
-    "ask": []
+      "Bash(grep -rhoE \"\\(baseUrl|BASE_URL|\\\\\\\\\\\\$\\\\{?baseUrl\\\\}?\\)[^\\\\\"';]{0,80}\" lib --include=*.dart)",
+      "Bash(grep -oE \"/[a-zA-Z0-9_/{}.\\\\$]+\")",
+      "Bash(sort -t: -k3)"
+    ]
   }
 }

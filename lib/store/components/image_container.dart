@@ -26,8 +26,24 @@ class ImageContainer extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    if (url == null || url!.trim().isEmpty) {
+      return Container(
+        width: width ?? getProportionateScreenWidth(kDefaultPadding * 5),
+        height: height ?? getProportionateScreenHeight(kDefaultPadding * 5),
+        decoration: BoxDecoration(
+          shape: shape ?? BoxShape.circle,
+          color: kWhiteColor,
+          borderRadius: borderRadius,
+          image: DecorationImage(
+            fit: fit ?? BoxFit.cover,
+            image: AssetImage(errorUrl ?? zmallLogo),
+          ),
+        ),
+      );
+    }
+
     return CachedNetworkImage(
-      imageUrl: url!,
+      imageUrl: url!.trim(),
       imageBuilder: (context, imageProvider) => Container(
         width: width ?? getProportionateScreenWidth(kDefaultPadding * 5),
         height: height ?? getProportionateScreenHeight(kDefaultPadding * 5),
@@ -36,9 +52,9 @@ class ImageContainer extends StatelessWidget {
           shape: shape ?? BoxShape.rectangle,
           borderRadius: (shape ?? BoxShape.rectangle) == BoxShape.rectangle
               ? (borderRadius ??
-                  BorderRadius.circular(
-                    getProportionateScreenWidth(kDefaultPadding / 1.5),
-                  ))
+                    BorderRadius.circular(
+                      getProportionateScreenWidth(kDefaultPadding / 1.5),
+                    ))
               : null,
           color: kWhiteColor,
           border: border,
@@ -75,17 +91,29 @@ class ImageContainer extends StatelessWidget {
 }
 
 class FavoriteImageContainer extends StatelessWidget {
-  const FavoriteImageContainer({
-    Key? key,
-    this.url,
-  }) : super(key: key);
+  const FavoriteImageContainer({Key? key, this.url}) : super(key: key);
   final String? url;
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraint) {
+        if (url == null || url!.trim().isEmpty) {
+          return Container(
+            width: getProportionateScreenWidth(kDefaultPadding * 3.5),
+            height: getProportionateScreenHeight(kDefaultPadding * 3.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.rectangle,
+              color: Colors.transparent,
+              image: DecorationImage(
+                fit: BoxFit.cover,
+                image: AssetImage('images/zmall.jpg'),
+              ),
+            ),
+          );
+        }
+
         return CachedNetworkImage(
-          imageUrl: url!,
+          imageUrl: url!.trim(),
           imageBuilder: (context, imageProvider) => Container(
             width: constraint.maxWidth,
             height: getProportionateScreenHeight(kDefaultPadding * 5.5),

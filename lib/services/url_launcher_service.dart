@@ -83,22 +83,21 @@ class UrlLauncherService {
     String? body,
   }) async {
     try {
+      // Build the query manually so an empty one doesn't leave a trailing '?'.
+      final params = <String>[
+        if (subject != null) 'subject=${Uri.encodeComponent(subject)}',
+        if (body != null) 'body=${Uri.encodeComponent(body)}',
+      ];
       final emailUri = Uri(
         scheme: 'mailto',
         path: email,
-        queryParameters: {
-          if (subject != null) 'subject': subject,
-          if (body != null) 'body': body,
-        },
+        query: params.isEmpty ? null : params.join('&'),
       );
 
-      if (await canLaunchUrl(emailUri)) {
-        //debugPrint('Opening email client for: $email');
-        return await launchUrl(emailUri);
-      } else {
-        //debugPrint('Cannot launch email client for: $email');
-        return false;
-      }
+      // Launch directly instead of gating on canLaunchUrl: on iOS canLaunchUrl
+      // (canOpenURL) returns false unless 'mailto' is declared in
+      // LSApplicationQueriesSchemes, even though launchUrl itself works.
+      return await launchUrl(emailUri);
     } catch (e) {
       //debugPrint('Error opening email: $email, error $e');
       return false;

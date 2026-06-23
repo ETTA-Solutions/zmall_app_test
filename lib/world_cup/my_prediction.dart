@@ -23,6 +23,17 @@ class MyPrediction extends StatefulWidget {
 class _MyPredictionState extends State<MyPrediction> {
   bool _isLoading = false;
   List<bool> _isTileExpanded = [];
+
+  // Returns the correct logo asset path based on game type.
+  // World Cup games use national team logos (UPPERCASE) from the nation/ folder.
+  // All other games (Premier League, UCL, etc.) use club logos (lowercase) from pl_logos/.
+  String _teamLogoPath(String teamCode, String gameType) {
+    final code = teamCode.trim(); // trim any trailing/leading spaces from API data
+    if (gameType.toLowerCase().contains('world')) {
+      return "images/pl_logos/nation/${code.toUpperCase()}.png"; // e.g. nation/GER.png
+    }
+    return "images/pl_logos/${code.toLowerCase()}.png"; // e.g. pl_logos/che.png
+  }
   var games;
   var userData;
   var userPredictions;
@@ -221,7 +232,7 @@ class _MyPredictionState extends State<MyPrediction> {
                                         prediction['game_detail']['home_team_logo'] ??
                                         '',
                                     errorLogoAsset:
-                                        "images/pl_logos/${prediction['game_detail']['home_team'].toString().toLowerCase()}.png",
+                                        _teamLogoPath(prediction['game_detail']['home_team'].toString(), prediction['game_detail']['type'] ?? ''),
                                     size: getProportionateScreenWidth(
                                       kDefaultPadding * 3,
                                     ),
@@ -236,15 +247,18 @@ class _MyPredictionState extends State<MyPrediction> {
                                       kDefaultPadding / 4,
                                     ),
                                   ),
-                                  Text(
-                                    prediction['game_detail']['home_team'],
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: kPrimaryColor,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                  Flexible(
+                                    child: Text(
+                                      prediction['game_detail']['home_team'],
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: kPrimaryColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
                                   ),
                                   Spacer(),
                                   Center(
@@ -401,15 +415,18 @@ class _MyPredictionState extends State<MyPrediction> {
                                     ),
                                   ),
                                   Spacer(),
-                                  Text(
-                                    prediction['game_detail']['away_team'],
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: kPrimaryColor,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                  Flexible(
+                                    child: Text(
+                                      prediction['game_detail']['away_team'],
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: kPrimaryColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
                                   ),
                                   SizedBox(
                                     width: getProportionateScreenHeight(
@@ -418,10 +435,10 @@ class _MyPredictionState extends State<MyPrediction> {
                                   ),
                                   LogoContainer(
                                     logoUrl:
-                                        userPredictions['scores'][index]['game_detail']['away_tew600am_logo'] ??
+                                        userPredictions['scores'][index]['game_detail']['away_team_logo'] ??
                                         '',
                                     errorLogoAsset:
-                                        "images/pl_logos/${prediction['game_detail']['away_team'].toString().toLowerCase()}.png",
+                                        _teamLogoPath(prediction['game_detail']['away_team'].toString(), prediction['game_detail']['type'] ?? ''),
                                     size: getProportionateScreenWidth(
                                       kDefaultPadding * 3,
                                     ),

@@ -649,7 +649,7 @@ class _EditProfileState extends State<EditProfile> {
       );
 
       var response = await http.Response.fromStream(streamedResponse);
-      debugPrint("update response ${response.body}");
+      // debugPrint("update response ${response.body}");
       var data = json.decode(response.body);
       // http.Response.fromStream(response).then((value) async {
       // var data = json.decode(value.body);
@@ -682,7 +682,7 @@ class _EditProfileState extends State<EditProfile> {
               : data != null && data['error'] != null
               ? data['error'].toString()
               : "Something went wrong. Please try again!";
-          debugPrint("update profile error: $data");
+          // debugPrint("update profile error: $data");
           Service.showMessage(context: context, title: errorMsg, error: true);
         }
         return data;

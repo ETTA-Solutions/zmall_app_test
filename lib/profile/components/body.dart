@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:iconsx_plus/iconsx_plus.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:provider/provider.dart';
@@ -975,7 +975,7 @@ class _BodyState extends State<Body> {
                         // // Social Media Section
                         // ProfileListTile(
                         //   borderColor: kWhiteColor,
-                        //   icon: Icon(FontAwesomeIcons.instagram),
+                        //   icon: Icon(FontAwesome.instagram),
                         //   title: "Follow us on Instagram",
                         //   onTap: () {
                         //     Service.launchInWebViewOrVC(
@@ -1056,8 +1056,8 @@ class _BodyState extends State<Body> {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: FaIcon(
-                  FontAwesomeIcons.robot,
+                child: Icon(
+                  FontAwesome.robot_solid,
                   color: kPrimaryColor,
                   size: getProportionateScreenWidth(24),
                 ),

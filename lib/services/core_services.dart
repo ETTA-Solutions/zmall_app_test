@@ -8,6 +8,7 @@ import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/utils/backend_logger.dart';
 import 'package:zmall/utils/constants.dart';
 
 class CoreServices {
@@ -30,6 +31,15 @@ class CoreServices {
     };
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -45,9 +55,16 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       await Service.save('categories', json.decode(response.body));
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint(e);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,6 +147,15 @@ class CoreServices {
     };
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -145,6 +171,13 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
 
       await Service.save('services', json.decode(response.body));
 
@@ -183,6 +216,15 @@ class CoreServices {
     var body = json.encode(data);
     // debugPrint("promotionalItems body $body");
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -198,10 +240,17 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       await Service.save('p_items', json.decode(response.body));
       // debugPrint("promotionalItems resp ${json.decode(response.body)}");
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint("error $e");
       return null;
     }
@@ -225,6 +274,15 @@ class CoreServices {
     // debugPrint("promotional >> $data");
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -240,9 +298,16 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       await Service.save('s_items', json.decode(response.body));
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint(e);
       return null;
     }
@@ -264,6 +329,15 @@ class CoreServices {
 
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -279,8 +353,15 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint(e);
       return null;
     }
@@ -292,6 +373,7 @@ class CoreServices {
     );
 
     try {
+      BackendLogger.request(method: 'POST', url: url.toString());
       http.Response response = await http
           .post(url)
           .timeout(
@@ -300,6 +382,12 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url.toString(),
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       if (json.decode(response.body) != null &&
           json.decode(response.body)['success']) {
         // debugPrint(response.body);
@@ -329,6 +417,7 @@ class CoreServices {
         return data;
       }
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url.toString(), error: e);
       // debugPrint(e);
       return null;
     }
@@ -338,6 +427,14 @@ class CoreServices {
     final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
     var url = "$baseUrl/admin/get_all_advertises/$adId";
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -354,8 +451,15 @@ class CoreServices {
               );
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint(e);
       return null;
     }
@@ -368,6 +472,15 @@ class CoreServices {
 
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -383,8 +496,15 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint(e);
       return null;
     }
@@ -413,6 +533,15 @@ class CoreServices {
     // debugPrint("body: $data");
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -428,9 +557,15 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      debugPrint("XXX response: ${json.decode(response.body)}");
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint("Error fetching orders list: $e");
       return null;
     }
@@ -497,6 +632,15 @@ class CoreServices {
     // debugPrint("body $data");
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -512,10 +656,136 @@ class CoreServices {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       // debugPrint("${json.decode(response.body)}");
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url.toString(), error: e);
       // debugPrint("====error:\n $e\n==========");
+      return null;
+    }
+  }
+
+  /// Search for items globally by name.
+  ///
+  /// Calls `/api/user/search_item_global` with a `name` query.
+  ///
+  /// Parameters:
+  /// - [query]: The search text
+  /// - [context]: Build context for base URL resolution
+  ///
+  /// Returns the decoded JSON response, or `null` on error.
+  static Future<dynamic> searchItemGlobal({
+    required String query,
+    required BuildContext context,
+  }) async {
+    final url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/search_item_global";
+    final body = json.encode({"name": query});
+    try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
+      return null;
+    }
+  }
+
+  /// Fetch the list of stores (companies) for a given city and delivery type.
+  ///
+  /// Calls `/api/user/get_company_list`.
+  ///
+  /// Parameters:
+  /// - [cityId]: The city identifier
+  /// - [storeDeliveryId]: The selected delivery / store-category ID
+  /// - [latitude]: User latitude
+  /// - [longitude]: User longitude
+  /// - [context]: Build context for base URL resolution
+  ///
+  /// Returns the decoded JSON response, or `null` on error.
+  static Future<dynamic> getCompanyList({
+    required String cityId,
+    required dynamic storeDeliveryId,
+    required double latitude,
+    required double longitude,
+    required BuildContext context,
+  }) async {
+    final url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_company_list";
+    final body = json.encode({
+      "city_id": cityId,
+      "store_delivery_id": storeDeliveryId,
+      "latitude": latitude,
+      "longitude": longitude,
+    });
+    try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       return null;
     }
   }

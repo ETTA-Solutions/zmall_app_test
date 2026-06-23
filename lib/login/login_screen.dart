@@ -19,6 +19,7 @@ import 'package:zmall/services/biometric_services/biometric_service.dart';
 import 'package:zmall/services/biometric_services/biometric_credentials_manager.dart';
 import 'package:zmall/models/biometric_credential.dart';
 import 'package:zmall/login/components/saved_accounts_bottom_sheet.dart';
+import 'package:zmall/mcp/mcp_cart_screen.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/utils/tab_screen.dart';
 import 'package:http/http.dart' as http;
@@ -254,6 +255,11 @@ class _LoginScreenState extends State<LoginScreen> {
               await Service.save('user', loginResponseData);
               await Service.saveBool('logged', true);
 
+              final redirectedToPendingCart = await _resumePendingAiCartIfAny();
+              if (redirectedToPendingCart) {
+                return;
+              }
+
               _fcm.subscribeToTopic(
                 Provider.of<ZMetaData>(
                   context,
@@ -388,6 +394,11 @@ class _LoginScreenState extends State<LoginScreen> {
               await Service.save('user', loginResponseData);
               await Service.saveBool('logged', true);
 
+              final redirectedToPendingCart = await _resumePendingAiCartIfAny();
+              if (redirectedToPendingCart) {
+                return;
+              }
+
               // Subscribe to FCM topic
               _fcm.subscribeToTopic(
                 Provider.of<ZMetaData>(
@@ -515,6 +526,11 @@ class _LoginScreenState extends State<LoginScreen> {
             if (loginResponseData['user']['is_approved']) {
               await Service.save('user', loginResponseData);
               await Service.saveBool('logged', true);
+
+              final redirectedToPendingCart = await _resumePendingAiCartIfAny();
+              if (redirectedToPendingCart) {
+                return;
+              }
 
               _fcm.subscribeToTopic(
                 Provider.of<ZMetaData>(
@@ -695,6 +711,19 @@ class _LoginScreenState extends State<LoginScreen> {
       //     "${errorCodes['${categoriesResponse['error_code']}']}", true));
       // }
     }
+  }
+
+  Future<bool> _resumePendingAiCartIfAny() async {
+    final cartId = await Service.consumePendingAiCart();
+    if (cartId != null && mounted) {
+      Navigator.pushReplacementNamed(
+        context,
+        McpCartScreen.routeName,
+        arguments: {'cartId': cartId},
+      );
+      return true;
+    }
+    return false;
   }
 
   //  body: Padding(
@@ -950,14 +979,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(kDefaultPadding),
                         ),
                         child: InkWell(
-                          onTap: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    TabScreen(isLaunched: true),
-                              ),
-                            );
+                          onTap: () async {
+                            final redirected =
+                                await _resumePendingAiCartIfAny();
+                            if (!redirected && mounted) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      TabScreen(isLaunched: true),
+                                ),
+                              );
+                            }
                           },
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,

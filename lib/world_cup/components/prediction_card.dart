@@ -40,17 +40,24 @@ class MatchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String formatGameTime(String gameTime) {
-      DateTime dt = DateTime.parse(gameTime); // parse the ISO string
-      String time = DateFormat('HH:mm').format(dt); // 03:00
-      return time;
-      // '$time\n$date';
+      try {
+        DateTime dt = DateTime.parse(gameTime).toLocal(); // parse the ISO string and convert to local
+        String time = DateFormat('HH:mm').format(dt); // 03:00
+        String tz = dt.timeZoneName;
+        return "$time ($tz)";
+      } catch (e) {
+        return gameTime;
+      }
     }
 
     String formatGameDate(String gameTime) {
-      DateTime dt = DateTime.parse(gameTime); // parse the ISO string
-      String date = DateFormat('dd MMM yyyy').format(dt); // 18 Aug 2025
-      return date;
-      // '$time\n$date';
+      try {
+        DateTime dt = DateTime.parse(gameTime).toLocal(); // parse the ISO string and convert to local
+        String date = DateFormat('dd MMM yyyy').format(dt); // 18 Aug 2025
+        return date;
+      } catch (e) {
+        return "";
+      }
     }
 
     return Container(
@@ -74,10 +81,19 @@ class MatchRow extends StatelessWidget {
           children: [
             // Banner Image
             Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(image: bannerImage, fit: BoxFit.cover),
-                ),
+              child: Image(
+                image: bannerImage,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: const AssetImage("images/pl_logos/pl.jpg"),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             // Gradient Overlay for better text contrast
@@ -178,57 +194,65 @@ class MatchRow extends StatelessWidget {
                         ),
 
                         // Score or Time (Center)
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: getProportionateScreenWidth(
-                              kDefaultPadding * 0.4,
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: getProportionateScreenWidth(
+                                kDefaultPadding * 0.25,
+                              ),
                             ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (isFinished)
-                                // Score Display
-                                Text(
-                                  timeOrScore,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: getProportionateScreenWidth(18),
-                                    color: kPrimaryColor,
-                                  ),
-                                )
-                              else
-                                // Time Display
-                                Column(
-                                  children: [
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isFinished)
+                                    // Score Display
                                     Text(
-                                      formatGameTime(timeOrScore),
+                                      timeOrScore,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: getProportionateScreenWidth(
-                                          20,
+                                          18,
                                         ),
                                         color: kPrimaryColor,
                                       ),
-                                    ),
-                                    SizedBox(
-                                      height: getProportionateScreenHeight(
-                                        kDefaultPadding / 8,
-                                      ),
-                                    ),
-                                    Text(
-                                      formatGameDate(timeOrScore),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: getProportionateScreenWidth(
-                                          10,
+                                    )
+                                  else
+                                    // Time Display
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          formatGameTime(timeOrScore),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize:
+                                                getProportionateScreenWidth(20),
+                                            color: kPrimaryColor,
+                                          ),
                                         ),
-                                        color: kPrimaryColor,
-                                      ),
+                                        SizedBox(
+                                          height: getProportionateScreenHeight(
+                                            kDefaultPadding / 8,
+                                          ),
+                                        ),
+                                        Text(
+                                          formatGameDate(timeOrScore),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize:
+                                                getProportionateScreenWidth(10),
+                                            color: kPrimaryColor,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                            ],
+                                ],
+                              ),
+                            ),
                           ),
                         ),
 

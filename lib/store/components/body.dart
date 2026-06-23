@@ -12,6 +12,7 @@ import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/product/product_screen.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/utils/backend_logger.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/widgets/custom_search_bar.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
@@ -700,6 +701,15 @@ class BodyState extends State<Body> {
     var body = json.encode(data);
 
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -726,9 +736,12 @@ class BodyState extends State<Body> {
             },
           );
 
-      // DEBUG: Print raw response
-      debugPrint("Response Status: ${response.statusCode}");
-      debugPrint("Response Body: ${response.body}");
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
 
       // Check HTTP status code
       if (response.statusCode != 200) {
@@ -742,15 +755,19 @@ class BodyState extends State<Body> {
 
       // Decode JSON
       final decodedData = json.decode(response.body);
-      debugPrint("Decoded Data: $decodedData");
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: decodedData,
+      );
 
       setState(() {
         this.responseData = decodedData;
       });
       return decodedData;
     } catch (e) {
-      debugPrint("❌ Error in getStoreListByCompany: ${e.toString()}");
-      debugPrint("Stack trace: ${StackTrace.current}");
+      BackendLogger.error(method: 'POST', url: url, error: e);
 
       // Set error response for proper error handling downstream
       setState(() {
@@ -794,8 +811,16 @@ class BodyState extends State<Body> {
       "longitude": longitude,
     };
     var body = json.encode(data);
-    print("body $body");
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -822,9 +847,12 @@ class BodyState extends State<Body> {
             },
           );
 
-      // DEBUG: Print raw response
-      debugPrint("Response Status: ${response.statusCode}");
-      debugPrint("Response Body: ${response.body}");
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
 
       // Check HTTP status code
       if (response.statusCode != 200) {
@@ -838,7 +866,12 @@ class BodyState extends State<Body> {
 
       // Decode JSON
       final decodedData = json.decode(response.body);
-      debugPrint("Decoded Data: $decodedData");
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: decodedData,
+      );
 
       setState(() {
         this.responseData = decodedData;
@@ -846,8 +879,7 @@ class BodyState extends State<Body> {
 
       return decodedData;
     } catch (e) {
-      debugPrint("❌ Error in getCompanyList: ${e.toString()}");
-      debugPrint("Stack trace: ${StackTrace.current}");
+      BackendLogger.error(method: 'POST', url: url, error: e);
 
       // Set error response for proper error handling downstream
       setState(() {
@@ -890,7 +922,7 @@ class BodyState extends State<Body> {
     };
     var body = json.encode(data);
     try {
-      http.Response response = await http.post(
+      await http.post(
         Uri.parse(url),
         headers: <String, String>{
           "Content-Type": "application/json",

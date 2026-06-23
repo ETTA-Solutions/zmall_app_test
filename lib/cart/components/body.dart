@@ -15,12 +15,14 @@ import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/delivery/delivery_screen.dart';
+import 'package:zmall/lunch_home/lunch_home_screen.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/notifications/notification_store.dart';
 import 'package:zmall/widgets/order_status_row.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/utils/backend_logger.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/image_container.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
@@ -92,6 +94,30 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           storeID = cart!.storeId!;
           Service.save('cart', cart);
         });
+
+        // DEBUG: print cart item IDs for deeplink testing
+        // print('\n');
+        // print('╔═══════════════════════════════════════════════════════════');
+        // print('║  CART ITEMS DEBUG — use these IDs to build AI cart deeplink');
+        // print('║  store_id   : ${cart!.storeId}');
+        // print('║  user_id    : ${userData['user']['_id']}');
+        // print('║  cart_id    : ${userData['user']['cart_id']}');
+        // print('║  item count : ${cart!.items!.length}');
+        // print('╠═══════════════════════════════════════════════════════════');
+        // for (var i = 0; i < cart!.items!.length; i++) {
+        //   final item = cart!.items![i];
+        //   print('║  [$i] _id       : ${item.id}');
+        //   print('║       item_name : ${item.itemName}');
+        //   print('║       price     : ${item.price}');
+        //   print('║       quantity  : ${item.quantity}');
+        //   print('║  ───────────────────────────────────────────────────────');
+        // }
+        // print('║');
+        // print('║  Test curl (create AI cart):');
+        // print('║  curl -X POST $BASE_URL/api/ai/cart \\');
+        // print('║    -H "Content-Type: application/json" \\');
+        // print('║    -d \'{"user_id":"${userData['user']['_id']}","server_token":"${userData['user']['server_token']}","store_id":"${cart!.storeId}","items":[${cart!.items!.map((i) => '{"item_id":"${i.id}","name":"${i.itemName}","price":${i.price},"quantity":${i.quantity}}').join(',')}]}\' ');
+        // print('╚═══════════════════════════════════════════════════════════\n');
         // debugPrint("ALI CART>>> ${aliCart != null}");
         if (aliCart != null) {
           setState(() {
@@ -118,7 +144,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           });
         }
       }
-    } catch (e) {}
+    } catch (e, st) {
+      // print('CART_FROMJSON_ERROR: $e\n$st');
+    }
   }
   // void getCart() async {
   //   setState(() {
@@ -657,235 +685,272 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                           ),
                       itemBuilder: (context, index) {
                         final item = cart!.items?[index];
+                        final isLunchBox =
+                            item?.itemName?.contains('ምሳቃ') ?? false;
                         return item != null
-                            ? Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: getProportionateScreenWidth(
-                                    kDefaultPadding / 2,
-                                  ),
-                                  vertical: getProportionateScreenHeight(
-                                    kDefaultPadding / 4,
-                                  ),
-                                ),
-                                decoration: BoxDecoration(
-                                  color: kPrimaryColor,
-                                  border: Border.all(
-                                    color: kWhiteColor,
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    kDefaultPadding,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    ImageContainer(url: item.imageURL!),
-                                    SizedBox(
-                                      width: getProportionateScreenWidth(
-                                        kDefaultPadding / 2,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        spacing: getProportionateScreenHeight(
-                                          kDefaultPadding / 5,
-                                        ),
-                                        children: [
-                                          Text(
-                                            Service.capitalizeFirstLetters(
-                                              item.itemName!,
-                                            ),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: kBlackColor,
-                                            ),
-                                            softWrap: true,
-                                          ),
-
-                                          //
-                                          Text(
-                                            "${Provider.of<ZMetaData>(context, listen: false).currency} ${item.price!.toStringAsFixed(2)}",
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleSmall
-                                                ?.copyWith(
-                                                  color: kGreyColor,
-                                                  fontWeight: FontWeight.bold,
+                            ? GestureDetector(
+                                onTap: isLunchBox
+                                    ? () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                LunchHomeScreen(
+                                                  curLat: latitude ?? 0,
+                                                  curLon: longitude ?? 0,
                                                 ),
                                           ),
-                                          //
-                                          Text(item.noteForItem),
-                                        ],
-                                      ),
+                                        );
+                                      }
+                                    : null,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: getProportionateScreenWidth(
+                                      kDefaultPadding / 2,
                                     ),
-                                    Column(
-                                      children: [
-                                        Row(
+                                    vertical: getProportionateScreenHeight(
+                                      kDefaultPadding / 4,
+                                    ),
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: kPrimaryColor,
+                                    border: Border.all(
+                                      color: isLunchBox
+                                          ? kSecondaryColor
+                                          : kWhiteColor,
+                                      width: isLunchBox ? 3 : 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      kDefaultPadding,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      ImageContainer(url: item.imageURL!),
+                                      SizedBox(
+                                        width: getProportionateScreenWidth(
+                                          kDefaultPadding / 2,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          spacing: getProportionateScreenHeight(
+                                            kDefaultPadding / 5,
+                                          ),
                                           children: [
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.remove_circle_outline,
-                                                color: item.quantity != 1
-                                                    ? kSecondaryColor
-                                                    : kGreyColor,
-                                              ),
-                                              onPressed: item.quantity == 1
-                                                  ? () {
-                                                      Service.showMessage(
-                                                        context: context,
-                                                        title:
-                                                            "Minimum order quantity is 1!",
-                                                        error: true,
-                                                      );
-                                                    }
-                                                  : () {
-                                                      int? currQty =
-                                                          item.quantity;
-                                                      double? unitPrice =
-                                                          item.price! /
-                                                          currQty!;
-                                                      setState(() {
-                                                        item.quantity =
-                                                            currQty - 1;
-                                                        item.price =
-                                                            unitPrice *
-                                                            (currQty - 1);
-                                                        Service.save(
-                                                          'cart',
-                                                          cart,
-                                                        ); //old
-                                                        // Update aliexpressCart if applicable
-                                                        if (aliexpressCart !=
-                                                                null &&
-                                                            aliexpressCart!
-                                                                    .cart
-                                                                    .storeId ==
-                                                                cart!.storeId) {
-                                                          // int aliexpressIndex = aliexpressCart!.itemIds!.indexOf(item.id!);
-                                                          aliexpressCart!
-                                                                  .cart
-                                                                  .items![index]
-                                                                  .quantity =
-                                                              currQty - 1;
-                                                          aliexpressCart!
-                                                                  .cart
-                                                                  .items![index]
-                                                                  .price =
-                                                              unitPrice *
-                                                              (currQty - 1);
-                                                          Service.save(
-                                                            'aliexpressCart',
-                                                            aliexpressCart,
-                                                          ); // Save updated aliexpressCart
-                                                        }
-                                                      });
-                                                      calculatePrice();
-                                                    },
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    isLunchBox
+                                                        ? 'LUNCH ምሳቃ BOX'
+                                                        : Service.capitalizeFirstLetters(
+                                                            item.itemName!,
+                                                          ),
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: isLunchBox
+                                                          ? kSecondaryColor
+                                                          : kBlackColor,
+                                                    ),
+                                                    softWrap: true,
+                                                  ),
+                                                ),
+                                                if (isLunchBox)
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                      left:
+                                                          getProportionateScreenWidth(
+                                                            kDefaultPadding / 4,
+                                                          ),
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.lunch_dining,
+                                                      color: kSecondaryColor,
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                             Text(
-                                              "${item.quantity}",
+                                              "${Provider.of<ZMetaData>(context, listen: false).currency} ${item.price!.toStringAsFixed(2)}",
                                               style: Theme.of(context)
                                                   .textTheme
-                                                  .titleMedium
+                                                  .titleSmall
                                                   ?.copyWith(
-                                                    color: kBlackColor,
+                                                    color: kGreyColor,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                             ),
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.add_circle,
-                                                color: kSecondaryColor,
-                                              ),
-                                              onPressed: () {
-                                                int? currQty = item.quantity;
-                                                double? unitPrice =
-                                                    item.price! / currQty!;
-                                                setState(() {
-                                                  item.quantity = currQty + 1;
-                                                  item.price =
-                                                      unitPrice * (currQty + 1);
-                                                  Service.save(
-                                                    'cart',
-                                                    cart,
-                                                  ); //old
-                                                  // Update aliexpressCart if applicable
-                                                  if (aliexpressCart != null &&
-                                                      aliexpressCart!
-                                                              .cart
-                                                              .storeId ==
-                                                          cart!.storeId) {
-                                                    // int aliexpressIndex = aliexpressCart!.productIds!.indexOf(item.productId!);
-                                                    aliexpressCart!
-                                                            .cart
-                                                            .items![index]
-                                                            .quantity =
-                                                        currQty + 1;
-                                                    aliexpressCart!
-                                                            .cart
-                                                            .items![index]
-                                                            .price =
-                                                        unitPrice *
-                                                        (currQty + 1);
-                                                    Service.save(
-                                                      'aliexpressCart',
-                                                      aliexpressCart,
-                                                    ); // Save updated aliexpressCart
-                                                  }
-                                                });
-                                                calculatePrice();
-                                              },
-                                            ),
+                                            Text(item.noteForItem),
                                           ],
                                         ),
-                                        GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              cart?.items?.removeAt(index);
-                                              //Service.save('cart', cart);//old
-                                              //NEW
-                                              Service.save('cart', cart); //old
-                                              if (aliexpressCart != null &&
-                                                  aliexpressCart!
-                                                          .cart
-                                                          .storeId ==
-                                                      cart!.storeId) {
-                                                aliexpressCart!.cart.items!
-                                                    .removeAt(index);
-                                                aliexpressCart!.itemIds!
-                                                    .removeAt(index);
-                                                aliexpressCart!.productIds!
-                                                    .removeAt(index);
-                                                Service.save(
-                                                  'aliexpressCart',
-                                                  aliexpressCart,
-                                                ); //NEW
-                                              }
-                                            });
-                                            calculatePrice();
-                                          },
-                                          child: Text(
-                                            Provider.of<ZLanguage>(
-                                              context,
-                                            ).remove,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyLarge
-                                                ?.copyWith(
-                                                  fontSize: 12,
-                                                  color: kSecondaryColor,
-                                                  fontWeight: FontWeight.bold,
+                                      ),
+                                      Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.remove_circle_outline,
+                                                  color: item.quantity != 1
+                                                      ? kSecondaryColor
+                                                      : kGreyColor,
                                                 ),
+                                                onPressed: item.quantity == 1
+                                                    ? () {
+                                                        Service.showMessage(
+                                                          context: context,
+                                                          title:
+                                                              "Minimum order quantity is 1!",
+                                                          error: true,
+                                                        );
+                                                      }
+                                                    : () {
+                                                        int? currQty =
+                                                            item.quantity;
+                                                        double? unitPrice =
+                                                            item.price! /
+                                                            currQty!;
+                                                        setState(() {
+                                                          item.quantity =
+                                                              currQty - 1;
+                                                          item.price =
+                                                              unitPrice *
+                                                              (currQty - 1);
+                                                          Service.save(
+                                                            'cart',
+                                                            cart,
+                                                          );
+                                                          if (aliexpressCart !=
+                                                                  null &&
+                                                              aliexpressCart!
+                                                                      .cart
+                                                                      .storeId ==
+                                                                  cart!
+                                                                      .storeId) {
+                                                            aliexpressCart!
+                                                                    .cart
+                                                                    .items![index]
+                                                                    .quantity =
+                                                                currQty - 1;
+                                                            aliexpressCart!
+                                                                    .cart
+                                                                    .items![index]
+                                                                    .price =
+                                                                unitPrice *
+                                                                (currQty - 1);
+                                                            Service.save(
+                                                              'aliexpressCart',
+                                                              aliexpressCart,
+                                                            );
+                                                          }
+                                                        });
+                                                        calculatePrice();
+                                                      },
+                                              ),
+                                              Text(
+                                                "${item.quantity}",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(
+                                                      color: kBlackColor,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.add_circle,
+                                                  color: kSecondaryColor,
+                                                ),
+                                                onPressed: () {
+                                                  int? currQty = item.quantity;
+                                                  double? unitPrice =
+                                                      item.price! / currQty!;
+                                                  setState(() {
+                                                    item.quantity = currQty + 1;
+                                                    item.price =
+                                                        unitPrice *
+                                                        (currQty + 1);
+                                                    Service.save('cart', cart);
+                                                    if (aliexpressCart !=
+                                                            null &&
+                                                        aliexpressCart!
+                                                                .cart
+                                                                .storeId ==
+                                                            cart!.storeId) {
+                                                      aliexpressCart!
+                                                              .cart
+                                                              .items![index]
+                                                              .quantity =
+                                                          currQty + 1;
+                                                      aliexpressCart!
+                                                              .cart
+                                                              .items![index]
+                                                              .price =
+                                                          unitPrice *
+                                                          (currQty + 1);
+                                                      Service.save(
+                                                        'aliexpressCart',
+                                                        aliexpressCart,
+                                                      );
+                                                    }
+                                                  });
+                                                  calculatePrice();
+                                                },
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                          GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                cart?.items?.removeAt(index);
+                                                Service.save('cart', cart);
+                                                if (aliexpressCart != null &&
+                                                    aliexpressCart!
+                                                            .cart
+                                                            .storeId ==
+                                                        cart!.storeId) {
+                                                  aliexpressCart!.cart.items!
+                                                      .removeAt(index);
+                                                  aliexpressCart!.itemIds!
+                                                      .removeAt(index);
+                                                  aliexpressCart!.productIds!
+                                                      .removeAt(index);
+                                                  Service.save(
+                                                    'aliexpressCart',
+                                                    aliexpressCart,
+                                                  );
+                                                }
+                                              });
+                                              calculatePrice();
+                                            },
+                                            child: Text(
+                                              Provider.of<ZLanguage>(
+                                                context,
+                                              ).remove,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyLarge
+                                                  ?.copyWith(
+                                                    fontSize: 12,
+                                                    color: kSecondaryColor,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               )
-                            : Container();
+                            : SizedBox.shrink();
                       },
                     ),
                   ),
@@ -1117,6 +1182,15 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     Map data = {"store_id": cart!.storeId!};
     var body = json.encode(data);
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -1135,11 +1209,18 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       setState(() {
         this.storeDetail = json.decode(response.body);
       });
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint(e);
       setState(() {
         this._loading = false;
@@ -1167,6 +1248,15 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     var body = json.encode(data);
 
     try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: body,
+      );
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -1192,12 +1282,19 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
       setState(() {
         this._loading = false;
       });
 
       return json.decode(response.body);
     } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
       // debugPrint(e);
       if (mounted) {
         setState(() {
@@ -1389,7 +1486,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                 softWrap: true,
                               ),
                               Text(
-                                "${_getPrice(extraItems[index]) != null ? _getPrice(extraItems[index]) : 0} ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                                "${_getPrice(extraItems[index])} ${Provider.of<ZMetaData>(context, listen: false).currency}",
                                 style: Theme.of(context).textTheme.labelMedium
                                     ?.copyWith(color: kGreyColor),
                               ),
@@ -1404,11 +1501,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                     quantity: 1,
                                     specification: [],
                                     noteForItem: "",
-                                    price: _getPrice(extraItems[index]) != null
-                                        ? double.parse(
-                                            _getPrice(extraItems[index]),
-                                          )
-                                        : 0,
+                                    price: double.parse(
+                                      _getPrice(extraItems[index]),
+                                    ),
                                     itemName: extraItems[index]['name'],
                                     imageURL:
                                         extraItems[index]['image_url'].length >

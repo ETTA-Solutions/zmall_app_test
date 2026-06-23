@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:iconsx_plus/iconsx_plus.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:zmall/help/components/help_action_cards.dart';
 import 'package:zmall/services/url_launcher_service.dart';
 import 'package:zmall/utils/constants.dart';
@@ -58,11 +57,10 @@ class HelpScreen extends StatelessWidget {
                           icon: HeroiconsSolid.phone,
                         ),
                         HelpActionCards(
-                          onTap: () {
-                            // await UrlLauncherService.openEmail(
-                            //   "info@zmallshop.com",
-                            // );
-                            launch("mailto:info@zmallshop.com");
+                          onTap: () async {
+                            await UrlLauncherService.openEmail(
+                              "info@zmallshop.com",
+                            );
                           },
                           title: "E-Mail",
                           iconColor: Colors.redAccent,
@@ -187,7 +185,7 @@ class HelpScreen extends StatelessWidget {
                       children: [
                         //Instagram
                         HelpActionCards(
-                          icon: FontAwesomeIcons.instagram,
+                          icon: FontAwesome.instagram_brand,
                           iconColor: Colors.redAccent,
                           title: "Instagram",
                           onTap: () async {
@@ -199,7 +197,7 @@ class HelpScreen extends StatelessWidget {
 
                         //YouTube
                         // HelpActionCards(
-                        //   icon: FontAwesomeIcons.youtube,
+                        //   icon: FontAwesome.youtube,
                         //   iconColor: Colors.redAccent,
                         //   title: "YouTube",
                         //   onTap: () {
@@ -210,7 +208,7 @@ class HelpScreen extends StatelessWidget {
                         // ),https://www.zmalldelivery.com
                         //Tiktok
                         HelpActionCards(
-                          icon: FontAwesomeIcons.tiktok,
+                          icon: FontAwesome.tiktok_brand,
                           iconColor: kBlackColor,
                           title: "Tiktok",
                           onTap: () async {
@@ -221,7 +219,7 @@ class HelpScreen extends StatelessWidget {
                         ),
                         //Facebook
                         HelpActionCards(
-                          icon: FontAwesomeIcons.facebookF,
+                          icon: FontAwesome.facebook_f_brand,
                           iconColor: Colors.blue,
                           title: "Facebook",
                           onTap: () async {
@@ -240,7 +238,7 @@ class HelpScreen extends StatelessWidget {
                       children: [
                         //LinkedIn
                         HelpActionCards(
-                          icon: FontAwesomeIcons.linkedin,
+                          icon: FontAwesome.linkedin_brand,
                           iconColor: Colors.blue,
                           title: "LinkedIn",
                           onTap: () async {
@@ -252,7 +250,7 @@ class HelpScreen extends StatelessWidget {
                         //X
                         //Follow us on
                         HelpActionCards(
-                          icon: FontAwesomeIcons.xTwitter,
+                          icon: FontAwesome.x_twitter_brand,
                           iconColor: kBlackColor,
                           title: "X",
                           onTap: () async {
@@ -339,7 +337,7 @@ class HelpScreen extends StatelessWidget {
             //       ),
             //       ProfileListTile(
             //         icon: Icon(
-            //           FontAwesomeIcons.instagram,
+            //           FontAwesome.instagram,
             //           color: kBlackColor,
             //         ),
             //         title: "Follow us on Instagram",

@@ -5,85 +5,98 @@ description: ZMall E-commerce App
 # pub.dev using `pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 3.2.7+359
+version: 3.2.9+362
 
 environment:
-  sdk: ">=3.9.0 <4.0.0"
+  sdk: ">=3.10.4 <4.0.0"
 
 dependencies:
-  flutter:  
+  flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
-  heroicons_flutter: ^0.4.0
-  http: ^1.5.0
-  # http: ^1.4.0
-  shimmer:
-  flutter_spinkit:
-  # shared_preferences:
-  shared_preferences: ^2.5.4
-  url_launcher: ^6.0.3
-  # mobile_scanner:
-  # qr_code_scanner:
-  modal_progress_hud_nsn: ^0.5.1
-  geolocator: ^14.0.2
-  fl_location: ^5.0.0
-  cached_network_image: ^3.2.0
-  flutter_map:
-  uuid: ^4.4.0
+  # ── State management ──
+  provider: ^6.1.5+1
+
+  # ── UI: icons ──
+  cupertino_icons: ^1.0.9
+  heroicons_flutter: ^0.5.0       # 0.5.0 fixed the final-IconData build issue
+  iconsx_plus: ^1.0.1             # FontAwesome icons (replaces broken font_awesome_flutter)
+
+  # ── UI: widgets, layout & effects ──
+  shimmer: ^3.0.0                 # skeleton loading effect
+  flutter_spinkit: ^5.2.2         # loading spinners
+  modal_progress_hud_nsn: ^0.5.1  # progress overlay
+  overlay_support: ^2.1.0         # in-app notifications / overlays
   smooth_star_rating_null_safety: ^1.0.4+2
-  rate_my_app: ^2.3.2
-  google_maps_flutter: ^2.6.1
-  intl: ^0.20.2
-  path_provider:
-  image_picker:
-  overlay_support: ^2.1.0
-  # firebase
-  firebase_core: ^4.0.0
-  firebase_auth: ^6.0.0
-  # firebase_analytics: ^11.4.3
-  firebase_analytics: ^12.0.0
-  firebase_messaging: ^16.0.0
-  firebase_in_app_messaging: ^0.9.0
-  # Facebook Analytics
-  facebook_app_events: ^0.24.0
-  #
-  photo_view: ^0.15.0
-  flutter_inappwebview: ^6.1.5
-  timezone:
-  font_awesome_flutter:
-  country_code_picker: ^3.0.0
-  percent_indicator: ^4.0.0
-  provider:
-  # rive:
-  # flutter_datetime_picker: ^1.5.1
-  # flutter_svg:
-  # crypto: ^3.0.3
-  encrypt: ^5.0.3
-  package_info_plus: ^9.0.0
-  flutter_staggered_grid_view:
-
-  #
-  sms_autofill:
-  # flutter_animate:
-  local_auth: ^3.0.0
-  flutter_secure_storage: ^10.0.0
-
-  # for recap
-  just_audio:
-  share_plus:
-  screenshot:
-
-  # for magazine
-  pdfx: ^2.6.0
-  dio: ^5.9.0
-  page_flip: ^0.2.5+1
+  percent_indicator: ^4.2.5
+  flutter_staggered_grid_view: ^0.7.0
+  photo_view: ^0.15.0             # zoomable image viewer
+  page_flip: ^0.2.5+1             # magazine page-flip
   visibility_detector: ^0.4.0+2
-
-  # for confetti
   confetti: ^0.8.0
+  country_code_picker: ^3.4.1
+  # flutter_animate:              # (disabled)
 
-  #
+  # ── Networking ──
+  http: ^1.6.0
+  dio: ^5.9.2
+
+  # ── Images & media ──
+  cached_network_image: ^3.4.1
+  image_picker: ^1.2.2
+  just_audio: ^0.10.5             # yearly recap audio
+
+  # ── Maps & location ──
+  geolocator: ^14.0.3
+  fl_location: ^5.0.0
+  flutter_map: ^8.3.0
+  google_maps_flutter: ^2.17.1
+
+  # ── Firebase ──
+  firebase_core: ^4.10.0
+  firebase_auth: ^6.5.2
+  firebase_analytics: ^12.4.1
+  firebase_messaging: ^16.3.0
+  firebase_in_app_messaging: ^0.9.2+3
+
+  # ── Analytics ──
+  facebook_app_events: ^0.30.0
+
+  # ── Storage & persistence ──
+  shared_preferences: ^2.5.5
+  path_provider: ^2.1.6
+
+  # ── Security & auth ──
+  encrypt: ^5.0.3
+  flutter_secure_storage: ^10.3.1
+  local_auth: ^3.0.1              # biometric auth
+  sms_autofill: ^2.5.0            # OTP autofill
+
+  # ── Web & deep links ──
+  url_launcher: ^6.3.2
+  flutter_inappwebview: ^6.1.5
+  app_links: ^7.1.2
+
+  # ── Documents ──
+  pdfx: ^2.9.2                    # magazine PDF reader
+
+  # ── Localization & formatting ──
+  intl: ^0.20.2
+  timezone: ^0.11.0
+
+  # ── Utilities ──
+  uuid: ^4.5.3
+  package_info_plus: ^10.1.0
+  share_plus: ^13.1.0             # yearly recap sharing
+  screenshot: ^3.0.0              # yearly recap screenshot
+  rate_my_app: ^2.4.0
+
+  # Vendored + patched locally: 0.4.0 subclasses the now-final IconData and
+  # won't compile on current Flutter. Swap back to a pub version once a fixed
+  # release ships, then delete packages/heroicons_flutter.
+  # heroicons_flutter:
+    # path: packages/heroicons_flutter
+
 
 module:
   androidX: true
@@ -104,6 +117,7 @@ flutter:
     - assets/
     - images/payment/
     - images/pl_logos/
+    - images/pl_logos/nation/ # Added: national team logos for World Cup (e.g. GER.png, BRA.png)
     - images/store_tags/
     - assets/audio/
 #    - packages/timezone/data/2021a.tzf
