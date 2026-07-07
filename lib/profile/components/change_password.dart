@@ -33,7 +33,8 @@ class _ChangePasswordState extends State<ChangePassword> {
   bool _isLoading = false;
 
   void _changePassword() async {
-    var data = await changePassword();
+    try{
+      var data = await changePassword();
     if (data != null && data['success']) {
       Navigator.of(context).pop();
       Service.showMessage(
@@ -45,7 +46,9 @@ class _ChangePasswordState extends State<ChangePassword> {
         _isLoading = false;
       });
     } else {
-      if (data['error_code'] == 999) {
+    
+      if(data != null && data['error_code'] != null){
+        if (data['error_code'] == 999) {
         Navigator.of(context).pop();
         Service.showMessage(
           context: context,
@@ -68,11 +71,21 @@ class _ChangePasswordState extends State<ChangePassword> {
           error: true,
         );
       }
+      }
+    } 
+  }catch(e){
+    Service.showMessage(
+          context: context,
+          title: "Change password failed! Please try again",
+          error: true,
+        );
+  } finally{
       setState(() {
         _isLoading = false;
       });
-    }
-  }
+  }   
+     
+}
 
   @override
   Widget build(BuildContext context) {
@@ -87,12 +100,19 @@ class _ChangePasswordState extends State<ChangePassword> {
           inAsyncCall: _isLoading,
           color: kPrimaryColor,
           progressIndicator: LinearLoadingIndicator(),
-          child: Padding(
-            padding: EdgeInsets.all(
-              getProportionateScreenWidth(kDefaultPadding),
-            ),
-            child: Center(
-              child: Container(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(
+                      getProportionateScreenWidth(kDefaultPadding),
+                    ),
+                    child: Center(
+                      child: Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: getProportionateScreenWidth(kDefaultPadding),
                   vertical: getProportionateScreenHeight(kDefaultPadding),
@@ -287,8 +307,12 @@ class _ChangePasswordState extends State<ChangePassword> {
                     ],
                   ),
                 ),
-              ),
-            ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),

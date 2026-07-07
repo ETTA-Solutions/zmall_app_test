@@ -23,6 +23,7 @@ import 'package:zmall/kifiya/components/etta_card_screen.dart';
 import 'package:zmall/kifiya/components/santimpay_screen.dart';
 import 'package:zmall/kifiya/components/telebirr_inapp.dart';
 import 'package:zmall/kifiya/components/telebirr_ussd.dart';
+import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
 import 'package:zmall/kifiya/kifiya_verification.dart';
 import 'package:zmall/login/login_screen.dart';
@@ -65,6 +66,10 @@ class KifiyaScreen extends StatefulWidget {
 class _KifiyaScreenState extends State<KifiyaScreen> {
   bool _loading = true;
   bool _placeOrder = false;
+  // Telebirr in-app: prevents a confirmed payment from creating the order
+  // more than once (fixed traceNo + always-poll allowed re-entry to re-confirm
+  // the same payment). Only used by the Telebirr in-app flow.
+  bool _orderPlaced = false;
   bool paidBySender = true;
   late Cart cart;
   AliExpressCart? aliexpressCart;
@@ -116,9 +121,20 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
   /// Poll Telebirr query API to confirm in-app payment.
   /// Returns true when the backend reports a paid/success state.
+  ///
+  /// Bounded: polls every [intervalSeconds] until a terminal PAID/FAILED
+  /// result, until the widget unmounts, or until [maxAttempts] requests have
+  /// been made — whichever comes first. This prevents an endless poll (and the
+  /// server load it causes) when a payment stays PENDING or the endpoint is
+  /// unreachable. Exhausting the attempts returns false (treated as
+  /// "not confirmed" by the caller).
+  /// Default: 6 attempts x 1s (~6 seconds) of coverage when the endpoint
+  /// responds quickly; longer if requests are slow (each request can take up
+  /// to its 10s timeout before the next attempt).
   Future<bool> pollTelebirrStatus({
     required String merchOrderId,
-    int intervalSeconds = 3,
+    int intervalSeconds = 1,
+    int maxAttempts = 6,
   }) async {
     // debugPrint('🔍 Polling Telebirr status for merchOrderId: $merchOrderId');
 
@@ -144,10 +160,16 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       );
     });
 
-    const String url = "https://pgw.shekla.app/teleInapp/query";
+    // const String url = "https://pgw.shekla.app/teleInapp/query"; // old prod
+    // 
+    // const String url = "https://pgw.shekla.app/teleInapp/test_query"; //test endpoint
+    // 
+    const String url = "https://pgw.shekla.app/teleInapp/prod_query"; //new prod
+    // 
+
     var attempt = 0;
 
-    while (mounted) {
+    while (mounted && attempt < maxAttempts) {
       attempt += 1;
       try {
         final response = await http
@@ -164,6 +186,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         if (!mounted) return false;
 
         final data = json.decode(response.body);
+        // debugPrint('DATA>>>: $data');
         String? status;
         bool? success;
         String? message;
@@ -769,7 +792,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           progressIndicator: linearProgressIndicator,
           color: kPrimaryColor,
           child: paymentResponse != null
-              ? Padding(
+              ? Column(
+                  children: [
+                    Expanded(
+                      child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: getProportionateScreenWidth(kDefaultPadding),
                   ),
@@ -1138,6 +1164,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                     ? 'images/payment/boa.png'
                                     : paymentName == "zemen"
                                     ? 'images/payment/zemen.png'
+                                    : paymentName.contains("wegagen")
+                                    ? 'images/payment/wegagen.png'
                                     : paymentName == "awash"
                                     ? 'images/payment/awash.png'
                                     : paymentName == "etta card"
@@ -2100,26 +2128,13 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                     ),
                                                   ).then((value) async {
                                                     // DISABLED: _boaVerify callback — using query/polling only
-                                                    // debugPrint(
-                                                    //   '###[Telebirr] Returned from in-app flow, checking with boaVerify() first',
-                                                    // );
-                                                    // final verified =
-                                                    //     await _boaVerify();
-                                                    // debugPrint(
-                                                    //   '###[Telebirr] _boaVerify() result: $verified',
-                                                    // );
-                                                    // if (verified) {
-                                                    //   debugPrint(
-                                                    //     '###[Telebirr] _boaVerify succeeded; skipping polling fallback',
-                                                    //   );
-                                                    //   return;
-                                                    // }
-                                                    // debugPrint(
-                                                    //   '###[Telebirr] _boaVerify did not confirm payment; delaying then polling',
-                                                    // );
-                                                    // await Future.delayed(
-                                                    //   Duration(seconds: 3),
-                                                    // );
+
+                                                    // Guard: if an order was already
+                                                    // placed for this payment, never
+                                                    // create a second one. Prevents the
+                                                    // polling path from producing duplicate
+                                                    // orders on re-entry / concurrent polls.
+                                                    if (_orderPlaced) return;
 
                                                     final isPaid =
                                                         await pollTelebirrStatus(
@@ -2127,13 +2142,24 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                               "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}",
                                                         );
 
-                                                    // debugPrint(
-                                                    //   '###[Telebirr] pollTelebirrStatus result: $isPaid',
-                                                    // );
+                                                    debugPrint(
+                                                      '###[Telebirr] pollTelebirrStatus result: $isPaid',
+                                                    );
+
+                                                    if (!mounted) return;
+
+                                                    // Re-check after the await: another
+                                                    // poll/callback may have placed the
+                                                    // order while we were waiting.
+                                                    if (_orderPlaced) return;
 
                                                     if (isPaid) {
+                                                      // Claim the order before creating it
+                                                      // so no other path can create again.
+                                                      _orderPlaced = true;
                                                       Service.showMessage(
                                                         context: context,
+                                                        error: false,
                                                         title:
                                                             "Telebirr payment confirmed.",
                                                       );
@@ -2444,7 +2470,123 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                   //       });
                                   //     }
                                   //   }
-                                  ///*******************************MoMo*******************************
+                                  ///*******************************MoMo end*******************************
+                                  //////////////////////////////// Wegagen Bank ///////////////////////////////////////
+                                  else if (paymentName.contains("wegagen")) {
+                                    var data = await useBorsa();
+                                    if (data != null && data['success']) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return AlertDialog(
+                                            backgroundColor: kPrimaryColor,
+                                            title: Text(
+                                              "Pay Using Wegagen Bank",
+                                            ),
+                                            content: Text(
+                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Wegagen Bank?",
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                child: Text(
+                                                  Provider.of<ZLanguage>(
+                                                    context,
+                                                  ).cancel,
+                                                  style: TextStyle(
+                                                    color: kSecondaryColor,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                              TextButton(
+                                                child: Text(
+                                                  Provider.of<ZLanguage>(
+                                                    context,
+                                                  ).cont,
+                                                  style: TextStyle(
+                                                    color: kBlackColor,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                  setState(() {
+                                                    uuid = (int.parse(uuid) + 1)
+                                                        .toString();
+                                                  });
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) {
+                                                        return WegagenUssd(
+                                                          title:
+                                                              "Wegagen Bank Payment",
+                                                          url:
+                                                              "$BASE_URL/admin/pay_payment_wegagen_ussd_pay",
+                                                          hisab: widget.price!,
+                                                          traceNo: widget
+                                                              .orderPaymentUniqueId!, //no uuid
+                                                          //  traceNo:  uuid +"_" +widget .orderPaymentUniqueId!, //to prevent trace number duplication
+                                                          phone:
+                                                              userData['user']['phone'],
+                                                          orderPaymentId: widget
+                                                              .orderPaymentId!,
+                                                          orderPaymentUniqueId:
+                                                              widget
+                                                                  .orderPaymentUniqueId!,
+                                                        );
+                                                      },
+                                                    ),
+                                                  ).then((value) {
+                                                    // Wegagen confirms payment
+                                                    // synchronously, so on
+                                                    // approval we create the
+                                                    // order directly (no
+                                                    // _boaVerify step).
+                                                    if (value == true) {
+                                                      widget.isCourier!
+                                                          ? _createCourierOrder()
+                                                          : (aliexpressCart !=
+                                                                    null &&
+                                                                aliexpressCart!
+                                                                        .cart
+                                                                        .storeId ==
+                                                                    cart.storeId)
+                                                          ? _createAliexpressOrder()
+                                                          : _createOrder();
+                                                    } else {
+                                                      Service.showMessage(
+                                                        context: context,
+                                                        title:
+                                                            "Payment not completed. Please choose your payment method.",
+                                                        error: true,
+                                                      );
+                                                      setState(() {
+                                                        kifiyaMethod = -1;
+                                                      });
+                                                    }
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    } else {
+                                      Service.showMessage(
+                                        context: context,
+                                        title:
+                                            "Something went wrong! Please try again!",
+                                        error: true,
+                                      );
+                                      setState(() {
+                                        kifiyaMethod = -1;
+                                      });
+                                    }
+                                  }
+                                  //////////////////////////////// Wegagen Bank end///////////////////////////////////////
                                   else if (paymentName == "zemen") {
                                     var data = await useBorsa();
                                     if (data != null && data['success']) {
@@ -2629,35 +2771,42 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                       ],
                     ),
                   ),
+                      ),
+                    ),
+                    // Place Order button moved inside the ModalProgressHUD so the
+                    // loading barrier covers it and blocks taps while an order is
+                    // being processed (it previously lived in bottomNavigationBar,
+                    // outside the HUD, and stayed tappable).
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
+                        horizontal: getProportionateScreenHeight(
+                          kDefaultPadding,
+                        ),
+                      ),
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor,
+                        border: Border(top: BorderSide(color: kWhiteColor)),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(kDefaultPadding),
+                          topRight: Radius.circular(kDefaultPadding),
+                        ),
+                      ),
+                      child: CustomButton(
+                        isLoading: paymentResponse != null && _placeOrder,
+                        title: Provider.of<ZLanguage>(context).placeOrder,
+                        press: () {
+                          _payOrderPayment(otp: "");
+                        },
+                        color: kSecondaryColor,
+                      ),
+                    ),
+                  ],
                 )
               : Container(),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          width: double.infinity,
-          // height: kDefaultPadding * 4,
-          padding: EdgeInsets.symmetric(
-            vertical: getProportionateScreenHeight(kDefaultPadding / 2),
-            horizontal: getProportionateScreenHeight(kDefaultPadding),
-          ),
-          decoration: BoxDecoration(
-            color: kPrimaryColor,
-            border: Border(top: BorderSide(color: kWhiteColor)),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(kDefaultPadding),
-              topRight: Radius.circular(kDefaultPadding),
-            ),
-          ),
-
-          child: CustomButton(
-            isLoading: paymentResponse != null && _placeOrder,
-            title: Provider.of<ZLanguage>(context).placeOrder,
-            press: () {
-              _payOrderPayment(otp: "");
-            },
-            color: kSecondaryColor,
-          ),
         ),
       ),
     );
@@ -3108,7 +3257,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         ..fields['schedule_order_start_at'] = isCourierSchedule
             ? courierScheduleDate
             : ""
-        ..fields['vehicle_id'] = widget.vehicleId!;
+        ..fields['vehicle_id'] = widget.vehicleId!
+        // Idempotency key: backend should return the existing order for a
+        // repeated call with the same unique id instead of creating a duplicate.
+        ..fields['order_payment_unique_id'] = widget.orderPaymentUniqueId!;
       if (imagePath != null && imagePath.length > 0) {
         // Validate all image paths using the shared service
         final batch = await ImageUploadService.validateBatch(imagePath);
@@ -3409,6 +3561,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           "full_name": full_name,
           "mobile_no": mobile_no,
           "product_items": productItems,
+          // Idempotency key: backend should return the existing order for a
+          // repeated call with the same unique id instead of creating a duplicate.
+          "order_payment_unique_id": widget.orderPaymentUniqueId,
         };
         var body = json.encode(data);
         // debugPrint("body $body");
@@ -3486,6 +3641,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             ? cart.scheduleStart?.toUtc().toString()
             : "",
         "server_token": userData['user']['server_token'],
+        // Idempotency key: backend should return the existing order for a
+        // repeated call with the same unique id instead of creating a duplicate.
+        "order_payment_unique_id": widget.orderPaymentUniqueId,
         if (filteredOrderIds != null) "aliexpress_order_ids": filteredOrderIds,
       };
       var body = json.encode(data);
