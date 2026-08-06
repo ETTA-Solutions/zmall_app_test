@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:iconsx_plus/iconsx_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:zmall/models/language.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/global/order/global_order.dart';
@@ -123,146 +125,223 @@ class _GlobalProfileState extends State<GlobalProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text("Profile", style: TextStyle(color: kBlackColor)),
-        elevation: 1.0,
-      ),
-      body: Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: getProportionateScreenHeight(kDefaultPadding / 2),
-          horizontal: getProportionateScreenHeight(kDefaultPadding),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.all(
-                getProportionateScreenWidth(kDefaultPadding),
-              ),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: kPrimaryColor,
-                borderRadius: BorderRadius.circular(
+      // appBar: AppBar(
+      //   automaticallyImplyLeading: false,
+      //   title: Text("Profile", style: TextStyle(color: kBlackColor)),
+      //   elevation: 1.0,
+      // ),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: getProportionateScreenHeight(kDefaultPadding / 2),
+            horizontal: getProportionateScreenHeight(kDefaultPadding),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(
                   getProportionateScreenWidth(kDefaultPadding),
                 ),
-              ),
-              child: Column(
-                children: [
-                  ImageContainer(
-                    url:
-                        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/",
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: kPrimaryColor,
+                  borderRadius: BorderRadius.circular(
+                    getProportionateScreenWidth(kDefaultPadding),
                   ),
-                  SizedBox(
-                    height: getProportionateScreenHeight(kDefaultPadding / 2),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        abroadData != null ? abroadData!.abroadName! : "",
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                ),
+                child: Column(
+                  children: [
+                    ImageContainer(
+                      url:
+                          "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/",
+                    ),
+                    SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          abroadData != null ? abroadData!.abroadName! : "",
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                      abroadData != null && abroadData!.abroadPhone != null
-                          ? Icon(
-                              Icons.verified_outlined,
-                              color: kSecondaryColor,
-                              size: getProportionateScreenWidth(
-                                kDefaultPadding,
-                              ),
-                            )
-                          : Container(),
-                    ],
-                  ),
-                  Text(
-                    abroadData != null
-                        ? abroadData!.abroadPhone.toString()
-                        : "",
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  Text(
-                    abroadData != null ? abroadData!.abroadEmail! : "",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  // TextButton(
-                  //   onPressed: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(
-                  //         builder: (context) => EditProfile(
-                  //           userData: userData,
-                  //         ),
-                  //       ),
-                  //     ).then((value) => getUser());
-                  //     debugPrint(userData['user']);
-                  //   },
-                  //   child: Text("Edit"),
-                  // ),
-                ],
+                        abroadData != null && abroadData!.abroadPhone != null
+                            ? Icon(
+                                HeroiconsSolid.checkBadge,
+                                color: kSecondaryColor,
+                                size: getProportionateScreenWidth(
+                                  kDefaultPadding,
+                                ),
+                              )
+                            : Container(),
+                      ],
+                    ),
+                    Text(
+                      abroadData != null
+                          ? abroadData!.abroadPhone.toString()
+                          : "",
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      abroadData != null ? abroadData!.abroadEmail! : "",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    // TextButton(
+                    //   onPressed: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) => EditProfile(
+                    //           userData: userData,
+                    //         ),
+                    //       ),
+                    //     ).then((value) => getUser());
+                    //     debugPrint(userData['user']);
+                    //   },
+                    //   child: Text("Edit"),
+                    // ),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
-            ProfileListTile(
-              icon: Icon(Icons.shopping_bag_rounded, color: kSecondaryColor),
-              title: "My Orders",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) {
-                      return GlobalOrder();
+
+              _userActionCard(
+                textTheme: Theme.of(context).textTheme,
+                title: "Services",
+                backgroundColor: kPrimaryColor,
+                topMargin: getProportionateScreenHeight(kDefaultPadding * 2),
+                children: [
+                  NewProfileListTile(
+                    icon: Icon(
+                      HeroiconsOutline.shoppingBag,
+                      color: kSecondaryColor,
+                    ),
+                    title: "My Orders",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return GlobalOrder();
+                          },
+                        ),
+                      );
                     },
                   ),
-                );
-              },
-            ),
-            SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
-            ProfileListTile(
-              icon: Icon(Icons.help, color: kSecondaryColor),
-              title: "Help",
-              onTap: () {
-                Navigator.pushNamed(context, HelpScreen.routeName);
-              },
-            ),
-            SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
-            ProfileListTile(
-              icon: Icon(FontAwesome.instagram_brand, color: kSecondaryColor),
-              title: "Follow us on Instagram",
-              onTap: () {
-                Service.launchInWebViewOrVC(
-                  "https://www.instagram.com/zmall_delivery/?hl=en",
-                );
-              },
-            ),
-            SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
-            ProfileListTile(
-              icon: Icon(Icons.facebook, color: kSecondaryColor),
-              title: "Follow us on Facebook",
-              onTap: () {
-                Service.launchInWebViewOrVC(
-                  "https://www.facebook.com/Zmallshop/",
-                );
-              },
-            ),
-            Spacer(),
-            isLoading
-                ? SpinKitWave(
-                    color: kSecondaryColor,
-                    size: getProportionateScreenWidth(kDefaultPadding),
-                  )
-                : CustomButton(
-                    title: "LOGOUT",
-                    press: () {
+                  Divider(color: kWhiteColor, height: 1),
+                  NewProfileListTile(
+                    icon: Icon(
+                      HeroiconsOutline.questionMarkCircle,
+                      color: kSecondaryColor,
+                    ),
+                    title: "Help",
+                    onTap: () {
+                      Navigator.pushNamed(context, HelpScreen.routeName);
+                    },
+                  ),
+                ],
+              ),
+              _userActionCard(
+                textTheme: Theme.of(context).textTheme,
+                title: "Social",
+                backgroundColor: kPrimaryColor,
+                topMargin: getProportionateScreenHeight(kDefaultPadding / 2),
+                children: [
+                  NewProfileListTile(
+                    icon: Icon(
+                      FontAwesome.instagram_brand,
+                      color: kSecondaryColor,
+                    ),
+                    title: "Follow us on Instagram",
+                    onTap: () {
+                      Service.launchInWebViewOrVC(
+                        "https://www.instagram.com/zmall_delivery/?hl=en",
+                      );
+                    },
+                  ),
+                  Divider(color: kWhiteColor, height: 1),
+                  NewProfileListTile(
+                    icon: Icon(
+                      FontAwesome.facebook_f_brand,
+                      color: Colors.blue,
+                    ),
+                    title: "Follow us on Facebook",
+                    onTap: () {
+                      Service.launchInWebViewOrVC(
+                        "https://www.facebook.com/Zmallshop/",
+                      );
+                    },
+                  ),
+                ],
+              ),
+              _userActionCard(
+                textTheme: Theme.of(context).textTheme,
+                title: "Danger zone",
+                backgroundColor: kPrimaryColor,
+                topMargin: getProportionateScreenHeight(kDefaultPadding / 1.5),
+                children: [
+                  NewProfileListTile(
+                    icon: Icon(
+                      HeroiconsOutline.arrowLeftStartOnRectangle,
+                      color: kSecondaryColor,
+                    ),
+                    title: Provider.of<ZLanguage>(
+                      context,
+                      listen: false,
+                    ).logout,
+                    onTap: () {
                       setState(() {
                         isLoading = true;
                       });
                       _showDialog();
                     },
-                    color: kSecondaryColor,
                   ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _userActionCard({
+    required String title,
+    required TextTheme textTheme,
+    required List<Widget> children,
+    double? spacing,
+    Color? backgroundColor = kPrimaryColor,
+    double? topMargin,
+  }) {
+    return Container(
+      margin:
+          EdgeInsets.symmetric(
+            horizontal: getProportionateScreenWidth(kDefaultPadding),
+            // vertical: getProportionateScreenHeight(kDefaultPadding / 4)
+          ).copyWith(
+            top: topMargin,
+            bottom: getProportionateScreenHeight(kDefaultPadding / 1.5),
+          ),
+      padding: EdgeInsets.symmetric(
+        horizontal: getProportionateScreenWidth(kDefaultPadding / 4),
+        vertical: getProportionateScreenHeight(kDefaultPadding / 4),
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        border: Border.all(color: kWhiteColor),
+        borderRadius: BorderRadius.circular(kDefaultPadding * 1.2),
+      ),
+      child: Column(
+        spacing: spacing ?? getProportionateScreenHeight(kDefaultPadding / 2),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+        // children: [
+        //   // Text(
+        //   //   title,
+        //   //   style: textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+        //   // ),
+        //   ...children,
+        // ],
       ),
     );
   }

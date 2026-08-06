@@ -52,7 +52,7 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
   var promotionalItems;
   List<bool> isPromotionalItemOpen = [];
 
-  Map<String,  dynamic>? magazineService;
+  Map<String, dynamic>? magazineService;
   bool hasMagazine = false;
   LocationPermission _permissionStatus = LocationPermission.denied;
 
@@ -191,7 +191,7 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
       "Ethiopia",
     );
     if (data != null && data['success']) {
-      if(mounted) {
+      if (mounted) {
         setState(() {
           categories = data['deliveries'];
           responseData = data;
@@ -200,7 +200,6 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
       }
       // debugPrint("categories $categories");
       _checkMagazineService();
-      
     }
     setState(() {
       _loading = false;
@@ -215,7 +214,7 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
       // Ensure app metadata is loaded before checking store status
       _getAppKeys();
       isPromotionalItemOpen.clear();
-      
+
       var data = await CoreServices.getPromotionalItems(
         isGlobal: true,
         userId: "",
@@ -226,7 +225,7 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
           Provider.of<ZMetaData>(context, listen: false).longitude,
         ],
       );
-      
+
       if (data != null && data['success']) {
         // debugPrint("Fetched promotional Items....");
         if (mounted) {
@@ -241,7 +240,8 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
         await getLocalPromotionalItems();
       }
       // only proceed to check store status if promotional items were fetched
-      if(promotionalItems != null && promotionalItems['promotional_items'] != null) {
+      if (promotionalItems != null &&
+          promotionalItems['promotional_items'] != null) {
         var items = promotionalItems['promotional_items'];
         // Re-clear to be safe before refilling
         isPromotionalItemOpen.clear();
@@ -254,18 +254,17 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
         // Initialize empty list if no items found to prevent
         promotionalItems = {"success": false, "promotional_items": []};
       }
-
     } catch (e) {
       // TODO
       //On crash, try cache as last re-sort
       // debugPrint("Error fetching promotional items: $e");
       await getLocalPromotionalItems();
     } finally {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -278,7 +277,8 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
   ///=======================================
   Future<void> _checkStoresOpen() async {
     isPromotionalItemOpen.clear();
-    if (promotionalItems != null && promotionalItems['promotional_items'] != null) {
+    if (promotionalItems != null &&
+        promotionalItems['promotional_items'] != null) {
       for (var item in promotionalItems['promotional_items']) {
         bool isOpen = await Service.isStoreOpen(item);
         isPromotionalItemOpen.add(isOpen);
@@ -287,25 +287,23 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
   }
 
   Future<void> getLocalPromotionalItems() async {
-  try {
-    var data = await Service.read('p_items');
-    if (data != null && data is Map<String, dynamic>) {
-      if(mounted) {
-        setState(() {
-          promotionalItems = data;
-          // _loading = false; //? logic moved to finally block
-        });
-        await _checkStoresOpen();
+    try {
+      var data = await Service.read('p_items');
+      if (data != null && data is Map<String, dynamic>) {
+        if (mounted) {
+          setState(() {
+            promotionalItems = data;
+            // _loading = false; //? logic moved to finally block
+          });
+          await _checkStoresOpen();
+        }
       }
-    }
     } catch (e) {
       // TODO
       //ignore
       // debugPrint("Error loading cached promotional items: $e");
     }
   }
-
-
 
   // void getUser() async {
   //   var data = await Service.read('abroad_user');
@@ -432,8 +430,7 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
         if (mounted) {
           Service.showMessage(
             context: context,
-            title:
-                "$message We deliver your order once we resume our service.",
+            title: "$message We deliver your order once we resume our service.",
             error: false,
             duration: 4,
           );
@@ -468,19 +465,14 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
 
       // Order near you
       'near_you',
-      'orders near you'
-      
+      'orders near you',
     ];
 
-    return tags.any(
-      (tag) => hiddenTags.contains(tag.toString().toLowerCase()),
-    );
-
+    return tags.any((tag) => hiddenTags.contains(tag.toString().toLowerCase()));
   }
 
   void _checkMagazineService() {
     if (categories == null || categories.isEmpty) {
-
       setState(() {
         hasMagazine = false;
         magazineService = null;
@@ -493,7 +485,8 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
 
     for (var category in categories) {
       final tags = category['famous_products_tags'] as List?;
-      bool isMagazine = tags?.any(
+      bool isMagazine =
+          tags?.any(
             (tag) =>
                 tag.toString().toLowerCase() == 'magazine' ||
                 tag.toString().toLowerCase().contains('magazine'),
@@ -519,7 +512,6 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
     });
   }
 
-
   /// MAGAZINE NAVIGATION HANDLER
   void _openMagazineScreen() async {
     // Check if global user is registered
@@ -532,8 +524,6 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
       getAbroadUser();
       return;
     }
-
-
 
     Navigator.push(
       context,
@@ -565,7 +555,7 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
     });
     getAbroadUser();
     _doLocationTask();
-    _getPromotionalItems(); 
+    _getPromotionalItems();
   }
 
   int getServiceIndex(String serviceName) {
@@ -595,28 +585,6 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text.rich(
-          TextSpan(
-            text: "Z",
-            style: TextStyle(
-              color: kSecondaryColor,
-              fontWeight: FontWeight.bold,
-            ),
-            children: [
-              TextSpan(
-                text: "Mall Global",
-                style: TextStyle(
-                  color: kBlackColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        elevation: 1.0,
-      ),
       body: RefreshIndicator(
         color: kPrimaryColor,
         backgroundColor: kSecondaryColor,
@@ -627,530 +595,624 @@ class _GlobalHomeScreenState extends State<GlobalHomeScreen> {
           progressIndicator: LinearLoadingIndicator(),
           child: categories != null
               ? SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      bottom: getProportionateScreenHeight(kDefaultPadding),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          color: kPrimaryColor,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ===================== MODERN HEADER =====================
+                      Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF1A1A2E),
+                              Color(0xFF16213E),
+                              Color(0xFF0F3460),
+                            ],
+                          ),
+                        ),
+                        child: SafeArea(
+                          bottom: false,
                           child: Padding(
-                            padding: EdgeInsets.only(
-                              left: getProportionateScreenWidth(
-                                kDefaultPadding,
-                              ),
-                              right: getProportionateScreenWidth(
-                                kDefaultPadding,
-                              ),
-                              top: getProportionateScreenHeight(
-                                kDefaultPadding / 2,
-                              ),
+                            padding: EdgeInsets.fromLTRB(
+                              getProportionateScreenWidth(20),
+                              getProportionateScreenHeight(12),
+                              getProportionateScreenWidth(20),
+                              getProportionateScreenHeight(24),
                             ),
-                            child: Text(
-                              abroadData != null
-                                  ? "Welcome, ${abroadData!.abroadName}"
-                                  : "Welcome to ZMall Global",
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Top: Logo
+                                Row(
+                                  children: [
+                                    Text(
+                                      "Z",
+                                      style: TextStyle(
+                                        color: kSecondaryColor,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -1,
+                                      ),
+                                    ),
+                                    Text(
+                                      "Mall",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.8,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: kSecondaryColor.withValues(
+                                          alpha: 0.18,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: kSecondaryColor.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        "GLOBAL",
+                                        style: TextStyle(
+                                          color: kSecondaryColor,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                SizedBox(
+                                  height: getProportionateScreenHeight(20),
+                                ),
+
+                                // Profile + Welcome (meaningful section)
+                                Row(
+                                  children: [
+                                    // Avatar
+                                    Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            kSecondaryColor,
+                                            kSecondaryColor.withValues(
+                                              alpha: 0.75,
+                                            ),
+                                          ],
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: kSecondaryColor.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          abroadData?.abroadName?.isNotEmpty ==
+                                                  true
+                                              ? abroadData!.abroadName![0]
+                                                    .toUpperCase()
+                                              : "G",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 14),
+
+                                    // Welcome texts
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            abroadData != null
+                                                ? "Welcome back"
+                                                : "Welcome to ZMall",
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            abroadData != null
+                                                ? abroadData!.abroadName!
+                                                : "Global Shopping",
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.4,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        
-                        // debugPrint("Promotional Items: $promotionalItems"),
-                        /// ============================================================
-                        /// PROMOTIONAL ITEMS SECTION - "Specials for your loved ones"
-                        /// ============================================================
-                        /// STATUS: HIDDEN for Global ZMall
-                        /// 
-                        /// REASON: This section displays promotional items from local stores
-                        /// which are not relevant for Global/International users. Global users
-                        /// should only see categories and services available for international
-                        /// delivery (e.g., AliExpress, Magazine, etc.)
-                        /// 
-                        /// TO RE-ENABLE: Uncomment the code below if promotional items
-                        /// should be shown to Global users in the future.
-                        /// 
-                        /// LAST MODIFIED: January 2026
-                        /// ============================================================
-                        
-                        promotionalItems == null
-                          ? (() {
-                              // debugPrint("Promotional Items: $promotionalItems");
-                              return SizedBox.shrink();
-                            })()
-                          : SizedBox.shrink(),
-                        promotionalItems != null &&
-                            promotionalItems['success'] &&
-                            promotionalItems['promotional_items'] != null &&
-                            promotionalItems['promotional_items']
-                              .isNotEmpty &&
-                            promotionalItems['promotional_items'].length > 0
-                          ? (() {
-                            // debugPrint("PromotionalItems: $promotionalItems");
-                            return Container(
-                              height: getProportionateScreenHeight(
-                              kDefaultPadding * 11,
+                      ),
+                      // ===================== PROMOTIONAL ITEMS =====================
+                      if (promotionalItems != null &&
+                          promotionalItems['success'] == true &&
+                          promotionalItems['promotional_items'] != null &&
+                          promotionalItems['promotional_items'].isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                getProportionateScreenWidth(kDefaultPadding),
+                                getProportionateScreenHeight(
+                                  kDefaultPadding * 1.2,
+                                ),
+                                getProportionateScreenWidth(kDefaultPadding),
+                                getProportionateScreenHeight(
+                                  kDefaultPadding * 0.6,
+                                ),
                               ),
-                              width: double.infinity,
-                              child: Column(
-                              children: [
-                                Padding(
+                              child: SectionTitle(
+                                sectionTitle: "Specials for your loved ones",
+                                subTitle: " ",
+                              ),
+                            ),
+                            SizedBox(
+                              height: getProportionateScreenHeight(
+                                kDefaultPadding * 11,
+                              ),
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
                                 padding: EdgeInsets.symmetric(
                                   horizontal: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                  ),
-                                  vertical: getProportionateScreenHeight(
-                                  kDefaultPadding / 2,
+                                    kDefaultPadding,
                                   ),
                                 ),
-                                child: SectionTitle(
-                                  sectionTitle: "Specials for your loved ones",
-                                  subTitle: " ",
+                                itemCount: isPromotionalItemOpen.length,
+                                separatorBuilder: (_, __) => SizedBox(
+                                  width: getProportionateScreenWidth(
+                                    kDefaultPadding * 0.7,
+                                  ),
                                 ),
-                                ),
-                                Expanded(
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  separatorBuilder: (BuildContext context, int index) =>
-                                    SizedBox(
-                                    width: getProportionateScreenWidth(kDefaultPadding / 2),
+                                itemBuilder: (context, index) {
+                                  final item =
+                                      promotionalItems['promotional_items'][index];
+                                  return Container(
+                                    width: getProportionateScreenWidth(135),
+
+                                    decoration: BoxDecoration(
+                                      color: kPrimaryColor,
+                                      borderRadius: BorderRadius.circular(18),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.07,
+                                          ),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
                                     ),
-                                  padding: EdgeInsets.only(
-                                  left: getProportionateScreenWidth(10),
-                                  ),
-                                  itemCount: promotionalItems != null &&
-                                      isPromotionalItemOpen.isNotEmpty
-                                    ? isPromotionalItemOpen.length
-                                    : 0,
-                                  itemBuilder: (context, index) {
-                                  final item = promotionalItems['promotional_items'][index];
-                                  return Row(
-                                    children: [
-                                    SpecialOfferCard(
+                                    child: SpecialOfferCard(
                                       isOpen: isPromotionalItemOpen[index],
-                                      imageUrl: promotionalItems != null &&
-                                          item['image_url'].length > 0
-                                        ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${item['image_url'][0]}"
-                                        : "www.google.com",
+                                      imageUrl:
+                                          item['image_url'] != null &&
+                                              item['image_url'].isNotEmpty
+                                          ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${item['image_url'][0]}"
+                                          : "www.google.com",
                                       itemName: "${item['name']}\n",
-                                      newPrice: "${item['price'].toStringAsFixed(2)}\t",
-                                      originalPrice: "${item['new_price'].toStringAsFixed(2)}",
+                                      newPrice:
+                                          "${item['price'].toStringAsFixed(2)}\t",
+                                      originalPrice:
+                                          "${item['new_price'].toStringAsFixed(2)}",
                                       isDiscounted: item['discount'],
                                       storeName: item['store_name'],
                                       specialOffer: item['special_offer'],
                                       storePress: () {},
-                                      press: () async {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                        builder: (context) {
-                                          return GlobalItem(
-                                          item: promotionalItems['promotional_items'][index],
-                                          location: promotionalItems['promotional_items'][index]['store_location'],
-                                          isOpen: true,
-                                          );
-                                        },
-                                        ),
-                                      );
-                                      },
-                                    ),
-                                    ],
-                                  );
-                                  },
-                                ),
-                                ),
-                              ],
-                              ),
-                            );
-                            })()
-                          : SizedBox.shrink(),
-                        SizedBox(
-                          height: getProportionateScreenHeight(
-                          kDefaultPadding / 4,
-                          ),
-                        ),
-                        
-                                    ///////////////////////////Aliexpress section////////////////
-                        /// ============================================================
-                        /// END OF PROMOTIONAL ITEMS SECTION
-                        /// ============================================================
-                        categories == null ||
-                                (categories.isEmpty ||
-                                    !categories.any(
-                                      (delivery) =>
-                                          delivery['delivery_name']
-                                              ?.toString()
-                                              .toLowerCase() ==
-                                          'aliexpress',
-                                    ))
-                            ? SizedBox.shrink()
-                            : Container(
-                                padding: EdgeInsets.only(
-                                  bottom: getProportionateScreenHeight(
-                                    kDefaultPadding / 2,
-                                  ),
-                                ),
-                                margin: EdgeInsets.symmetric(
-                                  vertical: getProportionateScreenHeight(
-                                    kDefaultPadding / 4,
-                                  ),
-                                  horizontal: getProportionateScreenHeight(
-                                    kDefaultPadding / 2,
-                                  ),
-                                ),
-                                decoration: BoxDecoration(color: kPrimaryColor),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: getProportionateScreenWidth(
-                                          kDefaultPadding,
-                                        ),
-                                      ),
-                                      child: SectionTitle(
-                                        sectionTitle: "AliExpress",
-                                        subTitle: " ",
-                                      ),
-                                    ),
-                                    CustomBanner(
-                                      isNetworkImage: isNetworkImage(
-                                        "aliexpress",
-                                      ),
-                                      imageUrl: isNetworkImage("aliexpress")
-                                          ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${categories[getServiceIndex("aliexpress")]['image_url']}"
-                                          : "images/aliexpress-banner.png",
-                                      title: "AliExpress",
-                                      subtitle: "",
-                                      press: () async {
+                                      press: () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) =>
-                                                GlobalAliProductListScreen(),
+                                            builder: (_) => GlobalItem(
+                                              item: item,
+                                              location: item['store_location'],
+                                              isOpen: true,
+                                            ),
                                           ),
-                                        ).then((value) {
-                                          if (abroadData != null) {
-                                            checkAbroad();
-                                            _getPromotionalItems();
-                                          }
-                                        });
+                                        );
                                       },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+
+                      SizedBox(
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding * 0.8,
+                        ),
+                      ),
+
+                      // ===================== ALIEXPRESS BANNER =====================
+                      if (categories != null &&
+                          categories.any(
+                            (d) =>
+                                d['delivery_name']?.toString().toLowerCase() ==
+                                'aliexpress',
+                          ))
+                        _buildPremiumBanner(
+                          context: context,
+                          title: "AliExpress",
+                          imageUrl: isNetworkImage("aliexpress")
+                              ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${categories[getServiceIndex("aliexpress")]['image_url']}"
+                              : "images/aliexpress-banner.png",
+                          isNetwork: isNetworkImage("aliexpress"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => GlobalAliProductListScreen(),
+                              ),
+                            ).then((_) {
+                              if (abroadData != null) {
+                                checkAbroad();
+                                _getPromotionalItems();
+                              }
+                            });
+                          },
+                        ),
+
+                      // ===================== MAGAZINE BANNER =====================
+                      if (hasMagazine && magazineService != null)
+                        _buildPremiumBanner(
+                          context: context,
+                          title:
+                              magazineService!['delivery_name'] ?? 'Z-Magazine',
+                          imageUrl:
+                              magazineService!['image_url'] != null &&
+                                  magazineService!['image_url']
+                                      .toString()
+                                      .isNotEmpty
+                              ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${magazineService!['image_url']}"
+                              : "images/zmagazine-banner.png",
+                          isNetwork:
+                              magazineService!['image_url'] != null &&
+                              magazineService!['image_url']
+                                  .toString()
+                                  .isNotEmpty,
+                          onTap: _openMagazineScreen,
+                        ),
+
+                      // ===================== CATEGORIES GRID =====================
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          getProportionateScreenWidth(kDefaultPadding),
+                          getProportionateScreenHeight(kDefaultPadding * 0.8),
+                          getProportionateScreenWidth(kDefaultPadding),
+                          getProportionateScreenHeight(kDefaultPadding * 0.4),
+                        ),
+                        child: SectionTitle(
+                          sectionTitle: "What would you like to order?",
+                          subTitle: " ",
+                        ),
+                      ),
+
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: getProportionateScreenWidth(
+                            kDefaultPadding,
+                          ),
+                        ),
+                        child: GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount:
+                              categories
+                                  ?.where(
+                                    (d) =>
+                                        d['delivery_name']
+                                                ?.toString()
+                                                .toLowerCase() !=
+                                            'aliexpress' &&
+                                        !_shouldHideServiceOnGlobal(d),
+                                  )
+                                  .length ??
+                              0,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                // ← corrected
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 10, // was 14
+                                mainAxisSpacing: 10, // was 14
+                                childAspectRatio: 1.08, // ← try this
+                              ),
+                          itemBuilder: (context, index) {
+                            final filtered = categories!
+                                .where(
+                                  (d) =>
+                                      d['delivery_name']
+                                              ?.toString()
+                                              .toLowerCase() !=
+                                          'aliexpress' &&
+                                      !_shouldHideServiceOnGlobal(d),
+                                )
+                                .toList();
+
+                            final category = filtered[index];
+
+                            // Safe values
+                            final String deliveryName =
+                                category['delivery_name']?.toString() ??
+                                'Unknown';
+                            final String imagePath =
+                                category['image_url']?.toString() ?? '';
+                            final String imageUrl = imagePath.isNotEmpty
+                                ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imagePath"
+                                : '';
+
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => GlobalStore(
+                                      cityId: responseData['city']['_id'],
+                                      storeDeliveryId: category['_id'],
+                                      category: category,
+                                      latitude: latitude,
+                                      longitude: longitude,
+                                      isStore: false,
+                                      companyId: null,
+                                    ),
+                                  ),
+                                ).then((_) {
+                                  checkAbroad();
+                                  _getPromotionalItems();
+                                });
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: kPrimaryColor,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.06,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                  border: Border.all(
+                                    color: Colors.grey.withValues(alpha: 0.12),
+                                  ),
+                                ),
+                                padding: EdgeInsets.all(
+                                  getProportionateScreenWidth(
+                                    kDefaultPadding * 0.6,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: imageUrl.isNotEmpty
+                                          ? CachedNetworkImage(
+                                              imageUrl: imageUrl,
+                                              imageBuilder:
+                                                  (
+                                                    context,
+                                                    imageProvider,
+                                                  ) => Container(
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            14,
+                                                          ),
+                                                      image: DecorationImage(
+                                                        image: imageProvider,
+                                                        fit: BoxFit.contain,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              placeholder: (_, __) => const Center(
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation(
+                                                        kWhiteColor,
+                                                      ),
+                                                ),
+                                              ),
+                                              errorWidget: (_, __, ___) =>
+                                                  Container(
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            14,
+                                                          ),
+                                                      image: const DecorationImage(
+                                                        image: AssetImage(
+                                                          'images/zmall_sm.png',
+                                                        ),
+                                                        fit: BoxFit.contain,
+                                                      ),
+                                                    ),
+                                                  ),
+                                            )
+                                          : Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                image: const DecorationImage(
+                                                  image: AssetImage(
+                                                    'images/zmall_sm.png',
+                                                  ),
+                                                  fit: BoxFit.contain,
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                    SizedBox(
+                                      height: getProportionateScreenHeight(2),
+                                    ),
+                                    Text(
+                                      Service.capitalizeFirstLetters(
+                                        deliveryName,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: kBlackColor,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12.5,
+                                          ),
                                     ),
                                   ],
                                 ),
                               ),
-                        categories == null ||
-                                (categories.isEmpty ||
-                                    !categories.any(
-                                      (delivery) =>
-                                          delivery['delivery_name']
-                                              ?.toString()
-                                              .toLowerCase() ==
-                                          'aliexpress',
-                                    ))
-                            ? SizedBox.shrink()
-                            : SizedBox(
-                                height: getProportionateScreenHeight(
-                                  kDefaultPadding / 4,
-                                ),
-                              ),
-                        //////////////finish aliexpress//////////////////
-                        //============Magazine Section========== //
-                        hasMagazine && magazineService != null
-                        ? Container (
-                          padding: EdgeInsets.only(
-                            bottom: getProportionateScreenHeight(
-                              kDefaultPadding / 2,
-                            ),
-                          ),
-                          margin: EdgeInsets.symmetric(
-                            vertical: getProportionateScreenHeight(
-                              kDefaultPadding / 4,
-                            ),
-                            horizontal: getProportionateScreenHeight(
-                              kDefaultPadding / 2,
-                            ),
-                          ),
-                          decoration: BoxDecoration(color: kPrimaryColor),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: getProportionateScreenHeight(
-                                    kDefaultPadding / 2,
-                                  ),
-                                ),
-                                child: SectionTitle(
-                                  sectionTitle: magazineService!['delivery_name'] ?? 'Z-Magazine',
-                                  subTitle: " ",
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: getProportionateScreenHeight(
-                                    kDefaultPadding / 2,
-                                  )
-                                ),
-                                child: CustomBanner(
-                                  isNetworkImage: magazineService!['image_url'] != null &&
-                                      magazineService!['image_url'].toString().isNotEmpty,
-                                  imageUrl: magazineService!['image_url'] != null &&
-                                          magazineService!['image_url'].toString().isNotEmpty
-                                      ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${magazineService!['image_url']}"
-                                      : "images/zmagazine-banner.png",
-                                  title: magazineService!['delivery_name'] ?? 'Z-Magazine',
-                                  subtitle: " ",
-                                  press: () => _openMagazineScreen(),
-                                ),
-                              ),
-                            ],
-                          )
-                        )
-                      :  SizedBox.shrink(),
-                  hasMagazine
-                      ? SizedBox(
+                            );
+                          },
+                        ),
+                      ),
+
+                      SizedBox(
                         height: getProportionateScreenHeight(
-                          kDefaultPadding / 4,
+                          kDefaultPadding * 2,
                         ),
-                      )
-                    : SizedBox.shrink(),
-                        //============End Magazine Section========== //
-
-                        Container(
-                          color: kPrimaryColor,
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: getProportionateScreenWidth(
-                                    kDefaultPadding,
-                                  ),
-                                ),
-                                child: SectionTitle(
-                                  sectionTitle: "What would you like to order?",
-                                  subTitle: " ",
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: getProportionateScreenWidth(
-                                    kDefaultPadding,
-                                  ),
-                                ),
-                                child: GridView.builder(
-                                  physics: NeverScrollableScrollPhysics(),
-                                  shrinkWrap: true, 
-                                  // itemCount: categories != null
-                                  //     ? categories.length
-                                  //     : 0,
-                                  itemCount:
-                                      categories
-                                          ?.where(
-                                            (delivery) =>
-                                                delivery['delivery_name']
-                                                    ?.toString()
-                                                    .toLowerCase() !=
-                                                'aliexpress' &&
-                                                !_shouldHideServiceOnGlobal(delivery),
-                                          )
-                                          .length ??
-                                      0,
-                                  gridDelegate:
-                                      SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 3,
-                                        crossAxisSpacing: kDefaultPadding * .8,
-                                        mainAxisSpacing: kDefaultPadding * .8,
-                                        childAspectRatio:
-                                            MediaQuery.of(context).size.width <
-                                                650.0
-                                            ? 1.3
-                                            : 1,
-                                      ),
-                                  itemBuilder: (context, index) {
-                                    // Get the filtered list and access the item by index
-                                    final filteredCategories = categories!
-                                        .where(
-                                          (delivery) =>
-                                              delivery['delivery_name']
-                                                  ?.toString()
-                                                  .toLowerCase() !=
-                                              'aliexpress' &&
-                                              !_shouldHideServiceOnGlobal(delivery),
-                                        )
-                                        .toList();
-                                    final category = filteredCategories[index];
-
-                                    return GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) {
-                                              return GlobalStore(
-                                                cityId:
-                                                    responseData['city']['_id'],
-                                                // storeDeliveryId: categories[index]
-                                                //     ['_id'],
-                                                // category: categories[index],
-                                                storeDeliveryId:
-                                                    category['_id'],
-                                                category: category,
-                                                latitude: latitude,
-                                                longitude: longitude,
-                                                isStore: false,
-                                                companyId: null,
-                                              );
-                                            },
-                                          ),
-                                        ).then((value) {
-                                          checkAbroad();
-                                          _getPromotionalItems();
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: EdgeInsets.all(
-                                          getProportionateScreenWidth(
-                                            kDefaultPadding / 2,
-                                          ),
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: kPrimaryColor,
-                                          border: Border.all(
-                                            color: kWhiteColor,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            kDefaultPadding,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          spacing: getProportionateScreenHeight(
-                                            kDefaultPadding / 2,
-                                          ),
-                                          children: [
-                                            Expanded(
-                                              child: CachedNetworkImage(
-                                                imageUrl:
-                                                    "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${category['image_url']}",
-                                                // "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${categories[index]['image_url']}",
-                                                imageBuilder:
-                                                    (
-                                                      context,
-                                                      imageProvider,
-                                                    ) => Container(
-                                                      decoration: BoxDecoration(
-                                                        color: kWhiteColor,
-                                                        image: DecorationImage(
-                                                          fit: BoxFit.contain,
-                                                          image: imageProvider,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              kDefaultPadding /
-                                                                  1.5,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                placeholder: (context, url) => Center(
-                                                  child: Container(
-                                                    width:
-                                                        getProportionateScreenWidth(
-                                                          kDefaultPadding * 3.5,
-                                                        ),
-                                                    height:
-                                                        getProportionateScreenHeight(
-                                                          kDefaultPadding * 3.5,
-                                                        ),
-                                                    child: CircularProgressIndicator(
-                                                      valueColor:
-                                                          AlwaysStoppedAnimation<
-                                                            Color
-                                                          >(kWhiteColor),
-                                                    ),
-                                                  ),
-                                                ),
-                                                errorWidget:
-                                                    (
-                                                      context,
-                                                      url,
-                                                      error,
-                                                    ) => Container(
-                                                      decoration: BoxDecoration(
-                                                        color: kWhiteColor,
-                                                        image: DecorationImage(
-                                                          fit: BoxFit.contain,
-                                                          image: AssetImage(
-                                                            'images/zmall_sm.png',
-                                                          ),
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              kDefaultPadding /
-                                                                  1.5,
-                                                            ),
-                                                      ),
-                                                    ),
-                                              ),
-                                            ),
-                                            Text(
-                                              Service.capitalizeFirstLetters(
-                                                category['delivery_name'],
-                                              ),
-                                              // categories[index]['delivery_name'],
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.copyWith(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : _loading
-              ? Container()
-              : Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: getProportionateScreenWidth(
-                      kDefaultPadding * 4,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CustomButton(
-                        title: "Retry",
-                        press: () {
-                          // debugPrint("retry....");
-                          checkAbroad();
-                        },
-                        color: kSecondaryColor,
                       ),
                     ],
                   ),
+                )
+              : _loading
+              ? const SizedBox()
+              : Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: getProportionateScreenWidth(
+                        kDefaultPadding * 3,
+                      ),
+                    ),
+                    child: CustomButton(
+                      title: "Retry",
+                      press: checkAbroad,
+                      color: kSecondaryColor,
+                    ),
+                  ),
                 ),
         ),
+      ),
+    );
+  }
+
+  Widget _headerIcon(IconData icon) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: Colors.white, size: 22),
+    );
+  }
+
+  Widget _buildPremiumBanner({
+    required BuildContext context,
+    required String title,
+    required String imageUrl,
+    required bool isNetwork,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: getProportionateScreenWidth(kDefaultPadding),
+        vertical: getProportionateScreenHeight(kDefaultPadding * 0.55),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: getProportionateScreenHeight(kDefaultPadding * 0.45),
+            ),
+            child: SectionTitle(sectionTitle: title, subTitle: " "),
+          ),
+          GestureDetector(
+            onTap: onTap,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: CustomBanner(
+                  isNetworkImage: isNetwork,
+                  imageUrl: imageUrl,
+                  title: title,
+                  subtitle: "",
+                  press: onTap,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

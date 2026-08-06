@@ -21,29 +21,33 @@ const BASE_URL_JUBA = "https://juba.zmallapp.com"; //Juba Production
 // Ethiopia production
 //  // const BASE_URL = "http://196.188.187.43:8000"; //new production
 
-const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
+// const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 
 //  // const BASE_URL_HTTP = "http://159.65.147.111:8000";
 
 // Ethiopia test
 // // const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
-// 
+//
 //  // Blen
 //  // const BASE_URL_TEST = "http://196.189.124.132:8000"; //test (blen)
 //  // const new_test_zmall = "http://196.189.126.150:8002"; // new test blen
-// 
+//
 
 // const BASE_URL = BASE_URL_HTTP;
 // const BASE_URL = kDebugMode ? BASE_URL_TEST : BASE_URL_PROD;
-// 
+//
 // const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test.  the current test domain
-// 
-// const BASE_URL = BASE_URL_TEST;
-const BASE_URL = BASE_URL_PROD;
-
+const BASE_URL_TEST =
+    "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
+//
+const BASE_URL = BASE_URL_TEST;
+// const BASE_URL = BASE_URL_PROD;
 
 //
-String appVersion = "3.2.9";
+String appName = "ZMall";
+String appUpdatedAt = "";
+String appVersion = "3.2.8";
+String appBuildNumber = "";
 const kPrimaryColor = Colors.white;
 const kWhiteColor = Color(0xFFF3F4F8);
 const kYellowColor = Color(0xFFF7EA00);
@@ -280,6 +284,8 @@ const errorCodes = {
   "812": "Add city failed",
   "813": "Business not in your city!",
   "814": "Update failed!",
+  // Product sceen error code
+  "892": "Item not found!",
 };
 
 const order_status = {
@@ -324,7 +330,7 @@ const double kMisakaDefaultLongitude = 38.7698875;
 final double kMinimumDistanceThreshold = 0.1; // 100 meters
 
 /// Telebirr-InApp Trace Number Filteration Key
-final String kTelebirrInAppTraceKey = "ZTelebirrInApp";
+final String kTelebirrInAppTraceKey = "ZInapp"; //ZTelebirrInApp";
 
 /// ---- B2C Wallet Refund to telebirr endpoints ---- ///
 const String kRefundGenerateOtpEndpoint = "/api/user/send_refund_otp";
@@ -335,3 +341,7 @@ const int kRefundOtpCountdownSeconds = 60;
 /// ---- Proximity Order Radius ---- ///
 const double kProximityRadius =
     5.0; // near by orders within 5km radius fallback
+
+/// ======= Playstore and Appstore Id's ====== ///
+final apple_id = '1450910679';
+final playstore_id = 'com.zmall.user';

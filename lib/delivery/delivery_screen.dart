@@ -147,9 +147,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         // debugPrint("selected vehicle id  after ${vehicleId}");
       });
     } else {
-      if (mounted) setState(() {
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _loading = false;
+        });
       if (data != null) {
         if (data['error_code'] == 999) {
           await Service.saveBool('logged', false);
@@ -160,7 +161,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         }
         Service.showMessage(
           context: context,
-          title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}",
+          title:
+              "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}",
           error: true,
         );
       }
@@ -321,9 +323,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     ).then((value) {
       getLocations(returned: true);
     });
-    if (mounted) setState(() {
-      _loading = false;
-    });
+    if (mounted)
+      setState(() {
+        _loading = false;
+      });
   }
 
   Future<void> getCart() async {
@@ -362,7 +365,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     } else if (data != null) {
       Service.showMessage(
         context: context,
-        title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}!",
+        title:
+            "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}!",
         error: true,
       );
       await Future.delayed(Duration(seconds: 2));
@@ -405,7 +409,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       if (responseData != null) {
         Service.showMessage(
           context: context,
-          title: "${errorCodes['${responseData['error_code']}'] ?? 'Something went wrong'}!",
+          title:
+              "${errorCodes['${responseData['error_code']}'] ?? 'Something went wrong'}!",
           error: true,
         );
         await Future.delayed(Duration(seconds: 2));
@@ -686,7 +691,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                                                         getProportionateScreenHeight(
                                                           kDefaultPadding * 3.5,
                                                         ),
-                                                    borderRadius: kDefaultPadding,
+                                                    borderRadius:
+                                                        kDefaultPadding,
                                                   ),
                                                 ),
                                                 SearchButtonShimmer(
@@ -798,44 +804,40 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                                     deliveryLocation!.list!.length > 0
                                 ? deliveryLocation!.list!.length
                                 : 0,
-                            separatorBuilder: (context, index) => SizedBox(
+                            separatorBuilder: (_, __) => SizedBox(
                               height: getProportionateScreenHeight(
                                 kDefaultPadding / 2,
                               ),
                             ),
                             itemBuilder: (context, index) {
+                              final item = deliveryLocation!.list![index];
+                              // Stable unique key – do NOT include the index
+                              final uniqueKey = ValueKey(
+                                '${item.lat}_${item.long}_${item.name}',
+                              );
                               return Dismissible(
+                                key: uniqueKey,
+                                direction: DismissDirection.endToStart,
                                 background: Container(
-                                  color: kSecondaryColor,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Icon(
-                                        Icons.delete,
-                                        color: kPrimaryColor,
-                                        size: getProportionateScreenWidth(
-                                          kDefaultPadding,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: getProportionateScreenWidth(
-                                          kDefaultPadding / 2,
-                                        ),
-                                      ),
-                                    ],
+                                  alignment: Alignment.centerRight,
+                                  padding: EdgeInsets.only(
+                                    right: getProportionateScreenWidth(
+                                      kDefaultPadding,
+                                    ),
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade400,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(
+                                    HeroiconsSolid.trash,
+                                    color: Colors.white,
+                                    size: 28,
                                   ),
                                 ),
-                                key: Key(
-                                  deliveryLocation!.list![index].lat.toString(),
-                                ),
-                                onDismissed: (direction) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${deliveryLocation!.list![index].name} dismissed',
-                                      ),
-                                    ),
-                                  );
+                                confirmDismiss: (direction) async {
+                                  final removedName = item.name;
+
                                   setState(() {
                                     deliveryLocation!.list!.removeAt(index);
                                     Service.save(
@@ -843,7 +845,16 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                                       deliveryLocation!.toJson(),
                                     );
                                   });
+
+                                  Service.showMessage(
+                                    context: context,
+                                    error: false,
+                                    title: '$removedName removed',
+                                  );
+
+                                  return true;
                                 },
+
                                 child: LocationContainer(
                                   title: deliveryLocation!.list![index].name!
                                       .split(",")[0],
@@ -1008,9 +1019,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           error: true,
                           duration: 4,
                         );
-                        if (mounted) setState(() {
-                          _loading = false;
-                        });
+                        if (mounted)
+                          setState(() {
+                            _loading = false;
+                          });
                       } else {
                         Service.showMessage(
                           context: context,
@@ -1019,9 +1031,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           error: true,
                         );
                       }
-                      if (mounted) setState(() {
-                        _loading = false;
-                      });
+                      if (mounted)
+                        setState(() {
+                          _loading = false;
+                        });
                     }
                   }
                 } else {
@@ -1208,9 +1221,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      if (mounted) setState(() {
-        this.responseData = json.decode(response.body);
-      });
+      if (mounted)
+        setState(() {
+          this.responseData = json.decode(response.body);
+        });
 
       return json.decode(response.body);
     } catch (e) {
@@ -1225,9 +1239,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
       return null;
     } finally {
-      if (mounted) setState(() {
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _loading = false;
+        });
     }
   }
 
@@ -1263,9 +1278,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      if (mounted) setState(() {
-        this.responseData = json.decode(response.body);
-      });
+      if (mounted)
+        setState(() {
+          this.responseData = json.decode(response.body);
+        });
 
       return json.decode(response.body);
     } catch (e) {
@@ -1279,9 +1295,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       }
       return null;
     } finally {
-      if (mounted) setState(() {
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _loading = false;
+        });
     }
   }
 
@@ -1339,9 +1356,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       }
       return null;
     } finally {
-      if (mounted) setState(() {
-        _loading = false;
-      });
+      if (mounted)
+        setState(() {
+          _loading = false;
+        });
     }
   }
 }

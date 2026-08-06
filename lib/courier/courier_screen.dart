@@ -22,10 +22,7 @@ import 'package:zmall/widgets/section_title.dart';
 class CourierScreen extends StatefulWidget {
   static String routeName = '/courier';
 
-  const CourierScreen({
-    this.curLat,
-    this.curLon,
-  });
+  const CourierScreen({this.curLat, this.curLon});
 
   final double? curLon;
   final double? curLat;
@@ -59,7 +56,8 @@ class _CourierScreenState extends State<CourierScreen> {
     if (data != null) {
       setState(() {
         userData = data;
-        senderUser = userData['user']['first_name'] +
+        senderUser =
+            userData['user']['first_name'] +
             " " +
             userData['user']['last_name'];
         senderPhone = userData['user']['phone'];
@@ -70,28 +68,27 @@ class _CourierScreenState extends State<CourierScreen> {
     }
   }
 
-//  void _clearCart() async {
-//    setState(() {
-//      _loading = true;
-//    });
-//
-//    var data = await clearCart();
-//    if (data != null && data['success']) {
-//      ScaffoldMessenger.of(context).showSnackBar(
-//          Service.showMessage("Please select delivery vehicle!", false));
-//    } else {
-//      ScaffoldMessenger.of(context).showSnackBar(
-//          Service.showMessage("${errorCodes['${data['error_code']}']}!", true));
-//      await Future.delayed(Duration(seconds: 2));
-//      if (data['error_code'] == 999) {
-//        await Service.saveBool('logged', false);
-//        await Service.remove('user');
-//        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
-//      }
-//    }
-//  }
+  //  void _clearCart() async {
+  //    setState(() {
+  //      _loading = true;
+  //    });
+  //
+  //    var data = await clearCart();
+  //    if (data != null && data['success']) {
+  //      ScaffoldMessenger.of(context).showSnackBar(
+  //          Service.showMessage("Please select delivery vehicle!", false));
+  //    } else {
+  //      ScaffoldMessenger.of(context).showSnackBar(
+  //          Service.showMessage("${errorCodes['${data['error_code']}']}!", true));
+  //      await Future.delayed(Duration(seconds: 2));
+  //      if (data['error_code'] == 999) {
+  //        await Service.saveBool('logged', false);
+  //        await Service.remove('user');
+  //        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+  //      }
+  //    }
+  //  }
 
-  
   /// Validates that pickup and dropoff addresses are different locations.
   /// Returns true if valid, false otherwise.
   bool _validateAddressesAreDifferent() {
@@ -106,7 +103,8 @@ class _CourierScreenState extends State<CourierScreen> {
       dropoffLon: destLongitude,
     );
 
-    if(!result.isValid && result.errorType == AddressValidationError.sameLocation) {
+    if (!result.isValid &&
+        result.errorType == AddressValidationError.sameLocation) {
       setState(() {
         _addressValidationError = result.errorMessage;
       });
@@ -120,14 +118,13 @@ class _CourierScreenState extends State<CourierScreen> {
     return true;
   }
 
-  
   void _addCourierToCart() async {
     // Use controller values, fallback to user data if empty
     final finalSenderName = _senderNameController.text.isNotEmpty
         ? _senderNameController.text
         : (userData['user']['first_name'] +
-            " " +
-            userData['user']['last_name']);
+              " " +
+              userData['user']['last_name']);
     final finalSenderPhone = _senderPhoneController.text.isNotEmpty
         ? _senderPhoneController.text
         : userData['user']['phone'];
@@ -140,7 +137,7 @@ class _CourierScreenState extends State<CourierScreen> {
     setState(() {
       _loading = false;
     });
-      // debugPrint(data);
+    // debugPrint(data);
     if (data != null && data['success']) {
       // Success case
       await Service.save('courier', data);
@@ -160,12 +157,13 @@ class _CourierScreenState extends State<CourierScreen> {
         ),
       );
     } else {
-      if(data != null && data['error_code'] != null) {
+      if (data != null && data['error_code'] != null) {
         // Error case: check if data is null first
         Service.showMessage(
-            context: context,
-            title: "${errorCodes['${data['error_code']}']}!",
-            error: true);
+          context: context,
+          title: "${errorCodes['${data['error_code']}']}!",
+          error: true,
+        );
         await Future.delayed(Duration(seconds: 2));
         if (data['error_code'] == 999) {
           await Service.saveBool('logged', false);
@@ -173,15 +171,14 @@ class _CourierScreenState extends State<CourierScreen> {
           Navigator.pushReplacementNamed(context, LoginScreen.routeName);
         }
       } else {
-          // Handle case: when the data is completely null or missing error_code
-          Service.showMessage(
-            context: context,
-            title: 'Network error. Please try again.',
-            error: true
-          );
+        // Handle case: when the data is completely null or missing error_code
+        Service.showMessage(
+          context: context,
+          title: 'Network error. Please try again.',
+          error: true,
+        );
       }
     }
-
   }
 
   @override
@@ -207,56 +204,59 @@ class _CourierScreenState extends State<CourierScreen> {
       child: Scaffold(
         bottomNavigationBar: SafeArea(
           minimum: EdgeInsets.only(
-              left: getProportionateScreenWidth(kDefaultPadding),
-              right: getProportionateScreenWidth(kDefaultPadding),
-              bottom: getProportionateScreenHeight(kDefaultPadding / 2)),
+            left: getProportionateScreenWidth(kDefaultPadding),
+            right: getProportionateScreenWidth(kDefaultPadding),
+            bottom: getProportionateScreenHeight(kDefaultPadding / 2),
+          ),
           child: CustomButton(
-              title: "Continue",
-              press: () {
-                if (_formKey.currentState!.validate()) {
-                  // Also validate the pickup and dropoff addresses
-                  if (_controller.text.isEmpty) {
-                    Service.showMessage(
-                        context: context,
-                        title: "Please enter pickup address!",
-                        error: true);
-                    return;
-                  }
-                  if (_dropOffController.text.isEmpty) {
-                    Service.showMessage(
-                        context: context,
-                        title: "Please enter destination address!",
-                        error: true);
-                    return;
-                  }
-
-                  if(!_validateAddressesAreDifferent()) {
-                    Service.showMessage(
-                      context: context,
-                      title: "Pickup and drop-off addresses cannot be the same or too close!",
-                      error: true,
-                    );
-                    return;
-                  }
-
-                  if (userData['user']['cart_id'] != null) {
-                    // debugPrint("Courier ready....");
-                  }
-
-                  _addCourierToCart();
+            title: "Continue",
+            press: () {
+              if (_formKey.currentState!.validate()) {
+                // Also validate the pickup and dropoff addresses
+                if (_controller.text.isEmpty) {
+                  Service.showMessage(
+                    context: context,
+                    title: "Please enter pickup address!",
+                    error: true,
+                  );
+                  return;
                 }
-              },
-              color: kSecondaryColor),
+                if (_dropOffController.text.isEmpty) {
+                  Service.showMessage(
+                    context: context,
+                    title: "Please enter destination address!",
+                    error: true,
+                  );
+                  return;
+                }
+
+                if (!_validateAddressesAreDifferent()) {
+                  Service.showMessage(
+                    context: context,
+                    title:
+                        "Pickup and drop-off addresses cannot be the same or too close!",
+                    error: true,
+                  );
+                  return;
+                }
+
+                if (userData['user']['cart_id'] != null) {
+                  // debugPrint("Courier ready....");
+                }
+
+                _addCourierToCart();
+              }
+            },
+            color: kSecondaryColor,
+          ),
         ),
         appBar: AppBar(
-            title: Text(
-              "Courier",
-              style: TextStyle(color: kPrimaryColor),
-            ),
-            elevation: 0.0,
-            backgroundColor: kSecondaryColor,
-            surfaceTintColor: kSecondaryColor,
-            iconTheme: IconThemeData(color: kPrimaryColor)),
+          title: Text("Courier", style: TextStyle(color: kPrimaryColor)),
+          elevation: 0.0,
+          backgroundColor: kSecondaryColor,
+          surfaceTintColor: kSecondaryColor,
+          iconTheme: IconThemeData(color: kPrimaryColor),
+        ),
         body: ModalProgressHUD(
           color: kPrimaryColor.withValues(alpha: 0.1),
           inAsyncCall: _loading,
@@ -270,13 +270,16 @@ class _CourierScreenState extends State<CourierScreen> {
                   child: Stack(
                     children: [
                       Container(
-                        height: size.height * 0.22 -
+                        height:
+                            size.height * 0.22 -
                             getProportionateScreenHeight(kDefaultPadding),
                         padding: EdgeInsets.symmetric(
-                          vertical:
-                              getProportionateScreenHeight(kDefaultPadding / 2),
-                          horizontal:
-                              getProportionateScreenWidth(kDefaultPadding),
+                          vertical: getProportionateScreenHeight(
+                            kDefaultPadding / 2,
+                          ),
+                          horizontal: getProportionateScreenWidth(
+                            kDefaultPadding,
+                          ),
                         ),
                         decoration: BoxDecoration(
                           color: kSecondaryColor,
@@ -294,15 +297,14 @@ class _CourierScreenState extends State<CourierScreen> {
                           children: [
                             SizedBox(
                               height: getProportionateScreenHeight(
-                                  kDefaultPadding / 2),
+                                kDefaultPadding / 2,
+                              ),
                             ),
                             Row(
                               children: [
                                 Text(
                                   "Courier Delivery",
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
+                                  style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(
                                         color: kPrimaryColor,
                                         fontWeight: FontWeight.bold,
@@ -326,10 +328,13 @@ class _CourierScreenState extends State<CourierScreen> {
                           children: [
                             Container(
                               margin: EdgeInsets.symmetric(
-                                  horizontal: getProportionateScreenWidth(
-                                      kDefaultPadding)),
+                                horizontal: getProportionateScreenWidth(
+                                  kDefaultPadding,
+                                ),
+                              ),
                               height: getProportionateScreenHeight(
-                                  kDefaultPadding * 4),
+                                kDefaultPadding * 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: kPrimaryColor,
                                 borderRadius: BorderRadius.circular(
@@ -357,17 +362,22 @@ class _CourierScreenState extends State<CourierScreen> {
 
                                         // Check if same as dropoff (if dropoff is already set)
                                         if (_isDropoffSet) {
-                                          final result = AddressValidationService.validateAddresses(
-                                            pickupLat: address.lat,
-                                            pickupLon: address.long,
-                                            dropoffLat: destLatitude,
-                                            dropoffLon: destLongitude,
-                                          );
+                                          final result =
+                                              AddressValidationService.validateAddresses(
+                                                pickupLat: address.lat,
+                                                pickupLon: address.long,
+                                                dropoffLat: destLatitude,
+                                                dropoffLon: destLongitude,
+                                              );
 
-                                          if (!result.isValid && result.errorType == AddressValidationError.sameLocation) {
+                                          if (!result.isValid &&
+                                              result.errorType ==
+                                                  AddressValidationError
+                                                      .sameLocation) {
                                             Service.showMessage(
                                               context: context,
-                                              title: "Pickup address cannot be the same as drop-off address! or too close!",
+                                              title:
+                                                  "Pickup address cannot be the same as drop-off address! or too close!",
                                               error: true,
                                             );
                                             return; // Exit without setting pickup
@@ -377,9 +387,11 @@ class _CourierScreenState extends State<CourierScreen> {
                                         setState(() {
                                           _controller.text = address.name!;
                                           longitude = double.parse(
-                                              address.long!.toStringAsFixed(6));
+                                            address.long!.toStringAsFixed(6),
+                                          );
                                           latitude = double.parse(
-                                              address.lat!.toStringAsFixed(6));
+                                            address.lat!.toStringAsFixed(6),
+                                          );
                                           _isPickupSet = true;
                                           _addressValidationError = null;
                                         });
@@ -418,22 +430,28 @@ class _CourierScreenState extends State<CourierScreen> {
                                     border: OutlineInputBorder(
                                       borderSide: BorderSide.none,
                                     ),
-                                    contentPadding:
-                                        EdgeInsets.only(left: 8.0, top: 16.0),
+                                    contentPadding: EdgeInsets.only(
+                                      left: 8.0,
+                                      top: 16.0,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                             SizedBox(
                               height: getProportionateScreenHeight(
-                                  kDefaultPadding / 2),
+                                kDefaultPadding / 2,
+                              ),
                             ),
                             Container(
                               margin: EdgeInsets.symmetric(
-                                  horizontal: getProportionateScreenWidth(
-                                      kDefaultPadding)),
+                                horizontal: getProportionateScreenWidth(
+                                  kDefaultPadding,
+                                ),
+                              ),
                               height: getProportionateScreenHeight(
-                                  kDefaultPadding * 4),
+                                kDefaultPadding * 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: kPrimaryColor,
                                 borderRadius: BorderRadius.circular(
@@ -460,18 +478,23 @@ class _CourierScreenState extends State<CourierScreen> {
                                         DestinationAddress address = value;
 
                                         // Check if same as pickup (if pickup is already set)
-                                        if(_isPickupSet) {
-                                          final result = AddressValidationService.validateAddresses(
-                                            pickupLat: latitude,
-                                            pickupLon: longitude,
-                                            dropoffLat: address.lat,
-                                            dropoffLon: address.long,
-                                          );
+                                        if (_isPickupSet) {
+                                          final result =
+                                              AddressValidationService.validateAddresses(
+                                                pickupLat: latitude,
+                                                pickupLon: longitude,
+                                                dropoffLat: address.lat,
+                                                dropoffLon: address.long,
+                                              );
 
-                                          if(!result.isValid && result.errorType == AddressValidationError.sameLocation) {
+                                          if (!result.isValid &&
+                                              result.errorType ==
+                                                  AddressValidationError
+                                                      .sameLocation) {
                                             Service.showMessage(
                                               context: context,
-                                              title: "Drop-off address cannot be the same as pick-up address! or too close!",
+                                              title:
+                                                  "Drop-off address cannot be the same as pick-up address! or too close!",
                                               error: true,
                                             );
                                             return; // Exit without setting dropoff
@@ -482,9 +505,11 @@ class _CourierScreenState extends State<CourierScreen> {
                                           _dropOffController.text =
                                               address.name!;
                                           destLatitude = double.parse(
-                                              address.lat!.toStringAsFixed(6));
+                                            address.lat!.toStringAsFixed(6),
+                                          );
                                           destLongitude = double.parse(
-                                              address.long!.toStringAsFixed(6));
+                                            address.long!.toStringAsFixed(6),
+                                          );
                                           _isDropoffSet = true;
                                           _addressValidationError = null;
                                         });
@@ -522,15 +547,17 @@ class _CourierScreenState extends State<CourierScreen> {
                                     border: OutlineInputBorder(
                                       borderSide: BorderSide.none,
                                     ),
-                                    contentPadding:
-                                        EdgeInsets.only(left: 8.0, top: 16.0),
+                                    contentPadding: EdgeInsets.only(
+                                      left: 8.0,
+                                      top: 16.0,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -543,8 +570,9 @@ class _CourierScreenState extends State<CourierScreen> {
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        spacing:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        spacing: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                         children: [
                           SectionTitle(
                             sectionTitle: "Sender Information",
@@ -554,6 +582,7 @@ class _CourierScreenState extends State<CourierScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.next,
                             controller: _senderNameController,
                             onChanged: (val) {
                               senderUser = val;
@@ -565,6 +594,7 @@ class _CourierScreenState extends State<CourierScreen> {
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.number,
                             maxLength: 9,
+                            textInputAction: TextInputAction.next,
                             controller: _senderPhoneController,
                             onChanged: (val) {
                               senderPhone = val;
@@ -594,6 +624,7 @@ class _CourierScreenState extends State<CourierScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.next,
                             onChanged: (val) {
                               receiverName = val;
                             },
@@ -609,6 +640,7 @@ class _CourierScreenState extends State<CourierScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
                             maxLength: 9,
                             onChanged: (val) {
                               receiverPhone = val;
@@ -630,7 +662,8 @@ class _CourierScreenState extends State<CourierScreen> {
                             },
                             hintText: "  9XXXXXXXX",
                             prefix: Text(
-                                "${Provider.of<ZMetaData>(context, listen: false).areaCode}"),
+                              "${Provider.of<ZMetaData>(context, listen: false).areaCode}",
+                            ),
                           ),
                           SectionTitle(
                             sectionTitle: "Description",
@@ -642,6 +675,7 @@ class _CourierScreenState extends State<CourierScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.done,
                             onChanged: (val) {
                               description = val;
                             },
@@ -687,22 +721,22 @@ class _CourierScreenState extends State<CourierScreen> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+            Duration(seconds: 10),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         this._loading = false;
       });
@@ -716,7 +750,8 @@ class _CourierScreenState extends State<CourierScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              "Something went wrong! Please check your internet connection!"),
+            "Something went wrong! Please check your internet connection!",
+          ),
           backgroundColor: kSecondaryColor,
         ),
       );
@@ -725,7 +760,9 @@ class _CourierScreenState extends State<CourierScreen> {
   }
 
   Future<dynamic> addCourierToCart(
-      String senderName, String senderPhoneNumber) async {
+    String senderName,
+    String senderPhoneNumber,
+  ) async {
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/add_item_in_cart";
     Map data = {
@@ -740,8 +777,10 @@ class _CourierScreenState extends State<CourierScreen> {
             "phone": receiverPhone,
             "name": receiverName,
             "email": "",
-            "country_phone_code":
-                Provider.of<ZMetaData>(context, listen: false).areaCode,
+            "country_phone_code": Provider.of<ZMetaData>(
+              context,
+              listen: false,
+            ).areaCode,
           },
           "note": description,
           "location": [destLatitude, destLongitude],
@@ -749,7 +788,7 @@ class _CourierScreenState extends State<CourierScreen> {
           "city": userData['user']['city'],
           "address_type": "destination",
           "address": _dropOffController.text,
-        }
+        },
       ],
       "order_details": [],
       "pickup_addresses": [
@@ -758,52 +797,51 @@ class _CourierScreenState extends State<CourierScreen> {
           "user_details": {
             "phone": senderPhoneNumber,
             "name": senderName,
-            "country_phone_code":
-                Provider.of<ZMetaData>(context, listen: false).areaCode,
+            "country_phone_code": Provider.of<ZMetaData>(
+              context,
+              listen: false,
+            ).areaCode,
           },
           "note": description,
-          "location": [
-            latitude,
-            longitude,
-          ],
+          "location": [latitude, longitude],
           "delivery_status": 0,
           "city": userData['user']['city'],
           "address_type": "pickup",
           "address": _controller.text,
-        }
+        },
       ],
       "total_cart_price": "0",
       "total_item_tax": 0,
       "cart_unique_token": userData['user']['server_token'],
       "server_token": userData['user']['server_token'],
-      "delivery_type": 2
+      "delivery_type": 2,
     };
     var body = json.encode(data);
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 20),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Something went wrong!"),
-              backgroundColor: kSecondaryColor,
-            ),
+            Duration(seconds: 20),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Something went wrong!"),
+                  backgroundColor: kSecondaryColor,
+                ),
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
           );
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
       setState(() {
         this._loading = false;
         orderDetail = data;

@@ -5,7 +5,7 @@ description: ZMall E-commerce App
 # pub.dev using `pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 3.2.9+362
+version: 3.2.8+363
 
 environment:
   sdk: ">=3.10.4 <4.0.0"
@@ -90,6 +90,7 @@ dependencies:
   share_plus: ^13.1.0             # yearly recap sharing
   screenshot: ^3.0.0              # yearly recap screenshot
   rate_my_app: ^2.4.0
+  app_version_update: ^7.0.0      # check for app updates
 
   # Vendored + patched locally: 0.4.0 subclasses the now-final IconData and
   # won't compile on current Flutter. Swap back to a pub version once a fixed

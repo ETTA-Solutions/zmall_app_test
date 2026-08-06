@@ -47,7 +47,6 @@ import 'package:zmall/product/product_screen.dart';
 // import 'package:zmall/profile/components/edit_profile.dart';
 import 'package:zmall/search/search_screen.dart';
 import 'package:zmall/services/service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/custom_list_tile.dart';
 import 'package:zmall/store/store_screen.dart';
@@ -141,7 +140,8 @@ class _HomeBodyState extends State<HomeBody> {
   @override
   void initState() {
     super.initState();
-
+    // Checking for version update
+    AppUpdateService.checkVersionUpdate(context: context);
     // Initialize confetti controllers
     _confettiControllerLeft = ConfettiController(
       duration: const Duration(seconds: 4),
@@ -238,14 +238,20 @@ class _HomeBodyState extends State<HomeBody> {
               barrierDismissible: Platform.isIOS ? true : false,
               builder: (BuildContext context) {
                 return AlertDialog(
-                  backgroundColor: kPrimaryColor,
+                  backgroundColor: Colors.white,
                   title: const Text('Location Changed !'),
                   content: Text(
                     "Just to inform you, there has been a change in your location by ${distance.toStringAsFixed(3)} Km since your last order.",
                   ),
                   titleTextStyle: TextStyle(
-                    color: kSecondaryColor,
+                    fontWeight: FontWeight.bold,
+                    color: kBlackColor,
                     fontSize: 20,
+                  ),
+                  contentTextStyle: const TextStyle(
+                    color: kBlackColor,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14.0,
                   ),
                   actions: [
                     TextButton(
@@ -2015,10 +2021,8 @@ class _HomeBodyState extends State<HomeBody> {
                                     borderRadius: BorderRadius.circular(
                                       getProportionateScreenWidth(20),
                                     ),
-                                    // borderRadius: BorderRadius.circular(
-                                    //     getProportionateScreenWidth(
-                                    //         kDefaultPadding / 1.3)),
-                                    color: kWhiteColor,
+
+                                    color: kWhiteColor.withValues(alpha: 0.8),
                                   ),
                                   padding: EdgeInsets.symmetric(
                                     horizontal: getProportionateScreenWidth(20),
@@ -2026,8 +2030,7 @@ class _HomeBodyState extends State<HomeBody> {
                                   height: getProportionateScreenHeight(
                                     kDefaultPadding * 2.8,
                                   ),
-                                  // getProportionateScreenHeight(
-                                  // kDefaultPadding * 3),
+
                                   alignment: Alignment.centerLeft,
                                   child: Row(
                                     spacing: getProportionateScreenWidth(
@@ -2035,7 +2038,7 @@ class _HomeBodyState extends State<HomeBody> {
                                     ),
                                     children: [
                                       Icon(
-                                        FontAwesome.magnifying_glass_solid,
+                                        HeroiconsMini.magnifyingGlass,
                                         color: kGreyColor.withValues(
                                           alpha: 0.8,
                                         ),

@@ -121,13 +121,14 @@ class _TabScreenState extends State<TabScreen> {
           ? Center(child: CircularProgressIndicator())
           : _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        elevation: 0,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: kSecondaryColor,
         unselectedItemColor: kGreyColor,
         selectedLabelStyle: Theme.of(context).textTheme.bodySmall,
         unselectedLabelStyle: Theme.of(context).textTheme.bodySmall,
-        backgroundColor: kWhiteColor,
+        backgroundColor: kWhiteColor.withValues(alpha: 0.8),
         items: navItems,
       ),
     );

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -13,9 +12,10 @@ import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/utils/pagination_controller.dart';
 import 'package:zmall/utils/size_config.dart';
-import 'package:zmall/store/components/image_container.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
+import 'package:zmall/widgets/product_item_card.dart';
 import 'package:zmall/widgets/shimmer_widget.dart';
 
 class NotificationStore extends StatefulWidget {
@@ -33,8 +33,10 @@ class NotificationStore extends StatefulWidget {
 }
 
 class _NotificationStoreState extends State<NotificationStore> {
+  final productsPagination = PaginationController();
   bool _loading = true;
-  var responseData;
+
+  // var responseData;
   var products;
   Cart? cart;
   bool isLoggedIn = false;
@@ -42,18 +44,32 @@ class _NotificationStoreState extends State<NotificationStore> {
   var userData;
   String storeName = "";
   var store;
+  // pagination variables
+  int currentPage = 1;
+  int totalPages = 1;
 
   @override
   void initState() {
     super.initState();
+    productsPagination.init(
+      onLoadMore: () =>
+          _loadPage(productsPagination.currentPage + 1, isLoadMore: true),
+    );
+    _loadPage(1, isRefresh: true);
     storeName = widget.storeName;
     isLogged();
     getCart();
-    _getStoreProductList();
+    // _getStoreProductList();
   }
 
+  @override
+  void dispose() {
+    productsPagination.dispose();
+    super.dispose();
+  }
+
+  /// Fetch cart data from local storage
   void getCart() async {
-    // debugPrint("Fetching data");
     var data = await Service.read('cart');
     if (data != null) {
       setState(() {
@@ -69,8 +85,6 @@ class _NotificationStoreState extends State<NotificationStore> {
         isLoggedIn = data;
       });
       getUser();
-    } else {
-      // debugPrint("No logged user found");
     }
   }
 
@@ -83,44 +97,7 @@ class _NotificationStoreState extends State<NotificationStore> {
     }
   }
 
-  void _getStoreProductList() async {
-    // Ensure app metadata is loaded before checking store status
-    _getAppKeys();
-    await getStoreProductList();
-    if (responseData != null && responseData['success']) {
-      if (responseData['store'] != null && responseData['products'] != null) {
-        isOpen = await Service.isStoreOpen(responseData['store']);
-        if (mounted) {
-          setState(() {
-            store = responseData['store'];
-            products = responseData['products'];
-            storeName = responseData['store']['name'];
-          });
-        }
-      } else {
-        if (mounted) {
-          Service.showMessage(
-            context: context,
-            title: "Products are not available for this store yet.",
-            error: true,
-          );
-        }
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-        final code = responseData?['error_code']?.toString() ?? '';
-        final msg =
-            responseData?['message']?.toString() ?? 'Failed to load products';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(msg)));
-      }
-    }
-  }
-
+  // Fetch app keys and check for updates
   void _getAppKeys() async {
     await AppUpdateService.fetchAndCheck(context, showDialogIfNeeded: false);
   }
@@ -210,520 +187,307 @@ class _NotificationStoreState extends State<NotificationStore> {
               horizontal: getProportionateScreenWidth(kDefaultPadding / 2),
               vertical: getProportionateScreenHeight(kDefaultPadding / 2),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                products != null
-                    ? Expanded(
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: products.length,
-                          separatorBuilder: (BuildContext context, int index) {
-                            return SizedBox(
-                              height: getProportionateScreenHeight(
-                                kDefaultPadding / 2,
-                              ),
-                            );
-                          },
-                          itemBuilder: (BuildContext context, int index) {
-                            return ExpansionTile(
-                              textColor: kBlackColor,
-                              backgroundColor: kPrimaryColor,
-                              collapsedBackgroundColor: kPrimaryColor,
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(color: kWhiteColor),
-                                borderRadius: BorderRadiusGeometry.circular(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              collapsedShape: RoundedRectangleBorder(
-                                side: BorderSide(color: kWhiteColor),
-                                borderRadius: BorderRadiusGeometry.circular(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              leading: const Icon(
-                                Icons.dining,
-                                size: 20,
-                                color: kBlackColor,
-                              ),
-                              childrenPadding: EdgeInsets.only(
-                                left: getProportionateScreenWidth(
-                                  kDefaultPadding / 2,
-                                ),
-                                right: getProportionateScreenWidth(
-                                  kDefaultPadding / 2,
-                                ),
-                                bottom: getProportionateScreenWidth(
-                                  kDefaultPadding / 2,
-                                ),
-                              ),
-                              title: Text(
-                                Service.capitalizeFirstLetters(
-                                  products[index]["_id"]["name"].toString(),
-                                ),
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: true,
-                              ),
-                              children: [
-                                ListView.separated(
-                                  physics: ClampingScrollPhysics(),
-                                  shrinkWrap: true,
-                                  itemCount: products[index]['items'].length,
-                                  separatorBuilder:
-                                      (BuildContext context, int index) =>
-                                          SizedBox(
-                                            height:
-                                                getProportionateScreenHeight(
-                                                  kDefaultPadding / 2,
-                                                ),
-                                          ),
-                                  itemBuilder: (BuildContext context, int idx) {
-                                    return GestureDetector(
-                                      onTap: () async {
-                                        // if (isLoggedIn) {
-                                        //   productClicked(
-                                        //       products[index]['items'][idx]['_id']);
-                                        // }
-
-                                        isOpen
-                                            ? Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) {
-                                                    return ItemScreen(
-                                                      item:
-                                                          products[index]['items'][idx],
-                                                      location:
-                                                          store['location'],
-                                                    );
-                                                  },
-                                                ),
-                                              ).then((value) => getCart())
-                                            : Service.showMessage(
-                                                context: context,
-                                                title:
-                                                    "Sorry the store is closed at this time!",
-                                                error: true,
-                                              );
-                                      },
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal:
-                                                  getProportionateScreenWidth(
-                                                    kDefaultPadding / 2,
-                                                  ),
-                                              vertical:
-                                                  getProportionateScreenHeight(
-                                                    kDefaultPadding / 2,
-                                                  ),
-                                            ),
-                                            decoration: BoxDecoration(
-                                              // border: Border.all(
-                                              //   color: kWhiteColor,
-                                              // ),
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    kDefaultPadding,
-                                                  ),
-                                            ),
-                                            child: Row(
-                                              spacing: kDefaultPadding,
-                                              children: [
-                                                /////////item image section//////////
-                                                products[index]['items'][idx]['image_url']
-                                                            .length >
-                                                        0
-                                                    ? ImageContainer(
-                                                        url:
-                                                            "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${products[index]['items'][idx]['image_url'][0]}",
-                                                      )
-                                                    : ImageContainer(
-                                                        url:
-                                                            "https://ibb.co/vkhzjd6",
-                                                      ),
-
-                                                /////////item detail section//////////
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        Service.capitalizeFirstLetters(
-                                                          products[index]['items'][idx]['name'],
-                                                        ),
-                                                        style: TextStyle(
-                                                          fontSize:
-                                                              getProportionateScreenWidth(
-                                                                kDefaultPadding *
-                                                                    .9,
-                                                              ),
-                                                          color: kBlackColor,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                        ),
-                                                        softWrap: true,
-                                                      ),
-                                                      SizedBox(
-                                                        height:
-                                                            getProportionateScreenHeight(
-                                                              kDefaultPadding /
-                                                                  5,
-                                                            ),
-                                                      ),
-                                                      products[index]['items'][idx]['details'] !=
-                                                                  null &&
-                                                              products[index]['items'][idx]['details']
-                                                                      .length >
-                                                                  0
-                                                          ? Text(
-                                                              products[index]['items'][idx]['details'],
-                                                              style:
-                                                                  Theme.of(
-                                                                        context,
-                                                                      )
-                                                                      .textTheme
-                                                                      .bodySmall
-                                                                      ?.copyWith(
-                                                                        color:
-                                                                            kGreyColor,
-                                                                      ),
-                                                            )
-                                                          : SizedBox(
-                                                              height: 0.5,
-                                                            ),
-
-                                                      ////price and button section//
-                                                      Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .spaceBetween,
-                                                        children: [
-                                                          Text(
-                                                            "${Service.getPrice(products[index]['items'][idx]).isNotEmpty ? Service.getPrice(products[index]['items'][idx]) : 0} ${Provider.of<ZMetaData>(context, listen: false).currency}",
-                                                            style: Theme.of(context)
-                                                                .textTheme
-                                                                .labelLarge
-                                                                ?.copyWith(
-                                                                  color:
-                                                                      kBlackColor,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                ),
-                                                          ),
-                                                          //// button section//
-                                                          GestureDetector(
-                                                            onTap: () async {
-                                                              if (products[index]['items'][idx]['specifications']
-                                                                      .length >
-                                                                  0) {
-                                                                // if (isLoggedIn) {
-                                                                //   productClicked(
-                                                                //       products[index]
-                                                                //               ['items']
-                                                                //           [idx]['_id']);
-                                                                // }
-
-                                                                isOpen
-                                                                    ? Navigator.push(
-                                                                        context,
-                                                                        MaterialPageRoute(
-                                                                          builder:
-                                                                              (
-                                                                                context,
-                                                                              ) {
-                                                                                return ItemScreen(
-                                                                                  item: products[index]['items'][idx],
-                                                                                  location: store['location'],
-                                                                                );
-                                                                              },
-                                                                        ),
-                                                                      ).then(
-                                                                        (
-                                                                          value,
-                                                                        ) =>
-                                                                            getCart(),
-                                                                      )
-                                                                    : Service.showMessage(
-                                                                        context:
-                                                                            context,
-                                                                        title:
-                                                                            "Sorry the store is closed at this time!",
-                                                                        error:
-                                                                            true,
-                                                                      );
-                                                              } else {
-                                                                //TD: Add to cart.....
-
-                                                                Item
-                                                                item = Item(
-                                                                  id: products[index]['items'][idx]['_id'],
-                                                                  quantity: 1,
-                                                                  specification:
-                                                                      [],
-                                                                  noteForItem:
-                                                                      "",
-                                                                  price:
-                                                                      Service.getPrice(
-                                                                        products[index]['items'][idx],
-                                                                      ).isNotEmpty
-                                                                      ? double.parse(
-                                                                          Service.getPrice(
-                                                                            products[index]['items'][idx],
-                                                                          ),
-                                                                        )
-                                                                      : 0,
-                                                                  itemName:
-                                                                      products[index]['items'][idx]['name'],
-                                                                  imageURL:
-                                                                      products[index]['items'][idx]['image_url']
-                                                                              .length >
-                                                                          0
-                                                                      ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${products[index]['items'][idx]['image_url'][0]}"
-                                                                      : "https://ibb.co/vkhzjd6",
-                                                                );
-                                                                StoreLocation
-                                                                storeLocation =
-                                                                    StoreLocation(
-                                                                      long:
-                                                                          store['location'][1],
-                                                                      lat:
-                                                                          store['location'][0],
-                                                                    );
-                                                                DestinationAddress
-                                                                destination = DestinationAddress(
-                                                                  long:
-                                                                      store['location'][1],
-                                                                  lat:
-                                                                      store['location'][0],
-                                                                  name:
-                                                                      "Current Location",
-                                                                  note:
-                                                                      "User current location",
-                                                                );
-
-                                                                if (cart !=
-                                                                    null) {
-                                                                  if (userData !=
-                                                                      null) {
-                                                                    if (cart!
-                                                                            .storeId ==
-                                                                        products[index]['items'][idx]['store_id']) {
-                                                                      setState(() {
-                                                                        // Use Service method to add or merge item
-                                                                        Service.addOrMergeCartItem(
-                                                                          cart!,
-                                                                          item,
-                                                                        );
-                                                                        // cart!.items!.add(item);
-                                                                        Service.save(
-                                                                          'cart',
-                                                                          cart,
-                                                                        );
-                                                                        // Navigator.of(
-                                                                        //         context)
-                                                                        //     .pop();
-                                                                      });
-                                                                      Service.showMessage(
-                                                                        context:
-                                                                            context,
-                                                                        title:
-                                                                            "Item added to cart",
-                                                                        error:
-                                                                            false,
-                                                                      );
-                                                                    } else {
-                                                                      _showDialog(
-                                                                        item,
-                                                                        destination,
-                                                                        storeLocation,
-                                                                        products[index]['items'][idx]['store_id'],
-                                                                      );
-                                                                    }
-                                                                  } else {
-                                                                    // debugPrint( "User not logged in...");
-                                                                    Service.showMessage(
-                                                                      context:
-                                                                          context,
-                                                                      title:
-                                                                          "Please login in...",
-                                                                      error:
-                                                                          true,
-                                                                    );
-                                                                    Navigator.push(
-                                                                      context,
-                                                                      MaterialPageRoute(
-                                                                        builder:
-                                                                            (
-                                                                              context,
-                                                                            ) => LoginScreen(
-                                                                              firstRoute: false,
-                                                                            ),
-                                                                      ),
-                                                                    ).then(
-                                                                      (value) =>
-                                                                          getUser(),
-                                                                    );
-                                                                  }
-                                                                } else {
-                                                                  if (userData !=
-                                                                      null) {
-                                                                    // debugPrint(  "Empty cart! Adding new item.");
-                                                                    addToCart(
-                                                                      item,
-                                                                      destination,
-                                                                      storeLocation,
-                                                                      products[index]['items'][idx]['store_id'],
-                                                                    );
-                                                                    getCart();
-                                                                    // Navigator.of(
-                                                                    //         context)
-                                                                    //     .pop();
-                                                                  } else {
-                                                                    // debugPrint( "User not logged in...");
-                                                                    Service.showMessage(
-                                                                      context:
-                                                                          context,
-                                                                      title:
-                                                                          "Please login in...",
-                                                                      error:
-                                                                          true,
-                                                                    );
-                                                                    Navigator.push(
-                                                                      context,
-                                                                      MaterialPageRoute(
-                                                                        builder:
-                                                                            (
-                                                                              context,
-                                                                            ) => LoginScreen(
-                                                                              firstRoute: false,
-                                                                            ),
-                                                                      ),
-                                                                    ).then(
-                                                                      (value) =>
-                                                                          getUser(),
-                                                                    );
-                                                                  }
-                                                                }
-                                                              }
-                                                            },
-                                                            child: Container(
-                                                              padding: EdgeInsets.symmetric(
-                                                                horizontal:
-                                                                    kDefaultPadding /
-                                                                    2,
-                                                                vertical:
-                                                                    kDefaultPadding /
-                                                                    3,
-                                                              ),
-                                                              decoration: BoxDecoration(
-                                                                // color: kSecondaryColor
-                                                                //     .withValues(alpha: 0.1),
-                                                                // border: Border.all(
-                                                                //   color: kSecondaryColor
-                                                                //       .withValues(
-                                                                //         alpha: 0.1,
-                                                                //       ),
-                                                                // ),
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      getProportionateScreenWidth(
-                                                                        kDefaultPadding /
-                                                                            2,
-                                                                      ),
-                                                                    ),
-                                                              ),
-                                                              child: Row(
-                                                                spacing:
-                                                                    getProportionateScreenWidth(
-                                                                      kDefaultPadding /
-                                                                          4,
-                                                                    ),
-                                                                children: [
-                                                                  Icon(
-                                                                    size: 14,
-                                                                    HeroiconsOutline
-                                                                        .plus,
-                                                                    color:
-                                                                        kSecondaryColor,
-                                                                  ),
-                                                                  Text(
-                                                                    "Add",
-                                                                    style: TextStyle(
-                                                                      fontSize:
-                                                                          14,
-                                                                      color:
-                                                                          kSecondaryColor,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            );
-                          },
+            child: products != null
+                ? _buildProductsList()
+                : !_loading
+                ? Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: getProportionateScreenWidth(
+                        kDefaultPadding * 4,
+                      ),
+                      vertical: getProportionateScreenHeight(
+                        kDefaultPadding * 4,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        CustomButton(
+                          title: "Retry",
+                          press: () => _loadPage(1, isRefresh: true),
+                          color: kSecondaryColor,
                         ),
-                      )
-                    : !_loading
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: getProportionateScreenWidth(
-                            kDefaultPadding * 4,
-                          ),
-                          vertical: getProportionateScreenHeight(
-                            kDefaultPadding * 4,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            CustomButton(
-                              title: "Retry",
-                              press: () {
-                                _getStoreProductList();
-                              },
-                              color: kSecondaryColor,
-                            ),
-                          ],
-                        ),
-                      )
-                    : Container(),
-              ],
-            ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
         ),
       ),
     );
   }
 
-  Future<dynamic> getStoreProductList() async {
-    var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/user_get_store_product_item_list";
-    Map data = {"store_id": widget.storeId};
-    var body = json.encode(data);
+  // ===================== PRODUCTS LIST =====================
+  Widget _buildProductsList() {
+    return CustomScrollView(
+      controller: productsPagination.scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        ...products.map((category) {
+          return SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: getProportionateScreenHeight(kDefaultPadding / 2),
+              ),
+              child: ExpansionTile(
+                textColor: kBlackColor,
+                backgroundColor: kPrimaryColor,
+                collapsedBackgroundColor: kPrimaryColor,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(color: kWhiteColor),
+                  borderRadius: BorderRadius.circular(kDefaultPadding),
+                ),
+                collapsedShape: RoundedRectangleBorder(
+                  side: BorderSide(color: kWhiteColor),
+                  borderRadius: BorderRadius.circular(kDefaultPadding),
+                ),
+                leading: const Icon(Icons.dining, size: 18, color: kBlackColor),
+                childrenPadding: EdgeInsets.only(
+                  left: getProportionateScreenWidth(kDefaultPadding / 2),
+                  right: getProportionateScreenWidth(kDefaultPadding / 2),
+                  bottom: getProportionateScreenHeight(kDefaultPadding),
+                ),
+                title: Text(
+                  Service.capitalizeFirstLetters(category["_id"]["name"]),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                children: [
+                  ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: category['items'].length,
+                    separatorBuilder: (_, __) => SizedBox(
+                      height: getProportionateScreenHeight(kDefaultPadding / 2),
+                    ),
+                    itemBuilder: (context, idx) {
+                      final item = category['items'][idx];
+                      return ProductItemCard(
+                        item: item,
+                        isOpen: isOpen,
+                        onTap: () async {
+                          isOpen
+                              ? Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) {
+                                      return ItemScreen(
+                                        item: item,
+                                        location: store['location'],
+                                      );
+                                    },
+                                  ),
+                                ).then((value) => getCart())
+                              : Service.showMessage(
+                                  context: context,
+                                  title:
+                                      "Sorry the store is closed at this time!",
+                                  error: true,
+                                );
+                        },
+                        onAddTap: () async {
+                          if (item['specifications'] != null &&
+                              item['specifications'].length > 0) {
+                            isOpen
+                                ? Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return ItemScreen(
+                                          item: item,
+                                          location: store['location'],
+                                        );
+                                      },
+                                    ),
+                                  ).then((value) => getCart())
+                                : Service.showMessage(
+                                    context: context,
+                                    title:
+                                        "Sorry the store is closed at this time!",
+                                    error: true,
+                                  );
+                          } else {
+                            Item cartItem = Item(
+                              id: item['_id'],
+                              quantity: 1,
+                              specification: [],
+                              noteForItem: "",
+                              price: Service.getPrice(item).isNotEmpty
+                                  ? double.parse(Service.getPrice(item))
+                                  : 0,
+                              itemName: item['name'],
+                              imageURL:
+                                  item['image_url'] != null &&
+                                      item['image_url'].length > 0
+                                  ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${item['image_url'][0]}"
+                                  : "https://ibb.co/vkhzjd6",
+                            );
+                            StoreLocation storeLocation = StoreLocation(
+                              long: store['location'][1],
+                              lat: store['location'][0],
+                            );
+                            DestinationAddress destination = DestinationAddress(
+                              long: store['location'][1],
+                              lat: store['location'][0],
+                              name: "Current Location",
+                              note: "User current location",
+                            );
 
+                            if (cart != null) {
+                              if (userData != null) {
+                                if (cart!.storeId == item['store_id']) {
+                                  setState(() {
+                                    Service.addOrMergeCartItem(cart!, cartItem);
+                                    Service.save('cart', cart);
+                                  });
+                                  Service.showMessage(
+                                    context: context,
+                                    title: "Item added to cart",
+                                    error: false,
+                                  );
+                                } else {
+                                  _showDialog(
+                                    cartItem,
+                                    destination,
+                                    storeLocation,
+                                    item['store_id'],
+                                  );
+                                }
+                              } else {
+                                Service.showMessage(
+                                  context: context,
+                                  title: "Please login in...",
+                                  error: true,
+                                );
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        LoginScreen(firstRoute: false),
+                                  ),
+                                ).then((value) => getUser());
+                              }
+                            } else {
+                              if (userData != null) {
+                                addToCart(
+                                  cartItem,
+                                  destination,
+                                  storeLocation,
+                                  item['store_id'],
+                                );
+                                getCart();
+                              } else {
+                                Service.showMessage(
+                                  context: context,
+                                  title: "Please login in...",
+                                  error: true,
+                                );
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        LoginScreen(firstRoute: false),
+                                  ),
+                                ).then((value) => getUser());
+                              }
+                            }
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+
+        // Reusable footer (loader + "No more products")
+        // SliverToBoxAdapter(
+        //   child: PaginationFooter(
+        //     isLoadingMore: productsPagination.isLoadingMore,
+        //     hasMore: productsPagination.hasMore,
+        //     hasItems: products != null && products.isNotEmpty,
+        //     noMoreText: "No more products to load.",
+        //   ),
+        // ),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ],
+    );
+  }
+
+  ////////////// page loader ///////////////////
+  Future<void> _loadPage(
+    int page, {
+    bool isLoadMore = false,
+    bool isRefresh = false,
+  }) async {
+    _getAppKeys();
+
+    if (isLoadMore) {
+      if (productsPagination.isLoadingMore || !productsPagination.hasMore)
+        return;
+      setState(() => productsPagination.isLoadingMore = true);
+    } else {
+      setState(() {
+        _loading = true;
+        if (isRefresh) {
+          productsPagination.reset();
+          products = null;
+        }
+      });
+    }
+
+    final result = await getStoreProductList(page: page);
+    if (!mounted) return;
+
+    if (result != null && result['success'] == true) {
+      final newProducts = result['products'] ?? [];
+      final calculatedTotalPages = Service.calculateTotalPages(result);
+
+      if (result['store'] != null) {
+        store = result['store'];
+        storeName = result['store']['name'] ?? storeName;
+        isOpen = await Service.isStoreOpen(result['store']);
+      }
+
+      setState(() {
+        productsPagination.update(
+          page: page,
+          calculatedTotalPages: calculatedTotalPages,
+        );
+
+        products = isLoadMore
+            ? Service.appendPage(products, newProducts)
+            : newProducts;
+      });
+
+      productsPagination.checkAndLoadMoreIfNeeded();
+    } else {
+      if (mounted && result != null) {
+        final code = result['error_code']?.toString() ?? '';
+        final msg = (code.isNotEmpty && errorCodes.containsKey(code))
+            ? errorCodes[code]
+            : result['message']?.toString() ?? 'Failed to load products';
+        Service.showMessage(context: context, title: msg, error: true);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        productsPagination.isLoadingMore = false;
+      });
+    }
+  }
+
+  // product list with pageination
+  Future<dynamic> getStoreProductList({int page = 1}) async {
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_store_product_item_list_paginated";
+    Map data = {"store_id": widget.storeId, "page": page.toString()};
+    var body = json.encode(data);
     try {
       http.Response response = await http
           .post(
@@ -735,11 +499,8 @@ class _NotificationStoreState extends State<NotificationStore> {
             body: body,
           )
           .timeout(
-            Duration(seconds: 15),
+            Duration(seconds: 60),
             onTimeout: () {
-              setState(() {
-                this._loading = false;
-              });
               Service.showMessage(
                 context: context,
                 title: "Something went wrong!",
@@ -749,40 +510,14 @@ class _NotificationStoreState extends State<NotificationStore> {
               throw TimeoutException("The connection has timed out!");
             },
           );
-      var decodedResponse = json.decode(response.body);
 
-      // debugPrint("=== PRODUCTS RESPONSE ===");
-      // debugPrint("Response: ${json.encode(decodedResponse)}");
-
-      if (decodedResponse['products'] != null) {
-        // debugPrint("Products count: ${decodedResponse['products'].length}");
-        if (decodedResponse['products'].isNotEmpty) {
-          // debugPrint(
-          //   "First product structure: ${json.encode(decodedResponse['products'][0])}",
-          // );
-          if (decodedResponse['products'][0]['_id'] != null) {
-            // debugPrint(
-            //   "First category: ${decodedResponse['products'][0]['_id']['name']}",
-            // );
-          }
-        }
-      }
-
-      setState(() {
-        this.responseData = decodedResponse;
-        this._loading = false;
-      });
-
-      return decodedResponse;
+      return json.decode(response.body);
     } catch (e) {
-      // debugPrint(e);
-      if (mounted) {
-        setState(() {
-          this._loading = false;
-        });
-      }
-
       return null;
+    } finally {
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
@@ -837,156 +572,3 @@ class _NotificationStoreState extends State<NotificationStore> {
     );
   }
 }
-
-  // Future<bool> storeOpen(var store) async {
-  //   setState(() {
-  //     _loading = true;
-  //   });
-  //   _getAppKeys();
-  //   setState(() {
-  //     _loading = false;
-  //   });
-  //   bool isStoreOpen = false;
-
-  //   if (store['store_time'] != null && store['store_time'].length != 0) {
-  //     var appClose = await Service.read('app_close');
-  //     var appOpen = await Service.read('app_open');
-  //     for (var i = 0; i < store['store_time'].length; i++) {
-  //       DateFormat dateFormat = new DateFormat.Hm();
-  //       DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
-  //       int weekday;
-  //       if (now.weekday == 7) {
-  //         weekday = 0;
-  //       } else {
-  //         weekday = now.weekday;
-  //       }
-
-  //       if (store['store_time'][i]['day'] == weekday) {
-  //         if (store['store_time'][i]['day_time'].length != 0 &&
-  //             store['store_time'][i]['is_store_open']) {
-  //           for (
-  //             var j = 0;
-  //             j < store['store_time'][i]['day_time'].length;
-  //             j++
-  //           ) {
-  //             DateTime open = dateFormat.parse(
-  //               store['store_time'][i]['day_time'][j]['store_open_time'],
-  //             );
-  //             open = new DateTime(
-  //               now.year,
-  //               now.month,
-  //               now.day,
-  //               open.hour,
-  //               open.minute,
-  //             );
-  //             DateTime close = dateFormat.parse(
-  //               store['store_time'][i]['day_time'][j]['store_close_time'],
-  //             );
-
-  //             DateTime zmallClose = dateFormat.parse(appClose);
-  //             DateTime zmallOpen = dateFormat.parse(appOpen);
-
-  //             close = new DateTime(
-  //               now.year,
-  //               now.month,
-  //               now.day,
-  //               close.hour,
-  //               close.minute,
-  //             );
-  //             now = DateTime(
-  //               now.year,
-  //               now.month,
-  //               now.day,
-  //               now.hour,
-  //               now.minute,
-  //             );
-
-  //             zmallOpen = new DateTime(
-  //               now.year,
-  //               now.month,
-  //               now.day,
-  //               zmallOpen.hour,
-  //               zmallOpen.minute,
-  //             );
-  //             zmallClose = new DateTime(
-  //               now.year,
-  //               now.month,
-  //               now.day,
-  //               zmallClose.hour,
-  //               zmallClose.minute,
-  //             );
-
-  //             if (now.isAfter(open) &&
-  //                 now.isAfter(zmallOpen) &&
-  //                 now.isBefore(close) &&
-  //                 store['store_time'][i]['is_store_open'] &&
-  //                 now.isBefore(zmallClose)) {
-  //               isStoreOpen = true;
-  //               break;
-  //             } else {
-  //               isStoreOpen = false;
-  //             }
-  //           }
-  //         } else {
-  //           isStoreOpen = store['store_time'][i]['is_store_open'];
-  //         }
-  //       }
-  //     }
-  //   } else {
-  //     var appClose = await Service.read('app_close');
-  //     var appOpen = await Service.read('app_open');
-  //     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
-  //     DateFormat dateFormat = new DateFormat.Hm();
-  //     DateTime zmallClose = dateFormat.parse(appClose);
-  //     DateTime zmallOpen = dateFormat.parse(appOpen);
-  //     zmallClose = DateTime(
-  //       now.year,
-  //       now.month,
-  //       now.day,
-  //       zmallClose.hour,
-  //       zmallClose.minute,
-  //     );
-  //     zmallOpen = DateTime(
-  //       now.year,
-  //       now.month,
-  //       now.day,
-  //       zmallOpen.hour,
-  //       zmallOpen.minute,
-  //     );
-  //     now = DateTime(now.year, now.month, now.day, now.hour, now.minute);
-
-  //     if (now.isAfter(zmallOpen) && now.isBefore(zmallClose)) {
-  //       isStoreOpen = true;
-  //     } else {
-  //       isStoreOpen = false;
-  //     }
-  //   }
-
-  //   return isStoreOpen;
-  // }
-
-  // If no default spec exists, use the first spec’s first price as a fallback.
-  // String _getPrice(item) {
-  //   if (item['price'] == null || item['price'] == 0) {
-  //     // look for a default-selected spec
-  //     for (var i = 0; i < item['specifications'].length; i++) {
-  //       for (var j = 0; j < item['specifications'][i]['list'].length; j++) {
-  //         final spec = item['specifications'][i]['list'][j];
-  //         if (spec['is_default_selected'] == true) {
-  //           return spec['price'].toStringAsFixed(2);
-  //         }
-  //       }
-  //     }
-
-  //     // fallback to first available price if none are default-selected
-  //     if (item['specifications'].isNotEmpty &&
-  //         item['specifications'][0]['list'].isNotEmpty) {
-  //       final firstSpecPrice = item['specifications'][0]['list'][0]['price'];
-  //       return firstSpecPrice.toStringAsFixed(2);
-  //     }
-  //   } else {
-  //     return item['price'].toStringAsFixed(2);
-  //   }
-
-  //   return "0.00";
-  // }

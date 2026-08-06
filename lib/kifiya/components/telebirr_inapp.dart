@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:zmall/models/metadata.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
@@ -405,7 +407,9 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
     required String phone,
   }) async {
     final deviceType = Platform.isIOS ? "iOS" : "android";
-    var url = "https://pgw.shekla.app/telebirrInapp/create_order";
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/telebirr_inapp/create_order";
+    // "https://pgw.shekla.app/telebirrInapp/create_order";
     var responseData;
     Map data = {
       "traceNo": traceNo,

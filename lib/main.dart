@@ -5,6 +5,7 @@ import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:intl/intl.dart';
 import 'package:zmall/utils/firebase_options.dart';
 import 'package:firebase_in_app_messaging/firebase_in_app_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -28,6 +29,11 @@ void main() async {
   }
   final info = await PackageInfo.fromPlatform();
   appVersion = info.version; // ← real version from the build
+  appName = info.appName;
+  appBuildNumber = info.buildNumber;
+  appUpdatedAt = DateFormat('MMM dd, yyyy').format(info.updateTime!);
+  ; //info.updateTime.toString();
+
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(MyApp());

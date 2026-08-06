@@ -87,7 +87,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
     if (data != null) {
       setState(() {
         userData = data;
-        receiverName = userData['user']['first_name'] +
+        receiverName =
+            userData['user']['first_name'] +
             " " +
             userData['user']['last_name'];
         receiverPhone = userData['user']['phone'];
@@ -147,8 +148,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
     var data = await getTotalDistance();
     if (data != null && data['rows'][0]['elements'][0]['status'] == 'OK') {
       setState(() {
-        distance =
-            data['rows'][0]['elements'][0]['distance']['value'].toDouble();
+        distance = data['rows'][0]['elements'][0]['distance']['value']
+            .toDouble();
         time = data['rows'][0]['elements'][0]['duration']['value'].toDouble();
       });
       _getLunchInvoice();
@@ -171,9 +172,10 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
         MaterialPageRoute(
           builder: (context) {
             return CourierCheckout(
-                orderDetail: orderDetail,
-                userData: userData,
-                cartInvoice: data);
+              orderDetail: orderDetail,
+              userData: userData,
+              cartInvoice: data,
+            );
           },
         ),
       );
@@ -200,8 +202,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
     final finalReceiverName = _receiverNameController.text.isNotEmpty
         ? _receiverNameController.text
         : (userData['user']['first_name'] +
-            " " +
-            userData['user']['last_name']);
+              " " +
+              userData['user']['last_name']);
     final finalReceiverPhone = _receiverPhoneController.text.isNotEmpty
         ? _receiverPhoneController.text
         : userData['user']['phone'];
@@ -219,7 +221,9 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
       await Service.save('courier', data);
       await Service.saveBool("is_schedule", isSchedule);
       await Service.save(
-          "schedule_start", isSchedule ? _scheduledDate.toString() : null);
+        "schedule_start",
+        isSchedule ? _scheduledDate.toString() : null,
+      );
       _getVehicleList();
     } else {
       Service.showMessage(
@@ -245,66 +249,67 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
         bottomNavigationBar: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: getProportionateScreenWidth(kDefaultPadding),
-          ).copyWith(
-            bottom: getProportionateScreenWidth(kDefaultPadding / 2),
-          ),
+          ).copyWith(bottom: getProportionateScreenWidth(kDefaultPadding / 2)),
           child: SafeArea(
             child: CustomButton(
-                title: "Continue",
-                press: () {
-                  if (isSchedule && _scheduledDate == null) {
+              title: "Continue",
+              press: () {
+                if (isSchedule && _scheduledDate == null) {
+                  Service.showMessage(
+                    context: context,
+                    title: "Please enter date and time for your schedule!",
+                    error: true,
+                  );
+                  return;
+                }
+
+                if (_formKey.currentState!.validate()) {
+                  if (_controller.text.isEmpty) {
                     Service.showMessage(
-                        context: context,
-                        title: "Please enter date and time for your schedule!",
-                        error: true);
+                      context: context,
+                      title: "Please enter home address!",
+                      error: true,
+                    );
+                    return;
+                  }
+                  if (_dropOffController.text.isEmpty) {
+                    Service.showMessage(
+                      context: context,
+                      title: "Please enter delivery address!",
+                      error: true,
+                    );
+                    return;
+                  }
+                  if (latitude == null ||
+                      longitude == null ||
+                      destLatitude == null ||
+                      destLongitude == null) {
+                    Service.showMessage(
+                      context: context,
+                      title: "Please select valid addresses!",
+                      error: true,
+                    );
                     return;
                   }
 
-                  if (_formKey.currentState!.validate()) {
-                    if (_controller.text.isEmpty) {
-                      Service.showMessage(
-                          context: context,
-                          title: "Please enter home address!",
-                          error: true);
-                      return;
-                    }
-                    if (_dropOffController.text.isEmpty) {
-                      Service.showMessage(
-                          context: context,
-                          title: "Please enter delivery address!",
-                          error: true);
-                      return;
-                    }
-                    if (latitude == null ||
-                        longitude == null ||
-                        destLatitude == null ||
-                        destLongitude == null) {
-                      Service.showMessage(
-                          context: context,
-                          title: "Please select valid addresses!",
-                          error: true);
-                      return;
-                    }
-
-                    // setState(() {
-                    //   loadingMessage = "Making sure there are no dogs...";
-                    // });
-                    _addLunchToCart();
-                  }
-                },
-                color: kSecondaryColor),
+                  // setState(() {
+                  //   loadingMessage = "Making sure there are no dogs...";
+                  // });
+                  _addLunchToCart();
+                }
+              },
+              color: kSecondaryColor,
+            ),
           ),
         ),
         appBar: AppBar(
-            title: Text(
-              "Home Lunch",
-              style: TextStyle(color: kPrimaryColor),
-            ),
-            elevation: 0.0,
-            foregroundColor: kPrimaryColor,
-            backgroundColor: kSecondaryColor,
-            surfaceTintColor: kSecondaryColor,
-            iconTheme: IconThemeData(color: kPrimaryColor)),
+          title: Text("Home Lunch", style: TextStyle(color: kPrimaryColor)),
+          elevation: 0.0,
+          foregroundColor: kPrimaryColor,
+          backgroundColor: kSecondaryColor,
+          surfaceTintColor: kSecondaryColor,
+          iconTheme: IconThemeData(color: kPrimaryColor),
+        ),
         body: SafeArea(
           top: false,
           child: ModalProgressHUD(
@@ -320,13 +325,16 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                     child: Stack(
                       children: [
                         Container(
-                          height: size.height * 0.22 -
+                          height:
+                              size.height * 0.22 -
                               getProportionateScreenHeight(kDefaultPadding),
                           padding: EdgeInsets.symmetric(
                             vertical: getProportionateScreenHeight(
-                                kDefaultPadding / 2),
-                            horizontal:
-                                getProportionateScreenWidth(kDefaultPadding),
+                              kDefaultPadding / 2,
+                            ),
+                            horizontal: getProportionateScreenWidth(
+                              kDefaultPadding,
+                            ),
                           ),
                           decoration: BoxDecoration(
                             color: kSecondaryColor,
@@ -344,7 +352,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             children: [
                               SizedBox(
                                 height: getProportionateScreenHeight(
-                                    kDefaultPadding / 2),
+                                  kDefaultPadding / 2,
+                                ),
                               ),
                               Row(
                                 children: [
@@ -376,15 +385,19 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             children: [
                               Container(
                                 margin: EdgeInsets.symmetric(
-                                    horizontal: getProportionateScreenWidth(
-                                        kDefaultPadding)),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
+                                ),
                                 height: getProportionateScreenHeight(
-                                    kDefaultPadding * 4),
+                                  kDefaultPadding * 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: kPrimaryColor,
                                   borderRadius: BorderRadius.circular(
                                     getProportionateScreenWidth(
-                                        kDefaultPadding),
+                                      kDefaultPadding,
+                                    ),
                                   ),
                                   boxShadow: [kDefaultShadow],
                                 ),
@@ -407,11 +420,12 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                           DestinationAddress address = value;
                                           setState(() {
                                             _controller.text = address.name!;
-                                            longitude = double.parse(address
-                                                .long!
-                                                .toStringAsFixed(6));
-                                            latitude = double.parse(address.lat!
-                                                .toStringAsFixed(6));
+                                            longitude = double.parse(
+                                              address.long!.toStringAsFixed(6),
+                                            );
+                                            latitude = double.parse(
+                                              address.lat!.toStringAsFixed(6),
+                                            );
                                           });
                                         }
                                       });
@@ -425,27 +439,34 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                       border: OutlineInputBorder(
                                         borderSide: BorderSide.none,
                                       ),
-                                      contentPadding:
-                                          EdgeInsets.only(left: 8.0, top: 16.0),
+                                      contentPadding: EdgeInsets.only(
+                                        left: 8.0,
+                                        top: 16.0,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                               SizedBox(
                                 height: getProportionateScreenHeight(
-                                    kDefaultPadding / 2),
+                                  kDefaultPadding / 2,
+                                ),
                               ),
                               Container(
                                 margin: EdgeInsets.symmetric(
-                                    horizontal: getProportionateScreenWidth(
-                                        kDefaultPadding)),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
+                                ),
                                 height: getProportionateScreenHeight(
-                                    kDefaultPadding * 4),
+                                  kDefaultPadding * 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: kPrimaryColor,
                                   borderRadius: BorderRadius.circular(
                                     getProportionateScreenWidth(
-                                        kDefaultPadding),
+                                      kDefaultPadding,
+                                    ),
                                   ),
                                   boxShadow: [kDefaultShadow],
                                 ),
@@ -469,12 +490,12 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                           setState(() {
                                             _dropOffController.text =
                                                 address.name!;
-                                            destLatitude = double.parse(address
-                                                .lat!
-                                                .toStringAsFixed(6));
-                                            destLongitude = double.parse(address
-                                                .long!
-                                                .toStringAsFixed(6));
+                                            destLatitude = double.parse(
+                                              address.lat!.toStringAsFixed(6),
+                                            );
+                                            destLongitude = double.parse(
+                                              address.long!.toStringAsFixed(6),
+                                            );
                                           });
                                         }
                                       });
@@ -488,28 +509,32 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                       border: OutlineInputBorder(
                                         borderSide: BorderSide.none,
                                       ),
-                                      contentPadding:
-                                          EdgeInsets.only(left: 8.0, top: 16.0),
+                                      contentPadding: EdgeInsets.only(
+                                        left: 8.0,
+                                        top: 16.0,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.symmetric(
-                          horizontal:
-                              getProportionateScreenWidth(kDefaultPadding),
-                          vertical:
-                              getProportionateScreenHeight(kDefaultPadding)),
+                        horizontal: getProportionateScreenWidth(
+                          kDefaultPadding,
+                        ),
+                        vertical: getProportionateScreenHeight(kDefaultPadding),
+                      ),
                       child: Column(
-                        spacing:
-                            getProportionateScreenHeight(kDefaultPadding / 2),
+                        spacing: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
                         children: [
                           SectionTitle(
                             sectionTitle: "Receiver Contact",
@@ -520,6 +545,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.next,
                             onChanged: (val) {
                               receiverName = val;
                             },
@@ -536,6 +562,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
                             maxLength: 9,
                             onChanged: (val) {
                               receiverPhone = val;
@@ -553,7 +580,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             },
                             hintText: "  9XXXXXXXX (Optional)",
                             prefix: Text(
-                                "${Provider.of<ZMetaData>(context, listen: false).areaCode}"),
+                              "${Provider.of<ZMetaData>(context, listen: false).areaCode}",
+                            ),
                           ),
                           SectionTitle(
                             sectionTitle: "Home Contact",
@@ -564,6 +592,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.next,
                             onChanged: (val) {
                               senderUser = val;
                               setState(() {});
@@ -581,6 +610,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             cursorColor: kSecondaryColor,
                             style: TextStyle(color: kBlackColor),
                             keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.done,
                             maxLength: 9,
                             onChanged: (val) {
                               senderPhone = val;
@@ -612,14 +642,13 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                   _homeContact!.list!.length > 0)
                                 Text(
                                   "Select contact",
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge!
+                                  style: Theme.of(context).textTheme.labelLarge!
                                       .copyWith(
                                         color: kBlackColor,
                                         fontWeight: FontWeight.bold,
                                         fontSize: getProportionateScreenHeight(
-                                            kDefaultPadding),
+                                          kDefaultPadding,
+                                        ),
                                       ),
                                 ),
                               Spacer(),
@@ -627,29 +656,40 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                       senderPhone.isNotEmpty ||
                                   (_homeContact != null &&
                                       _homeContact!.list!
-                                              .where((element) =>
-                                                  element.phone == senderPhone)
+                                              .where(
+                                                (element) =>
+                                                    element.phone ==
+                                                    senderPhone,
+                                              )
                                               .length >
                                           0))
                                 TextButton(
                                   onPressed: () {
                                     _contact = Contact(
-                                        name: senderUser, phone: senderPhone);
+                                      name: senderUser,
+                                      phone: senderPhone,
+                                    );
 
                                     if (_homeContact != null) {
                                       if (_homeContact!.list!
-                                              .where((element) =>
-                                                  element.phone == senderPhone)
+                                              .where(
+                                                (element) =>
+                                                    element.phone ==
+                                                    senderPhone,
+                                              )
                                               .length >
                                           0) {
                                         Service.showMessage(
-                                            context: context,
-                                            title: "Contact already exists",
-                                            error: true);
+                                          context: context,
+                                          title: "Contact already exists",
+                                          error: true,
+                                        );
                                       } else {
                                         _homeContact!.list!.add(_contact!);
-                                        Service.save('home_contact',
-                                            _homeContact!.toJson());
+                                        Service.save(
+                                          'home_contact',
+                                          _homeContact!.toJson(),
+                                        );
 
                                         getHomeContact();
                                       }
@@ -658,13 +698,16 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                         list: [_contact!],
                                       );
 
-                                      Service.save('home_contact',
-                                          _homeContact!.toJson());
+                                      Service.save(
+                                        'home_contact',
+                                        _homeContact!.toJson(),
+                                      );
 
                                       Service.showMessage(
-                                          context: context,
-                                          title: "Home contact added...",
-                                          error: false);
+                                        context: context,
+                                        title: "Home contact added...",
+                                        error: false,
+                                      );
                                       getHomeContact();
                                     }
                                   },
@@ -683,7 +726,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                 HeroiconsOutline.bookmark,
                                 color: kSecondaryColor,
                                 size: getProportionateScreenHeight(
-                                    kDefaultPadding),
+                                  kDefaultPadding,
+                                ),
                               ),
                             ],
                           ),
@@ -695,21 +739,25 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                               _homeContact!.list!.length > 0)
                             Container(
                               height: getProportionateScreenHeight(
-                                  kDefaultPadding * 5),
+                                kDefaultPadding * 5,
+                              ),
                               width: double.infinity,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 padding: EdgeInsets.symmetric(
                                   horizontal: getProportionateScreenWidth(
-                                      kDefaultPadding / 2),
+                                    kDefaultPadding / 2,
+                                  ),
                                 ),
                                 separatorBuilder:
                                     (BuildContext context, int index) =>
                                         SizedBox(
-                                  width: getProportionateScreenWidth(
-                                      kDefaultPadding),
-                                ),
-                                itemCount: _homeContact != null &&
+                                          width: getProportionateScreenWidth(
+                                            kDefaultPadding,
+                                          ),
+                                        ),
+                                itemCount:
+                                    _homeContact != null &&
                                         _homeContact!.list!.length > 0
                                     ? _homeContact!.list!.length
                                     : 0,
@@ -722,35 +770,46 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                           onTap: () {
                                             setState(() {
                                               senderUser = _homeContact!
-                                                  .list![index].name!;
+                                                  .list![index]
+                                                  .name!;
                                               senderPhone = _homeContact!
-                                                  .list![index].phone!;
+                                                  .list![index]
+                                                  .phone!;
                                               _senderPhone.text = _homeContact!
-                                                  .list![index].phone!;
+                                                  .list![index]
+                                                  .phone!;
                                               _senderUser.text = _homeContact!
-                                                  .list![index].name!;
+                                                  .list![index]
+                                                  .name!;
                                             });
                                           },
                                           onDoubleTap: () {
                                             _homeContact!.list!.removeAt(index);
                                             Service.save(
-                                                "home_contact", _homeContact);
+                                              "home_contact",
+                                              _homeContact,
+                                            );
                                             getHomeContact();
                                           },
                                           child: Container(
                                             padding: EdgeInsets.symmetric(
                                               horizontal:
                                                   getProportionateScreenWidth(
-                                                      kDefaultPadding * 0.8),
+                                                    kDefaultPadding * 0.8,
+                                                  ),
                                               vertical:
                                                   getProportionateScreenHeight(
-                                                      kDefaultPadding / 2),
+                                                    kDefaultPadding / 2,
+                                                  ),
                                             ),
                                             decoration: BoxDecoration(
                                               color: kPrimaryColor,
-                                              borderRadius: BorderRadius.circular(
-                                                  getProportionateScreenWidth(
-                                                      kDefaultPadding * 0.8)),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    getProportionateScreenWidth(
+                                                      kDefaultPadding * 0.8,
+                                                    ),
+                                                  ),
                                               border: Border.all(
                                                 color: kWhiteColor,
                                                 // .withValues(alpha: 0.2),
@@ -763,7 +822,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                                 Container(
                                                   padding: EdgeInsets.all(
                                                     getProportionateScreenWidth(
-                                                        kDefaultPadding * 0.3),
+                                                      kDefaultPadding * 0.3,
+                                                    ),
                                                   ),
                                                   decoration: BoxDecoration(
                                                     color: kSecondaryColor
@@ -775,15 +835,15 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                                     color: kSecondaryColor,
                                                     size:
                                                         getProportionateScreenWidth(
-                                                            kDefaultPadding *
-                                                                1.2),
+                                                          kDefaultPadding * 1.2,
+                                                        ),
                                                   ),
                                                 ),
                                                 SizedBox(
                                                   width:
                                                       getProportionateScreenWidth(
-                                                          kDefaultPadding *
-                                                              0.5),
+                                                        kDefaultPadding * 0.5,
+                                                      ),
                                                 ),
                                                 Column(
                                                   mainAxisAlignment:
@@ -793,7 +853,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                                   children: [
                                                     Text(
                                                       _homeContact!
-                                                          .list![index].name!,
+                                                          .list![index]
+                                                          .name!,
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .labelLarge!
@@ -826,10 +887,13 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                           right: -5,
                                           child: GestureDetector(
                                             onTap: () {
-                                              _homeContact!.list!
-                                                  .removeAt(index);
-                                              Service.save("home_contact",
-                                                  _homeContact!.toJson());
+                                              _homeContact!.list!.removeAt(
+                                                index,
+                                              );
+                                              Service.save(
+                                                "home_contact",
+                                                _homeContact!.toJson(),
+                                              );
                                               getHomeContact();
                                             },
                                             child: Container(
@@ -849,7 +913,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                                 HeroiconsOutline.xCircle,
                                                 size:
                                                     getProportionateScreenWidth(
-                                                        kDefaultPadding * 1.3),
+                                                      kDefaultPadding * 1.3,
+                                                    ),
                                                 color: kSecondaryColor,
                                               ),
                                             ),
@@ -863,7 +928,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                             ),
                           SizedBox(
                             height: getProportionateScreenWidth(
-                                kDefaultPadding / 4),
+                              kDefaultPadding / 4,
+                            ),
                           ),
                           // Text(
                           //   "Double tap to remove...",
@@ -904,22 +970,25 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                             .textTheme
                                             .bodyLarge!
                                             .copyWith(
-                                                fontWeight: FontWeight.bold),
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                       ),
                                       Container(
                                         height: kDefaultPadding,
                                         width: getProportionateScreenWidth(
-                                            kDefaultPadding),
+                                          kDefaultPadding,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: isSchedule
                                               ? kSecondaryColor
                                               : kPrimaryColor,
                                           shape: BoxShape.circle,
                                           border: Border.all(
-                                              width: 1,
-                                              color: isSchedule
-                                                  ? kWhiteColor
-                                                  : kGreyColor),
+                                            width: 1,
+                                            color: isSchedule
+                                                ? kWhiteColor
+                                                : kGreyColor,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -933,47 +1002,53 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
                                           child: Text(
                                             _scheduledDate != null
                                                 ? _scheduledDate
-                                                    .toString()
-                                                    .split('.')[0]
+                                                      .toString()
+                                                      .split('.')[0]
                                                 : " Add Date & Time ",
                                             style: TextStyle(
                                               color: kSecondaryColor,
                                             ),
                                           ),
                                           style: ButtonStyle(
-                                            elevation:
-                                                WidgetStateProperty.all(1.0),
+                                            elevation: WidgetStateProperty.all(
+                                              1.0,
+                                            ),
                                             backgroundColor:
                                                 WidgetStateProperty.all(
-                                                    kPrimaryColor),
+                                                  kPrimaryColor,
+                                                ),
                                           ),
                                           onPressed: () async {
                                             DateTime _now = DateTime.now();
                                             DateTime? pickedDate =
                                                 await showDatePicker(
-                                              context: context,
-                                              initialDate: DateTime.now(),
-                                              firstDate: _now,
-                                              lastDate: _now.add(
-                                                Duration(days: 7),
-                                              ),
-                                            );
+                                                  context: context,
+                                                  initialDate: DateTime.now(),
+                                                  firstDate: _now,
+                                                  lastDate: _now.add(
+                                                    Duration(days: 7),
+                                                  ),
+                                                );
                                             TimeOfDay? time =
                                                 await showTimePicker(
-                                                    context: context,
-                                                    initialTime:
-                                                        TimeOfDay.fromDateTime(
-                                                            DateTime.now()));
+                                                  context: context,
+                                                  initialTime:
+                                                      TimeOfDay.fromDateTime(
+                                                        DateTime.now(),
+                                                      ),
+                                                );
                                             setState(() {
                                               _scheduledDate = pickedDate!.add(
-                                                  Duration(
-                                                      hours: time!.hour,
-                                                      minutes: time.minute));
+                                                Duration(
+                                                  hours: time!.hour,
+                                                  minutes: time.minute,
+                                                ),
+                                              );
                                             });
                                           },
                                         ),
                                       ],
-                                    )
+                                    ),
                                 ],
                               ),
                             ),
@@ -1006,8 +1081,10 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
             "phone": receiverPhone,
             "name": receiverName,
             "email": "",
-            "country_phone_code":
-                Provider.of<ZMetaData>(context, listen: false).areaCode,
+            "country_phone_code": Provider.of<ZMetaData>(
+              context,
+              listen: false,
+            ).areaCode,
           },
           "note": "Lunch from Home",
           "location": [destLatitude, destLongitude],
@@ -1015,7 +1092,7 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
           "city": userData['user']['city'],
           "address_type": "destination",
           "address": _dropOffController.text,
-        }
+        },
       ],
       "order_details": [],
       "pickup_addresses": [
@@ -1024,19 +1101,18 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
           "user_details": {
             "phone": senderPhone,
             "name": senderUser,
-            "country_phone_code":
-                Provider.of<ZMetaData>(context, listen: false).areaCode,
+            "country_phone_code": Provider.of<ZMetaData>(
+              context,
+              listen: false,
+            ).areaCode,
           },
           "note": "Lunch From Home",
-          "location": [
-            latitude,
-            longitude,
-          ],
+          "location": [latitude, longitude],
           "delivery_status": 0,
           "city": userData['user']['city'],
           "address_type": "pickup",
           "address": _controller.text,
-        }
+        },
       ],
       "total_cart_price": "0",
       "total_item_tax": 0,
@@ -1052,28 +1128,28 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 20),
-        onTimeout: () {
-          setState(() {
-            this._isLoading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Something went wrong!"),
-              backgroundColor: kSecondaryColor,
-            ),
+            Duration(seconds: 20),
+            onTimeout: () {
+              setState(() {
+                this._isLoading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Something went wrong!"),
+                  backgroundColor: kSecondaryColor,
+                ),
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
           );
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
       setState(() {
         this._isLoading = false;
         orderDetail = data;
@@ -1114,22 +1190,22 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 20),
-        onTimeout: () {
-          setState(() {
-            _isLoading = false;
-          });
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+            Duration(seconds: 20),
+            onTimeout: () {
+              setState(() {
+                _isLoading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         _isLoading = false;
       });
@@ -1143,7 +1219,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              "Something went wrong. Please check your internet connection!"),
+            "Something went wrong. Please check your internet connection!",
+          ),
           backgroundColor: kSecondaryColor,
         ),
       );
@@ -1156,15 +1233,17 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
         "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${latitude!.toStringAsFixed(6)},${longitude!.toStringAsFixed(6)}&destinations=${destLatitude!.toStringAsFixed(6)},${destLongitude!.toStringAsFixed(6)}&key=$apiKey";
 
     try {
-      http.Response response = await http.get(Uri.parse(url)).timeout(
-        Duration(seconds: 20),
-        onTimeout: () {
-          setState(() {
-            _isLoading = false;
-          });
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+      http.Response response = await http
+          .get(Uri.parse(url))
+          .timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              setState(() {
+                _isLoading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       return json.decode(response.body);
     } catch (e) {
       // debugPrint(e);
@@ -1174,7 +1253,8 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              "Something went wrong! Please check your internet connection"),
+            "Something went wrong! Please check your internet connection",
+          ),
           backgroundColor: kSecondaryColor,
         ),
       );
@@ -1204,22 +1284,22 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 20),
-        onTimeout: () {
-          setState(() {
-            _isLoading = false;
-          });
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+            Duration(seconds: 20),
+            onTimeout: () {
+              setState(() {
+                _isLoading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
       setState(() {
         _isLoading = false;
       });

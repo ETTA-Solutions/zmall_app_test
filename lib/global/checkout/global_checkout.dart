@@ -1370,10 +1370,6 @@ class _GlobalCheckoutState extends State<GlobalCheckout> {
       });
       return json.decode(response.body);
     } catch (e) {
-      // debugPrint(e);
-      setState(() {
-        this._loading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Your internet connection is bad!"),
@@ -1381,6 +1377,12 @@ class _GlobalCheckoutState extends State<GlobalCheckout> {
         ),
       );
       return null;
+    } finally {
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
     }
   }
 }

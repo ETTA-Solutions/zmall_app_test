@@ -112,8 +112,8 @@ class _SavedAccountsBottomSheetState extends State<SavedAccountsBottomSheet> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(HeroiconsOutline.userCircle),
-                SizedBox(width: kDefaultPadding),
+                // Icon(HeroiconsOutline.userCircle),
+                // SizedBox(width: kDefaultPadding),
                 Text(
                   'Saved Accounts',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -180,7 +180,7 @@ class _SavedAccountsBottomSheetState extends State<SavedAccountsBottomSheet> {
                         color: kPrimaryColor,
                         border: Border.all(color: kWhiteColor),
                         borderRadius: BorderRadius.circular(
-                          kDefaultPadding / 2,
+                          kDefaultPadding / 1.5,
                         ),
                       ),
                       child: ListTile(
@@ -189,13 +189,11 @@ class _SavedAccountsBottomSheetState extends State<SavedAccountsBottomSheet> {
                           vertical: getProportionateScreenHeight(1),
                         ),
                         leading: CircleAvatar(
-                          backgroundColor: kSecondaryColor.withValues(
-                            alpha: 0.1,
-                          ),
+                          backgroundColor: kWhiteColor,
                           child: Text(
                             account.displayName[0].toUpperCase(),
                             style: TextStyle(
-                              color: kSecondaryColor,
+                              color: kBlackColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -204,16 +202,16 @@ class _SavedAccountsBottomSheetState extends State<SavedAccountsBottomSheet> {
                           account.displayName,
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: !isCurrentAccount
-                            ? null
-                            : Text(
-                                'Current',
-                                style: TextStyle(
-                                  color: kSecondaryColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                        subtitle: Text(
+                          isCurrentAccount
+                              ? "Currently logged in "
+                              : "Other Account",
+                          style: TextStyle(
+                            color: kGreyColor.withValues(alpha: 0.8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         // Text(
                         //   account.biometricEnabled
                         //       ? '$_biometricType enabled'
@@ -234,7 +232,7 @@ class _SavedAccountsBottomSheetState extends State<SavedAccountsBottomSheet> {
                         trailing: IconButton(
                           icon: Icon(
                             HeroiconsOutline.trash,
-                            color: kSecondaryColor,
+                            color: kBlackColor,
                             size: 20,
                           ),
                           onPressed: () => _deleteAccount(account),

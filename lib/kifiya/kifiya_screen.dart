@@ -89,6 +89,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   late String uuid;
   bool isCourierSchedule = false;
   late String courierScheduleDate;
+  String inAppTraceNumber = "";
+  String _selectedPaymentMethod = "";
 
   Widget linearProgressIndicator = Container(
     child: Column(
@@ -161,11 +163,14 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     });
 
     // const String url = "https://pgw.shekla.app/teleInapp/query"; // old prod
-    // 
+    //
     // const String url = "https://pgw.shekla.app/teleInapp/test_query"; //test endpoint
-    // 
-    const String url = "https://pgw.shekla.app/teleInapp/prod_query"; //new prod
-    // 
+    //
+    // const String url = "https://pgw.shekla.app/teleInapp/prod_query"; //new prod
+    //
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/telebirr_inapp/query";
+    //
 
     var attempt = 0;
 
@@ -198,9 +203,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           message = data['message']?.toString();
         }
 
-        // debugPrint(
-        //   '📊 Telebirr poll #$attempt => status: $status, success: $success, message: $message',
-        // );
+        // debugPrint('📊Telebirr poll #$attempt => status: $status, success: $success, message: $message');
 
         if (status != null) {
           final upperStatus = status.toUpperCase();
@@ -517,41 +520,60 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       _loading = true;
       _placeOrder = true;
     });
-    var data = await createOrder(orderIds: orderIds);
-    if (!mounted) return;
-    if (data != null && data['success']) {
-      Service.showMessage(
-        context: context,
-        title: "Order successfully created",
-        error: false,
-      );
-      await Service.remove('cart');
-      await Service.remove('aliexpressCart');
+    try {
+      var data = await createOrder(orderIds: orderIds);
+      // debugPrint( "order data>> $data\n_selectedPaymentMethod $_selectedPaymentMethod");
       if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _placeOrder = false;
-      });
+      if (data != null && data['success']) {
+        if (data['duplicate'] != null && data['duplicate'] == true) {
+          // debugPrint("order duplicated>> ${data['duplicate']}}");
+          // duplicate logic
+          Service.showMessage(
+            context: context,
+            title:
+                "This order has already been placed. Please check your order history.",
+            // error: true,
+          );
+        } else {
+          // debugPrint("order duplicated>> ${data['duplicate']}}");
+          // normal success logic
+          Service.showMessage(
+            context: context,
+            title: "Order successfully created",
+            error: false,
+          );
+          await Service.remove('cart');
+          await Service.remove('aliexpressCart');
+          if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) {
-            return ReportScreen(
-              price: widget.price!,
-              orderPaymentUniqueId: widget.orderPaymentUniqueId!,
-            );
-          },
-        ),
-      );
-    } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) {
+                return ReportScreen(
+                  price: widget.price!,
+                  orderPaymentUniqueId: widget.orderPaymentUniqueId!,
+                );
+              },
+            ),
+          );
+        }
+      } else {
+        Service.showMessage(
+          context: context,
+          title: data != null
+              ? "${errorCodes['${data['error_code']}'] ?? 'Order failed. Please try again.'}"
+              : "Something went wrong. Please try again.",
+          error: true,
+        );
+      }
+    } catch (e) {
       Service.showMessage(
         context: context,
-        title: data != null
-            ? "${errorCodes['${data['error_code']}'] ?? 'Order failed. Please try again.'}"
-            : "Something went wrong. Please try again.",
+        title: "Something went wrong. Please try again.",
         error: true,
       );
+    } finally {
       setState(() {
         _loading = false;
         _placeOrder = false;
@@ -665,7 +687,6 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   }
 
   Future<bool> _boaVerify() async {
-    // debugPrint('###[_boaVerify] Starting BOA verification');
     if (!mounted) return false;
     setState(() {
       _loading = true;
@@ -692,8 +713,6 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           error: true,
           duration: 5,
         );
-        // debugPrint(
-        //   '###[_boaVerify] Images invalid after verification - aborting',\n        // );
         return false;
       }
 
@@ -713,9 +732,6 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                 aliexpressCart!.cart.storeId == cart.storeId)
           ? _createAliexpressOrder()
           : _createOrder();
-      // debugPrint(
-      //   '###[_boaVerify] Verification succeeded and order flow started',
-      // );
       return true;
     } else {
       setState(() {
@@ -727,9 +743,6 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           kifiyaMethod = 1;
         }
       });
-      // debugPrint(
-      //   '###[_boaVerify] Verification failed or returned null: ${data ?? 'null'}',
-      // );
       await useBorsa();
       Service.showMessage(
         context: context,
@@ -796,1981 +809,2202 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                   children: [
                     Expanded(
                       child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: getProportionateScreenWidth(kDefaultPadding),
-                  ),
-                  child: Center(
-                    child: Column(
-                      // mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            vertical: getProportionateScreenHeight(
-                              kDefaultPadding,
-                            ),
-                            horizontal: getProportionateScreenWidth(
-                              kDefaultPadding,
-                            ),
-                          ),
-                          margin: EdgeInsets.symmetric(
-                            vertical: getProportionateScreenHeight(
-                              kDefaultPadding / 2,
-                            ),
-                          ),
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: kPrimaryColor,
-                            border: Border.all(color: kWhiteColor),
-                            borderRadius: BorderRadius.circular(
-                              getProportionateScreenWidth(
-                                kDefaultPadding / 1.5,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: OrderStatusRow(
-                                  title: "Total Price",
-                                  icon: HeroiconsOutline.banknotes,
-                                  fontSize: getProportionateScreenHeight(16),
-                                  value:
-                                      "${widget.price!.toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency}",
-                                ),
-                              ),
-                              Flexible(
-                                child: OrderStatusRow(
-                                  icon: HeroiconsOutline.creditCard,
-                                  title: Provider.of<ZLanguage>(
-                                    context,
-                                  ).balance,
-                                  fontSize: getProportionateScreenHeight(16),
-                                  value:
-                                      "${paymentResponse['wallet'].toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency} ",
-                                ),
-                              ),
-                            ],
+                        padding: EdgeInsets.symmetric(
+                          horizontal: getProportionateScreenWidth(
+                            kDefaultPadding,
                           ),
                         ),
-                        // Text(
-                        //   "${Provider.of<ZLanguage>(context).howWouldYouPay} ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)}?",
-                        //   style: TextStyle(
-                        //       fontSize: 20, fontWeight: FontWeight.w600),
-                        //   // Theme.of(context)
-                        //   //     .textTheme
-                        //   //     .titleLarge
-                        //   //     ?.copyWith(fontWeight: FontWeight.w600),
-                        //   textAlign: TextAlign.center,
-                        // ),
-                        // // SizedBox(
-                        // //     height: getProportionateScreenHeight(
-                        // //         kDefaultPadding / 2)),
-                        // // CategoryContainer(
-                        // //     title: Provider.of<ZLanguage>(context).balance),
-                        // // SizedBox(
-                        // //     height: getProportionateScreenHeight(
-                        // //         kDefaultPadding / 2)),
-                        // Container(
-                        //   // height:
-                        //   //     getProportionateScreenHeight(kDefaultPadding * 4),
-                        //   width: double.infinity,
-                        //   padding: EdgeInsets.symmetric(
-                        //       horizontal:
-                        //           getProportionateScreenWidth(kDefaultPadding),
-                        //       vertical: getProportionateScreenHeight(
-                        //           kDefaultPadding / 2)),
-                        //   margin: EdgeInsets.symmetric(
-                        //       vertical: getProportionateScreenHeight(
-                        //           kDefaultPadding / 2)),
-                        //   decoration: BoxDecoration(
-                        //     color: kPrimaryColor,
-                        //     border: Border.all(
-                        //         color: kBlackColor.withValues(alpha: 0.2)),
-                        //     borderRadius: BorderRadius.circular(
-                        //       getProportionateScreenWidth(kDefaultPadding / 2),
-                        //     ),
-                        //   ),
-                        //   child: Center(
-                        //     child: Column(
-                        //       children: [
-                        //         Text(
-                        //           "${paymentResponse['wallet'].toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency} ",
-                        //           style: Theme.of(context)
-                        //               .textTheme
-                        //               .titleLarge
-                        //               ?.copyWith(fontWeight: FontWeight.w600),
-                        //         ),
-                        //         Text(
-                        //           Provider.of<ZLanguage>(context).balance,
-                        //           style: TextStyle(
-                        //               fontWeight: FontWeight.w600,
-                        //               color: kGreyColor),
-                        //         ),
-                        //       ],
-                        //     ),
-                        //   ),
-                        // ),
-                        // SizedBox(
-                        //     height: getProportionateScreenHeight(
-                        //         kDefaultPadding / 2)),
-                        // Text(
-                        //   Provider.of<ZLanguage>(context).addFundsInfo,
-                        //   style:
-                        //       Theme.of(context).textTheme.bodySmall?.copyWith(
-                        //             color: Theme.of(context)
-                        //                 .colorScheme
-                        //                 .onSurface
-                        //                 .withValues(alpha: 0.6),
-                        //           ),
-                        // ),
-                        // SizedBox(
-                        //   height: getProportionateScreenHeight(kDefaultPadding),
-                        // ),
-
-                        // Show attached images preview for courier orders
-                        if (widget.isCourier == true &&
-                            imagePath != null &&
-                            imagePath.length > 0)
-                          Container(
-                            margin: EdgeInsets.only(
-                              top: getProportionateScreenHeight(
-                                kDefaultPadding / 8,
-                              ),
-                              bottom: getProportionateScreenHeight(
-                                kDefaultPadding / 2,
-                              ),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                              vertical: getProportionateScreenHeight(
-                                kDefaultPadding / 2,
-                              ),
-                              horizontal: getProportionateScreenWidth(
-                                kDefaultPadding,
-                              ),
-                            ),
-                            decoration: BoxDecoration(
-                              color: Color(0xFF667EEA).withValues(alpha: 0.1),
-                              //  kSecondaryColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                getProportionateScreenWidth(
-                                  kDefaultPadding / 2,
+                        child: Center(
+                          child: Column(
+                            // mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: getProportionateScreenHeight(
+                                    kDefaultPadding,
+                                  ),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
                                 ),
-                              ),
-                              border: Border.all(
-                                color: kWhiteColor,
-                                //  kSecondaryColor.withValues(alpha: 0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header with icon and count
-                                Row(
-                                  spacing: getProportionateScreenWidth(
+                                margin: EdgeInsets.symmetric(
+                                  vertical: getProportionateScreenHeight(
                                     kDefaultPadding / 2,
                                   ),
+                                ),
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: kPrimaryColor,
+                                  border: Border.all(color: kWhiteColor),
+                                  borderRadius: BorderRadius.circular(
+                                    getProportionateScreenWidth(
+                                      kDefaultPadding / 1.5,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(
-                                      HeroiconsOutline.paperClip,
-                                      color: kBlackColor,
-                                      size: getProportionateScreenWidth(
-                                        kDefaultPadding,
+                                    Flexible(
+                                      child: OrderStatusRow(
+                                        title: "Total Price",
+                                        icon: HeroiconsOutline.banknotes,
+                                        fontSize: getProportionateScreenHeight(
+                                          16,
+                                        ),
+                                        value:
+                                            "${widget.price!.toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency}",
                                       ),
                                     ),
-
-                                    Text(
-                                      "${imagePath.length} image(s) attached",
-                                      style: TextStyle(
-                                        color: kBlackColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: getProportionateScreenWidth(
-                                          kDefaultPadding * 0.8,
+                                    Flexible(
+                                      child: OrderStatusRow(
+                                        icon: HeroiconsOutline.creditCard,
+                                        title: Provider.of<ZLanguage>(
+                                          context,
+                                        ).balance,
+                                        fontSize: getProportionateScreenHeight(
+                                          16,
                                         ),
+                                        value:
+                                            "${paymentResponse['wallet'].toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency} ",
                                       ),
                                     ),
                                   ],
                                 ),
-                                SizedBox(
-                                  height: getProportionateScreenHeight(
-                                    kDefaultPadding / 2,
+                              ),
+                              // Text(
+                              //   "${Provider.of<ZLanguage>(context).howWouldYouPay} ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)}?",
+                              //   style: TextStyle(
+                              //       fontSize: 20, fontWeight: FontWeight.w600),
+                              //   // Theme.of(context)
+                              //   //     .textTheme
+                              //   //     .titleLarge
+                              //   //     ?.copyWith(fontWeight: FontWeight.w600),
+                              //   textAlign: TextAlign.center,
+                              // ),
+                              // // SizedBox(
+                              // //     height: getProportionateScreenHeight(
+                              // //         kDefaultPadding / 2)),
+                              // // CategoryContainer(
+                              // //     title: Provider.of<ZLanguage>(context).balance),
+                              // // SizedBox(
+                              // //     height: getProportionateScreenHeight(
+                              // //         kDefaultPadding / 2)),
+                              // Container(
+                              //   // height:
+                              //   //     getProportionateScreenHeight(kDefaultPadding * 4),
+                              //   width: double.infinity,
+                              //   padding: EdgeInsets.symmetric(
+                              //       horizontal:
+                              //           getProportionateScreenWidth(kDefaultPadding),
+                              //       vertical: getProportionateScreenHeight(
+                              //           kDefaultPadding / 2)),
+                              //   margin: EdgeInsets.symmetric(
+                              //       vertical: getProportionateScreenHeight(
+                              //           kDefaultPadding / 2)),
+                              //   decoration: BoxDecoration(
+                              //     color: kPrimaryColor,
+                              //     border: Border.all(
+                              //         color: kBlackColor.withValues(alpha: 0.2)),
+                              //     borderRadius: BorderRadius.circular(
+                              //       getProportionateScreenWidth(kDefaultPadding / 2),
+                              //     ),
+                              //   ),
+                              //   child: Center(
+                              //     child: Column(
+                              //       children: [
+                              //         Text(
+                              //           "${paymentResponse['wallet'].toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency} ",
+                              //           style: Theme.of(context)
+                              //               .textTheme
+                              //               .titleLarge
+                              //               ?.copyWith(fontWeight: FontWeight.w600),
+                              //         ),
+                              //         Text(
+                              //           Provider.of<ZLanguage>(context).balance,
+                              //           style: TextStyle(
+                              //               fontWeight: FontWeight.w600,
+                              //               color: kGreyColor),
+                              //         ),
+                              //       ],
+                              //     ),
+                              //   ),
+                              // ),
+                              // SizedBox(
+                              //     height: getProportionateScreenHeight(
+                              //         kDefaultPadding / 2)),
+                              // Text(
+                              //   Provider.of<ZLanguage>(context).addFundsInfo,
+                              //   style:
+                              //       Theme.of(context).textTheme.bodySmall?.copyWith(
+                              //             color: Theme.of(context)
+                              //                 .colorScheme
+                              //                 .onSurface
+                              //                 .withValues(alpha: 0.6),
+                              //           ),
+                              // ),
+                              // SizedBox(
+                              //   height: getProportionateScreenHeight(kDefaultPadding),
+                              // ),
+
+                              // Show attached images preview for courier orders
+                              if (widget.isCourier == true &&
+                                  imagePath != null &&
+                                  imagePath.length > 0)
+                                Container(
+                                  margin: EdgeInsets.only(
+                                    top: getProportionateScreenHeight(
+                                      kDefaultPadding / 8,
+                                    ),
+                                    bottom: getProportionateScreenHeight(
+                                      kDefaultPadding / 2,
+                                    ),
                                   ),
-                                ),
-                                // Image thumbnails preview
-                                SizedBox(
-                                  height: getProportionateScreenHeight(
-                                    kDefaultPadding * 4,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: getProportionateScreenHeight(
+                                      kDefaultPadding / 2,
+                                    ),
+                                    horizontal: getProportionateScreenWidth(
+                                      kDefaultPadding,
+                                    ),
                                   ),
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: imagePath.length,
-                                    padding: EdgeInsets.only(
-                                      right: getProportionateScreenWidth(
-                                        kDefaultPadding / 2,
+                                  decoration: BoxDecoration(
+                                    color: Color(
+                                      0xFF667EEA,
+                                    ).withValues(alpha: 0.1),
+                                    //  kSecondaryColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(
+                                      getProportionateScreenWidth(
+                                        kDefaultPadding / 1.5,
                                       ),
                                     ),
-                                    separatorBuilder: (context, index) =>
-                                        SizedBox(
-                                          width: getProportionateScreenWidth(
-                                            kDefaultPadding / 3,
-                                          ),
+                                    border: Border.all(
+                                      color: kWhiteColor,
+                                      //  kSecondaryColor.withValues(alpha: 0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Header with icon and count
+                                      Row(
+                                        spacing: getProportionateScreenWidth(
+                                          kDefaultPadding / 2,
                                         ),
-                                    itemBuilder: (context, index) {
-                                      return Container(
-                                        width: getProportionateScreenWidth(
-                                          kDefaultPadding * 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            getProportionateScreenWidth(
-                                              kDefaultPadding / 3,
+                                        children: [
+                                          Icon(
+                                            HeroiconsOutline.paperClip,
+                                            color: kBlackColor,
+                                            size: getProportionateScreenWidth(
+                                              kDefaultPadding,
                                             ),
                                           ),
-                                          // border: Border.all(
-                                          //   color: kGreyColor.withValues(
-                                          //     alpha: 0.5,
-                                          //   ),
-                                          //   width: 1.5,
-                                          // ),
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            getProportionateScreenWidth(
-                                              kDefaultPadding / 3,
+
+                                          Text(
+                                            "${imagePath.length} image(s) attached",
+                                            style: TextStyle(
+                                              color: kBlackColor,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize:
+                                                  getProportionateScreenWidth(
+                                                    kDefaultPadding * 0.8,
+                                                  ),
                                             ),
                                           ),
-                                          child: Image.file(
-                                            File(imagePath[index]),
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              // Show error icon if image can't be loaded
-                                              return Container(
-                                                color: Color(
-                                                  0xFF667EEA,
-                                                ).withValues(alpha: 0.1),
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Icon(
-                                                      HeroiconsOutline
-                                                          .exclamationTriangle,
-                                                      color: kSecondaryColor,
-                                                      size:
-                                                          getProportionateScreenWidth(
-                                                            kDefaultPadding *
-                                                                1.5,
-                                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(
+                                        height: getProportionateScreenHeight(
+                                          kDefaultPadding / 2,
+                                        ),
+                                      ),
+                                      // Image thumbnails preview
+                                      SizedBox(
+                                        height: getProportionateScreenHeight(
+                                          kDefaultPadding * 4,
+                                        ),
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: imagePath.length,
+                                          padding: EdgeInsets.only(
+                                            right: getProportionateScreenWidth(
+                                              kDefaultPadding / 2,
+                                            ),
+                                          ),
+                                          separatorBuilder: (context, index) =>
+                                              SizedBox(
+                                                width:
+                                                    getProportionateScreenWidth(
+                                                      kDefaultPadding / 3,
                                                     ),
-                                                    SizedBox(
-                                                      height:
-                                                          getProportionateScreenHeight(
-                                                            kDefaultPadding / 4,
-                                                          ),
-                                                    ),
-                                                    Text(
-                                                      "Missing",
-                                                      style: TextStyle(
-                                                        color: kSecondaryColor,
-                                                        fontSize:
-                                                            getProportionateScreenWidth(
-                                                              kDefaultPadding *
-                                                                  0.6,
-                                                            ),
+                                              ),
+                                          itemBuilder: (context, index) {
+                                            return Container(
+                                              width:
+                                                  getProportionateScreenWidth(
+                                                    kDefaultPadding * 3,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      getProportionateScreenWidth(
+                                                        kDefaultPadding / 3,
                                                       ),
                                                     ),
-                                                  ],
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        Text(
-                          Provider.of<ZLanguage>(context).selectPayment,
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        if (widget.onlyCashless!)
-                          Text(
-                            Provider.of<ZLanguage>(context).onlyDigitalPayments,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                ),
-                          ),
-
-                        ///list of payment methods///
-                        Expanded(
-                          child: GridView.builder(
-                            shrinkWrap: true,
-                            itemCount:
-                                paymentResponse['payment_gateway'].length,
-                            padding: EdgeInsets.symmetric(
-                              vertical: getProportionateScreenHeight(
-                                kDefaultPadding / 2,
-                              ),
-                            ),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: getProportionateScreenWidth(
-                                    kDefaultPadding,
-                                  ),
-                                  mainAxisSpacing: getProportionateScreenWidth(
-                                    kDefaultPadding / 2,
-                                  ),
-                                ),
-                            itemBuilder: (BuildContext ctx, index) {
-                              String paymentName =
-                                  paymentResponse['payment_gateway'][index]['name']
-                                      .toString()
-                                      .toLowerCase();
-                              return KifiyaMethodContainer(
-                                selected: kifiyaMethod == index,
-                                title: paymentName,
-                                // .toUpperCase(),
-                                kifiyaMethod: kifiyaMethod,
-                                imagePath: paymentName == "wallet"
-                                    ? 'images/payment/wallet.png'
-                                    : paymentName == "cash"
-                                    ? 'images/payment/cod.png'
-                                    : paymentName == "dashen mastercard"
-                                    ? 'images/payment/dashenmpgs.png'
-                                    : paymentName == "addis pay"
-                                    ? 'images/payment/addispay.png'
-                                    : paymentName == "santimpay"
-                                    ? 'images/payment/santimpay.png'
-                                    : paymentName == "etta card"
-                                    ? 'images/payment/dashen.png'
-                                    : paymentName == "cbe birr"
-                                    ? 'images/payment/cbebirr.png'
-                                    : paymentName == "ethswitch"
-                                    ? 'images/payment/ethswitch.png'
-                                    : paymentName == "chapa"
-                                    ? 'images/payment/chapa.png'
-                                    : paymentName == "amole"
-                                    ? 'images/payment/amole.png'
-                                    : paymentName == "boa"
-                                    ? 'images/payment/boa.png'
-                                    : paymentName == "zemen"
-                                    ? 'images/payment/zemen.png'
-                                    : paymentName.contains("wegagen")
-                                    ? 'images/payment/wegagen.png'
-                                    : paymentName == "awash"
-                                    ? 'images/payment/awash.png'
-                                    : paymentName == "etta card"
-                                    ? 'images/payment/zmall.jpg'
-                                    : paymentName == "dashen"
-                                    ? 'images/payment/dashen.png'
-                                    : paymentName == "yagoutpay"
-                                    ? 'images/payment/yagoutpay.png'
-                                    : paymentName == "starpay"
-                                    ? 'images/payment/starpay.png'
-                                    : paymentName.contains("telebirr") ||
-                                          paymentName.contains("tele birr")
-                                    ? 'images/payment/telebirr.png'
-                                    : '',
-
-                                // 'images/payment/telebirr.png',
-                                press: () async {
-                                  setState(() {
-                                    kifiyaMethod = index;
-                                  });
-                                  if (paymentName == "cash") {
-                                    if (widget.onlyCashless!) {
-                                      Service.showMessage(
-                                        context: context,
-                                        title: Provider.of<ZLanguage>(
-                                          context,
-                                          listen: false,
-                                        ).onlyDigitalPayments,
-                                        // error: false,
-                                        duration: 5,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    } else {
-                                      await useBorsa();
-                                    }
-                                  } else if (paymentName == "wallet") {
-                                    if (widget.onlyCashless! &&
-                                        paymentResponse != null &&
-                                        paymentResponse['wallet'] <
-                                            widget.price) {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Only digital payment accepted and your balance is insufficient!",
-                                        // error: false,
-                                        duration: 5,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    } else {
-                                      await useBorsa();
-                                    }
-                                  } else if (paymentName ==
-                                      "telebirr reference") {
-                                    var data = await useBorsa();
-                                    if (data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (dialogContext) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text(
-                                              "Pay using telebirr app",
-                                            ),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr app?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(
-                                                    dialogContext,
-                                                  ).pop();
-                                                },
+                                                // border: Border.all(
+                                                //   color: kGreyColor.withValues(
+                                                //     alpha: 0.5,
+                                                //   ),
+                                                //   width: 1.5,
+                                                // ),
                                               ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(
-                                                    dialogContext,
-                                                  ).pop();
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return KifiyaVerification(
-                                                          hisab: widget.price!,
-                                                          traceNo: widget
-                                                              .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
-                                                      },
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      getProportionateScreenWidth(
+                                                        kDefaultPadding / 3,
+                                                      ),
                                                     ),
-                                                  ).then((success) {
-                                                    if (success != null ||
-                                                        !success) {
-                                                      if (mounted) {
-                                                        Service.showMessage(
-                                                          context: context,
-                                                          title:
-                                                              "Payment not completed. Please choose your payment method.",
-                                                          error: true,
-                                                        );
-                                                      }
-                                                    } else {
-                                                      /////////old/////
-                                                      // if (widget.isCourier!) {
-                                                      //   _createCourierOrder();
-                                                      // } else {
-                                                      //   _createOrder();
-                                                      // }
-                                                      /////////old/////
-                                                      if (widget.isCourier!) {
-                                                        _createCourierOrder();
-                                                      } else if ((aliexpressCart !=
-                                                              null &&
-                                                          aliexpressCart!
-                                                                  .cart
-                                                                  .storeId ==
-                                                              cart.storeId)) {
-                                                        _createAliexpressOrder();
-                                                      } else {
-                                                        _createOrder();
-                                                      }
-                                                    }
-                                                  });
-                                                },
+                                                child: Image.file(
+                                                  File(imagePath[index]),
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) {
+                                                    // Show error icon if image can't be loaded
+                                                    return Container(
+                                                      color: Color(
+                                                        0xFF667EEA,
+                                                      ).withValues(alpha: 0.1),
+                                                      child: Column(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          Icon(
+                                                            HeroiconsOutline
+                                                                .exclamationTriangle,
+                                                            color:
+                                                                kSecondaryColor,
+                                                            size: getProportionateScreenWidth(
+                                                              kDefaultPadding *
+                                                                  1.5,
+                                                            ),
+                                                          ),
+                                                          SizedBox(
+                                                            height:
+                                                                getProportionateScreenHeight(
+                                                                  kDefaultPadding /
+                                                                      4,
+                                                                ),
+                                                          ),
+                                                          Text(
+                                                            "Missing",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  kSecondaryColor,
+                                                              fontSize:
+                                                                  getProportionateScreenWidth(
+                                                                    kDefaultPadding *
+                                                                        0.6,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
                                               ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    }
-                                  } else if (paymentName == "boa") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      setState(() {
-                                        uuid = (int.parse(uuid) + 1).toString();
-                                      });
-
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => CyberSource(
-                                            url:
-                                                "https://pgw.shekla.app/cards/process?total=${widget.price}&stotal=${widget.price}&tax=0&shiping=0&order_id=${uuid}_${widget.orderPaymentUniqueId}&first=${userData['user']['first_name']}&last=${userData['user']['last_name']}&phone=251${userData['user']['phone']}&email=${userData['user']['email']}&appId=1234",
-                                          ),
-                                        ),
-                                      ).then((value) {
-                                        _boaVerify();
-                                      });
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                    }
-                                  } else if (paymentName == "amole") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) {
-                                            return AmoleScreen(
-                                              hisab: widget.price!,
-                                              userData: userData,
                                             );
                                           },
                                         ),
-                                      ).then((value) {
-                                        if (value != null) {
-                                          _payOrderPayment(
-                                            otp: value,
-                                            paymentId:
-                                                paymentResponse['payment_gateway'][index]['_id'],
-                                          );
-                                        }
-                                      });
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  } else if (paymentName == "ethswitch") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using EthSwitch"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using EthSwitch?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  setState(() {
-                                                    uuid = (int.parse(uuid) + 1)
-                                                        .toString();
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return EthSwitchScreen(
-                                                          title:
-                                                              "EthSwitch Payment Gateway",
-                                                          url:
-                                                              "https://pgw.shekla.app/ethioSwitch/initiate",
-                                                          hisab: widget.price!,
-                                                          traceNo:
-                                                              uuid +
-                                                              '_' +
-                                                              widget
-                                                                  .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _ethSwitchVerify(
-                                                      uuid +
-                                                          '_' +
-                                                          widget
-                                                              .orderPaymentUniqueId!,
-                                                    );
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  } else if (paymentName == "etta card") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text(
-                                              "Pay Using Loyalty Card",
-                                            ),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using ETTA Loyalty Card?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  setState(() {
-                                                    uuid = (int.parse(uuid) + 1)
-                                                        .toString();
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return EttaCardScreen(
-                                                          url:
-                                                              "$BASE_URL/admin/pay_payment_ettacard",
-                                                          amount: widget.price!,
-                                                          traceNo:
-                                                              uuid +
-                                                              '_' +
-                                                              widget
-                                                                  .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  } else if (paymentName == "santimpay") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using SantimPay"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using SantimPay?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  setState(() {
-                                                    uuid = (int.parse(uuid) + 1)
-                                                        .toString();
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return SantimPay(
-                                                          title:
-                                                              "SantimPay Payment",
-                                                          url:
-                                                              "$BASE_URL/api/santimpay/generatepaymenturl",
-                                                          hisab: widget.price!,
-                                                          traceNo:
-                                                              uuid +
-                                                              '_' +
-                                                              widget
-                                                                  .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  } else if (paymentName == "chapa") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using Chapa"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Chapa?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  setState(() {
-                                                    uuid = (int.parse(uuid) + 1)
-                                                        .toString();
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return ChapaScreen(
-                                                          title:
-                                                              "Chapa Payment Gateway",
-                                                          url:
-                                                              "$BASE_URL/api/chapa/generatepaymenturl",
-                                                          hisab: widget.price!,
-                                                          traceNo:
-                                                              uuid +
-                                                              '_' +
-                                                              widget
-                                                                  .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  } else if (paymentName == "cbe birr") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using CBE Birr"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using CBE Birr?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              Text(
+                                Provider.of<ZLanguage>(context).selectPayment,
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              if (widget.onlyCashless!)
+                                Text(
+                                  Provider.of<ZLanguage>(
+                                    context,
+                                  ).onlyDigitalPayments,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.6),
+                                      ),
+                                ),
 
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return CbeUssd(
-                                                          userId:
-                                                              userData['user']['_id'],
-                                                          serverToken:
-                                                              userData['user']['server_token'],
-                                                          url:
-                                                              "https://pgw.shekla.app/cbe/ussd/request",
-                                                          hisab: widget.price!,
-                                                          traceNo: widget
-                                                              .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
+                              ///list of payment methods///
+                              Expanded(
+                                child: GridView.builder(
+                                  shrinkWrap: true,
+                                  itemCount:
+                                      paymentResponse['payment_gateway'].length,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: getProportionateScreenHeight(
+                                      kDefaultPadding / 2,
+                                    ),
+                                  ),
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 3,
+                                        crossAxisSpacing:
+                                            getProportionateScreenWidth(
+                                              kDefaultPadding,
+                                            ),
+                                        mainAxisSpacing:
+                                            getProportionateScreenWidth(
+                                              kDefaultPadding / 2,
+                                            ),
+                                      ),
+                                  itemBuilder: (BuildContext ctx, index) {
+                                    String paymentName =
+                                        paymentResponse['payment_gateway'][index]['name']
+                                            .toString()
+                                            .toLowerCase();
+                                    return KifiyaMethodContainer(
+                                      selected: kifiyaMethod == index,
+                                      title: paymentName,
+                                      // .toUpperCase(),
+                                      kifiyaMethod: kifiyaMethod,
+                                      imagePath: paymentName == "wallet"
+                                          ? 'images/payment/wallet.png'
+                                          : paymentName == "cash"
+                                          ? 'images/payment/cod.png'
+                                          : paymentName == "dashen mastercard"
+                                          ? 'images/payment/dashenmpgs.png'
+                                          : paymentName == "addis pay"
+                                          ? 'images/payment/addispay.png'
+                                          : paymentName == "santimpay"
+                                          ? 'images/payment/santimpay.png'
+                                          : paymentName == "etta card"
+                                          ? 'images/payment/dashen.png'
+                                          : paymentName == "cbe birr"
+                                          ? 'images/payment/cbebirr.png'
+                                          : paymentName == "ethswitch"
+                                          ? 'images/payment/ethswitch.png'
+                                          : paymentName == "chapa"
+                                          ? 'images/payment/chapa.png'
+                                          : paymentName == "amole"
+                                          ? 'images/payment/amole.png'
+                                          : paymentName == "boa"
+                                          ? 'images/payment/boa.png'
+                                          : paymentName == "zemen"
+                                          ? 'images/payment/zemen.png'
+                                          : paymentName.contains("wegagen")
+                                          ? 'images/payment/wegagen.png'
+                                          : paymentName == "awash"
+                                          ? 'images/payment/awash.png'
+                                          : paymentName == "etta card"
+                                          ? 'images/payment/zmall.jpg'
+                                          : paymentName == "dashen"
+                                          ? 'images/payment/dashen.png'
+                                          : paymentName == "yagoutpay"
+                                          ? 'images/payment/yagoutpay.png'
+                                          : paymentName == "starpay"
+                                          ? 'images/payment/starpay.png'
+                                          : paymentName.contains("telebirr") ||
+                                                paymentName.contains(
+                                                  "tele birr",
+                                                )
+                                          ? 'images/payment/telebirr.png'
+                                          : '',
+
+                                      // 'images/payment/telebirr.png',
+                                      press: () async {
+                                        setState(() {
+                                          kifiyaMethod = index;
+                                        });
+                                        if (paymentName == "cash") {
+                                          if (widget.onlyCashless!) {
+                                            Service.showMessage(
+                                              context: context,
+                                              title: Provider.of<ZLanguage>(
+                                                context,
+                                                listen: false,
+                                              ).onlyDigitalPayments,
+                                              // error: false,
+                                              duration: 5,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          } else {
+                                            await useBorsa();
+                                          }
+                                        } else if (paymentName == "wallet") {
+                                          if (widget.onlyCashless! &&
+                                              paymentResponse != null &&
+                                              paymentResponse['wallet'] <
+                                                  widget.price) {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Only digital payment accepted and your balance is insufficient!",
+                                              // error: false,
+                                              duration: 5,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          } else {
+                                            await useBorsa();
+                                          }
+                                        } else if (paymentName ==
+                                            "telebirr reference") {
+                                          var data = await useBorsa();
+                                          if (data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (dialogContext) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay using telebirr app",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr app?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          dialogContext,
+                                                        ).pop();
                                                       },
                                                     ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  } else if (paymentName == "tele birr") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (dialogContext) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text(
-                                              "Pay using telebirr ussd",
-                                            ),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(
-                                                    dialogContext,
-                                                  ).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  var uniqueId =
-                                                      RandomDigits.getString(6);
-                                                  String uniqueIdString = '';
-                                                  Navigator.of(context).pop();
-
-                                                  setState(() {
-                                                    uniqueIdString = uniqueId;
-                                                  });
-
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return TelebirrUssd(
-                                                          userId:
-                                                              userData['user']['_id'],
-                                                          serverToken:
-                                                              userData['user']['server_token'],
-                                                          url:
-                                                              "http://196.189.44.60:8069/telebirr/ussd/send_sms", // New configuration: odoo server ip,
-                                                          // "https://pgw.shekla.app/telebirr/ussd/send_sms",
-                                                          hisab: widget.price!,
-                                                          traceNo:
-                                                              "${uniqueIdString}_${widget.orderPaymentUniqueId!}",
-                                                          // widget.orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                  ///**************************Dashen mastercard***************************************
-                                  else if (paymentName == "dashen mastercard") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using Mastercard"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Dashen Mastercard?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return DashenMasterCard(
-                                                          url:
-                                                              "https://pgw.shekla.app/dashenMpgs/mastercard/api/checkout",
-                                                          amount: widget.price!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          traceNo: widget
-                                                              .orderPaymentUniqueId!,
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                          currency:
-                                                              Provider.of<
-                                                                    ZMetaData
-                                                                  >(
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          dialogContext,
+                                                        ).pop();
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return KifiyaVerification(
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo: widget
+                                                                    .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((success) {
+                                                          if (success != null ||
+                                                              !success) {
+                                                            if (mounted) {
+                                                              Service.showMessage(
+                                                                context:
                                                                     context,
-                                                                    listen:
-                                                                        false,
-                                                                  )
-                                                                  .currency,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                  ///*******************************Dashen mastercard*******************************
-                                  ///////////***********************Star Pay*************************************///
-                                  else if (paymentName == "starpay") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using StarPay"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using StarPay?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return StarPayScreen(
-                                                          url:
-                                                              "https://pgw.shekla.app/star_pay/pay/payment",
-                                                          amount: widget.price!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          email:
-                                                              userData['user']['email'],
-                                                          firstName:
-                                                              userData['user']['first_name'],
-                                                          lastName:
-                                                              userData['user']['last_name'],
-                                                          traceNo: widget
-                                                              .orderPaymentUniqueId!,
-                                                          items: cart.items!,
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                  //********************************Star Pay end******************************************///
-                                  ///**************************Telebirr InApp***************************************
-                                  else if (paymentName == "telebirr inapp" ||
-                                      paymentName == "telebirr in app" ||
-                                      paymentName == "telebirr in-app") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (dialogContext) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text(
-                                              "Pay using telebirr app",
-                                            ),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr in-app?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(
-                                                    dialogContext,
-                                                  ).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return TelebirrInApp(
-                                                          context: context,
-                                                          amount: widget.price!,
-                                                          traceNo:
-                                                              "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}",
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) async {
-                                                    // DISABLED: _boaVerify callback — using query/polling only
-
-                                                    // Guard: if an order was already
-                                                    // placed for this payment, never
-                                                    // create a second one. Prevents the
-                                                    // polling path from producing duplicate
-                                                    // orders on re-entry / concurrent polls.
-                                                    if (_orderPlaced) return;
-
-                                                    final isPaid =
-                                                        await pollTelebirrStatus(
-                                                          merchOrderId:
-                                                              "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}",
-                                                        );
-
-                                                    debugPrint(
-                                                      '###[Telebirr] pollTelebirrStatus result: $isPaid',
-                                                    );
-
-                                                    if (!mounted) return;
-
-                                                    // Re-check after the await: another
-                                                    // poll/callback may have placed the
-                                                    // order while we were waiting.
-                                                    if (_orderPlaced) return;
-
-                                                    if (isPaid) {
-                                                      // Claim the order before creating it
-                                                      // so no other path can create again.
-                                                      _orderPlaced = true;
-                                                      Service.showMessage(
-                                                        context: context,
-                                                        error: false,
-                                                        title:
-                                                            "Telebirr payment confirmed.",
-                                                      );
-
-                                                      if (widget.isCourier!) {
-                                                        _createCourierOrder();
-                                                      } else if (aliexpressCart !=
-                                                              null &&
-                                                          aliexpressCart!
-                                                                  .cart
-                                                                  .storeId ==
-                                                              cart.storeId) {
-                                                        _createAliexpressOrder();
-                                                      } else {
-                                                        _createOrder();
-                                                      }
-                                                    } else {
-                                                      Service.showMessage(
-                                                        context: context,
-                                                        title:
-                                                            "Payment was not completed or timed out. Please try again or contact support.",
-                                                        error: true,
-                                                      );
-                                                      setState(() {
-                                                        kifiyaMethod = -1;
-                                                      });
-                                                    }
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                  ///*******************************Telebirr InApp*******************************
-                                  ///
-                                  ///
-                                  ///*******************************Addis Pay*******************************
-                                  else if (paymentName == "addis pay") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using AddisPay"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Addis Pay?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  var uniqueId =
-                                                      RandomDigits.getString(6);
-                                                  String uniqueIdString = '';
-                                                  Navigator.of(context).pop();
-
-                                                  setState(() {
-                                                    uniqueIdString = uniqueId;
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return AddisPay(
-                                                          url:
-                                                              "https://pgw.shekla.app/addispay/api/checkout",
-                                                          amount: widget.price!,
-                                                          traceNo:
-                                                              "${widget.orderPaymentUniqueId!}_${uniqueIdString}",
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          firstName:
-                                                              userData['user']["first_name"],
-                                                          lastName:
-                                                              userData['user']["last_name"],
-                                                          email:
-                                                              userData['user']["email"],
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                  ///*******************************Addis Pay*******************************
-                                  ///
-                                  ///
-                                  ///*******************************Yagout Pay*******************************
-                                  else if (paymentName == "yagoutpay") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text("Pay Using YagoutPay"),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using YagoutPay?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  var uniqueId =
-                                                      RandomDigits.getString(6);
-                                                  String uniqueIdString = '';
-                                                  Navigator.of(context).pop();
-
-                                                  setState(() {
-                                                    uniqueIdString = uniqueId;
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return YagoutPay(
-                                                          url:
-                                                              "https://pgw.shekla.app/yagout/payment_link",
-                                                          amount: widget.price!,
-                                                          traceNo:
-                                                              "${widget.orderPaymentUniqueId!}_${uniqueIdString}",
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          firstName:
-                                                              userData['user']["first_name"],
-                                                          lastName:
-                                                              userData['user']["last_name"],
-                                                          email:
-                                                              userData['user']["email"],
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                  //////////////////////////////// Yagout Pay ///////////////////////////////////////
-                                  ///**************************MoMo***************************************
-                                  //    else if (paymentResponse['payment_gateway']
-                                  //               [index]['name']
-                                  //           .toString()
-                                  //           .toLowerCase() ==
-                                  //       "momo") {
-                                  //     var data = await useBorsa();
-                                  //     if (data != null && data['success']) {
-                                  //       showDialog(
-                                  //           context: context,
-                                  //           builder: (context) {
-                                  //             return AlertDialog(  backgroundColor: kPrimaryColor,
-                                  //               title: Text("Pay Using MoMo"),
-                                  //               content: Text(
-                                  //                   "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using MoMo?"),
-                                  //               actions: [
-                                  //                 TextButton(
-                                  //                   child: Text(
-                                  //                     Provider.of<ZLanguage>(
-                                  //                             context)
-                                  //                         .cancel,
-                                  //                     style: TextStyle(
-                                  //                         color: kSecondaryColor),
-                                  //                   ),
-                                  //                   onPressed: () {
-                                  //                     Navigator.of(context).pop();
-                                  //                   },
-                                  //                 ),
-                                  //                 TextButton(
-                                  //                   child: Text(
-                                  //                     Provider.of<ZLanguage>(
-                                  //                             context)
-                                  //                         .cont,
-                                  //                     style: TextStyle(
-                                  //                         color: kBlackColor),
-                                  //                   ),
-                                  //                   onPressed: () {
-                                  //                     Navigator.of(context).pop();
-                                  //                     Navigator.push(
-                                  //                       context,
-                                  //                       MaterialPageRoute(
-                                  //                         builder: (context) {
-                                  //                           return MoMoUssd(
-                                  //                             userId:
-                                  //                                 userData['user']
-                                  //                                     ['_id'],
-                                  //                             serverToken: userData[
-                                  //                                     'user'][
-                                  //                                 'server_token'],
-                                  //                             url:
-                                  //                                 'https://pgw.shekla.app/momo/makepayment',
-                                  //                             hisab:
-                                  //                                 widget.price!,
-                                  //                             traceNo: widget
-                                  //                                 .orderPaymentUniqueId!,
-                                  //                             phone:
-                                  //                                 userData['user']
-                                  //                                     ['phone'],
-                                  //                             orderPaymentId: widget
-                                  //                                 .orderPaymentId!,
-                                  //                           );
-                                  //                         },
-                                  //                       ),
-                                  //                     ).then((value) {
-                                  //                       _boaVerify();
-                                  //                     });
-                                  //                   },
-                                  //                 )
-                                  //               ],
-                                  //             );
-                                  //           });
-                                  //     } else {
-                                  //       ScaffoldMessenger.of(context)
-                                  //           .showSnackBar(Service.showMessage1(
-                                  //               "Something went wrong! Please try again!",
-                                  //               true));
-                                  //       setState(() {
-                                  //         kifiyaMethod = -1;
-                                  //       });
-                                  //     }
-                                  //   }
-                                  ///*******************************MoMo end*******************************
-                                  //////////////////////////////// Wegagen Bank ///////////////////////////////////////
-                                  else if (paymentName.contains("wegagen")) {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text(
-                                              "Pay Using Wegagen Bank",
-                                            ),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Wegagen Bank?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  setState(() {
-                                                    uuid = (int.parse(uuid) + 1)
-                                                        .toString();
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return WegagenUssd(
-                                                          title:
-                                                              "Wegagen Bank Payment",
-                                                          url:
-                                                              "$BASE_URL/admin/pay_payment_wegagen_ussd_pay",
-                                                          hisab: widget.price!,
-                                                          traceNo: widget
-                                                              .orderPaymentUniqueId!, //no uuid
-                                                          //  traceNo:  uuid +"_" +widget .orderPaymentUniqueId!, //to prevent trace number duplication
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                          orderPaymentUniqueId:
-                                                              widget
-                                                                  .orderPaymentUniqueId!,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ).then((value) {
-                                                    // Wegagen confirms payment
-                                                    // synchronously, so on
-                                                    // approval we create the
-                                                    // order directly (no
-                                                    // _boaVerify step).
-                                                    if (value == true) {
-                                                      widget.isCourier!
-                                                          ? _createCourierOrder()
-                                                          : (aliexpressCart !=
+                                                                title:
+                                                                    "Payment not completed. Please choose your payment method.",
+                                                                error: true,
+                                                              );
+                                                            }
+                                                          } else {
+                                                            /////////old/////
+                                                            // if (widget.isCourier!) {
+                                                            //   _createCourierOrder();
+                                                            // } else {
+                                                            //   _createOrder();
+                                                            // }
+                                                            /////////old/////
+                                                            if (widget
+                                                                .isCourier!) {
+                                                              _createCourierOrder();
+                                                            } else if ((aliexpressCart !=
                                                                     null &&
                                                                 aliexpressCart!
                                                                         .cart
                                                                         .storeId ==
-                                                                    cart.storeId)
-                                                          ? _createAliexpressOrder()
-                                                          : _createOrder();
-                                                    } else {
-                                                      Service.showMessage(
-                                                        context: context,
-                                                        title:
-                                                            "Payment not completed. Please choose your payment method.",
-                                                        error: true,
-                                                      );
-                                                      setState(() {
-                                                        kifiyaMethod = -1;
-                                                      });
-                                                    }
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                  //////////////////////////////// Wegagen Bank end///////////////////////////////////////
-                                  else if (paymentName == "zemen") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text(
-                                              "Pay Using International Card",
-                                            ),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using International Card?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  setState(() {
-                                                    uuid = (int.parse(uuid) + 1)
-                                                        .toString();
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return Telebirr(
-                                                          url:
-                                                              "https://pgw.shekla.app/zemen/post_bill",
-                                                          hisab: widget.price!,
-                                                          traceNo:
-                                                              uuid +
-                                                              "_" +
-                                                              widget
-                                                                  .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                          title:
-                                                              "Master Card Payment Gateway",
-                                                        );
+                                                                    cart.storeId)) {
+                                                              _createAliexpressOrder();
+                                                            } else {
+                                                              _createOrder();
+                                                            }
+                                                          }
+                                                        });
                                                       },
                                                     ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          }
+                                        } else if (paymentName == "boa") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            setState(() {
+                                              uuid = (int.parse(uuid) + 1)
+                                                  .toString();
+                                            });
+
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => CyberSource(
+                                                  url:
+                                                      "https://pgw.shekla.app/cards/process?total=${widget.price}&stotal=${widget.price}&tax=0&shiping=0&order_id=${uuid}_${widget.orderPaymentUniqueId}&first=${userData['user']['first_name']}&last=${userData['user']['last_name']}&phone=251${userData['user']['phone']}&email=${userData['user']['email']}&appId=1234",
+                                                ),
+                                              ),
+                                            ).then((value) {
+                                              _boaVerify();
+                                            });
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                          }
+                                        } else if (paymentName == "amole") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) {
+                                                  return AmoleScreen(
+                                                    hisab: widget.price!,
+                                                    userData: userData,
+                                                  );
                                                 },
                                               ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  } else if (paymentName == "dashen") {
-                                    var data = await useBorsa();
-                                    if (data != null && data['success']) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            backgroundColor: kPrimaryColor,
-                                            title: Text(
-                                              "Pay Using International Card",
-                                            ),
-                                            content: Text(
-                                              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using International Card?",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cancel,
-                                                  style: TextStyle(
-                                                    color: kSecondaryColor,
-                                                    fontWeight: FontWeight.bold,
+                                            ).then((value) {
+                                              if (value != null) {
+                                                _payOrderPayment(
+                                                  otp: value,
+                                                  paymentId:
+                                                      paymentResponse['payment_gateway'][index]['_id'],
+                                                );
+                                              }
+                                            });
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        } else if (paymentName == "ethswitch") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using EthSwitch",
                                                   ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              TextButton(
-                                                child: Text(
-                                                  Provider.of<ZLanguage>(
-                                                    context,
-                                                  ).cont,
-                                                  style: TextStyle(
-                                                    color: kBlackColor,
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using EthSwitch?",
                                                   ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                  setState(() {
-                                                    uuid = (int.parse(uuid) + 1)
-                                                        .toString();
-                                                  });
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) {
-                                                        return Telebirr(
-                                                          url:
-                                                              "https://pgw.shekla.app/dashen/post_bill",
-                                                          hisab: widget.price!,
-                                                          traceNo:
-                                                              uuid +
-                                                              "_" +
-                                                              widget
-                                                                  .orderPaymentUniqueId!,
-                                                          phone:
-                                                              userData['user']['phone'],
-                                                          orderPaymentId: widget
-                                                              .orderPaymentId!,
-                                                          title:
-                                                              "Dashen Payment Gateway",
-                                                        );
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
                                                       },
                                                     ),
-                                                  ).then((value) {
-                                                    _boaVerify();
-                                                  });
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                    } else {
-                                      Service.showMessage(
-                                        context: context,
-                                        title:
-                                            "Something went wrong! Please try again!",
-                                        error: true,
-                                      );
-                                      setState(() {
-                                        kifiyaMethod = -1;
-                                      });
-                                    }
-                                  }
-                                },
-                              );
-                            },
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        setState(() {
+                                                          uuid =
+                                                              (int.parse(uuid) +
+                                                                      1)
+                                                                  .toString();
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return EthSwitchScreen(
+                                                                title:
+                                                                    "EthSwitch Payment Gateway",
+                                                                url:
+                                                                    "https://pgw.shekla.app/ethioSwitch/initiate",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    uuid +
+                                                                    '_' +
+                                                                    widget
+                                                                        .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _ethSwitchVerify(
+                                                            uuid +
+                                                                '_' +
+                                                                widget
+                                                                    .orderPaymentUniqueId!,
+                                                          );
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        } else if (paymentName == "etta card") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using Loyalty Card",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using ETTA Loyalty Card?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        setState(() {
+                                                          uuid =
+                                                              (int.parse(uuid) +
+                                                                      1)
+                                                                  .toString();
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return EttaCardScreen(
+                                                                url:
+                                                                    "$BASE_URL/admin/pay_payment_ettacard",
+                                                                amount: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    uuid +
+                                                                    '_' +
+                                                                    widget
+                                                                        .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        } else if (paymentName == "santimpay") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using SantimPay",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using SantimPay?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        setState(() {
+                                                          uuid =
+                                                              (int.parse(uuid) +
+                                                                      1)
+                                                                  .toString();
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return SantimPay(
+                                                                title:
+                                                                    "SantimPay Payment",
+                                                                url:
+                                                                    "$BASE_URL/api/santimpay/generatepaymenturl",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    uuid +
+                                                                    '_' +
+                                                                    widget
+                                                                        .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        } else if (paymentName == "chapa") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using Chapa",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Chapa?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        setState(() {
+                                                          uuid =
+                                                              (int.parse(uuid) +
+                                                                      1)
+                                                                  .toString();
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return ChapaScreen(
+                                                                title:
+                                                                    "Chapa Payment Gateway",
+                                                                url:
+                                                                    "$BASE_URL/api/chapa/generatepaymenturl",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    uuid +
+                                                                    '_' +
+                                                                    widget
+                                                                        .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        } else if (paymentName == "cbe birr") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using CBE Birr",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using CBE Birr?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return CbeUssd(
+                                                                userId:
+                                                                    userData['user']['_id'],
+                                                                serverToken:
+                                                                    userData['user']['server_token'],
+                                                                url:
+                                                                    "https://pgw.shekla.app/cbe/ussd/request",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo: widget
+                                                                    .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        } else if (paymentName == "tele birr") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (dialogContext) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay using telebirr ussd",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          dialogContext,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        var uniqueId =
+                                                            RandomDigits.getString(
+                                                              6,
+                                                            );
+                                                        String uniqueIdString =
+                                                            '';
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+
+                                                        setState(() {
+                                                          uniqueIdString =
+                                                              uniqueId;
+                                                        });
+
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return TelebirrUssd(
+                                                                userId:
+                                                                    userData['user']['_id'],
+                                                                serverToken:
+                                                                    userData['user']['server_token'],
+                                                                url:
+                                                                    "http://196.189.44.60:8069/telebirr/ussd/send_sms", // New configuration: odoo server ip,
+                                                                // "https://pgw.shekla.app/telebirr/ussd/send_sms",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    "${uniqueIdString}_${widget.orderPaymentUniqueId!}",
+                                                                // widget.orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                        ///**************************Dashen mastercard***************************************
+                                        else if (paymentName ==
+                                            "dashen mastercard") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using Mastercard",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Dashen Mastercard?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return DashenMasterCard(
+                                                                url:
+                                                                    "https://pgw.shekla.app/dashenMpgs/mastercard/api/checkout",
+                                                                amount: widget
+                                                                    .price!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                traceNo: widget
+                                                                    .orderPaymentUniqueId!,
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                                currency:
+                                                                    Provider.of<ZMetaData>(
+                                                                      context,
+                                                                      listen:
+                                                                          false,
+                                                                    ).currency,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                        ///*******************************Dashen mastercard*******************************
+                                        ///////////***********************Star Pay*************************************///
+                                        else if (paymentName == "starpay") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using StarPay",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using StarPay?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return StarPayScreen(
+                                                                url:
+                                                                    "https://pgw.shekla.app/star_pay/pay/payment",
+                                                                amount: widget
+                                                                    .price!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                email:
+                                                                    userData['user']['email'],
+                                                                firstName:
+                                                                    userData['user']['first_name'],
+                                                                lastName:
+                                                                    userData['user']['last_name'],
+                                                                traceNo: widget
+                                                                    .orderPaymentUniqueId!,
+                                                                items:
+                                                                    cart.items!,
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                        //********************************Star Pay end******************************************///
+                                        ///**************************Telebirr InApp***************************************
+                                        else if (paymentName ==
+                                                "telebirr inapp" ||
+                                            paymentName == "telebirr in app" ||
+                                            paymentName == "telebirr in-app") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (dialogContext) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay using telebirr app",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr in-app?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          dialogContext,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        var uniqueId =
+                                                            RandomDigits.getString(
+                                                              6,
+                                                            );
+                                                        String uniqueIdString =
+                                                            '';
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+
+                                                        setState(() {
+                                                          uniqueIdString =
+                                                              uniqueId;
+                                                          inAppTraceNumber =
+                                                              "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}TELE$uniqueIdString";
+                                                          _selectedPaymentMethod =
+                                                              paymentName;
+                                                        });
+
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return TelebirrInApp(
+                                                                context:
+                                                                    context,
+                                                                amount:
+                                                                    //  widget.price!,
+                                                                    // for testing courier payment with telebirr inapp payment
+                                                                    widget.isCourier ==
+                                                                        true
+                                                                    ? 1.0
+                                                                    : widget
+                                                                          .price!,
+                                                                traceNo:
+                                                                    inAppTraceNumber,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) async {
+                                                          // DISABLED: _boaVerify callback — using query/polling only
+
+                                                          // Guard: if an order was already
+                                                          // placed for this payment, never
+                                                          // create a second one. Prevents the
+                                                          // polling path from producing duplicate
+                                                          // orders on re-entry / concurrent polls.
+                                                          if (_orderPlaced)
+                                                            return;
+
+                                                          final isPaid =
+                                                              await pollTelebirrStatus(
+                                                                merchOrderId:
+                                                                    inAppTraceNumber,
+                                                              );
+
+                                                          // debugPrint('###[Telebirr] pollTelebirrStatus result: $isPaid', );
+
+                                                          if (!mounted) return;
+
+                                                          // Re-check after the await: another
+                                                          // poll/callback may have placed the
+                                                          // order while we were waiting.
+                                                          if (_orderPlaced)
+                                                            return;
+
+                                                          if (isPaid) {
+                                                            // Claim the order before creating it
+                                                            // so no other path can create again.
+                                                            _orderPlaced = true;
+                                                            Service.showMessage(
+                                                              context: context,
+                                                              error: false,
+                                                              title:
+                                                                  "Telebirr payment confirmed.",
+                                                            );
+
+                                                            if (widget
+                                                                .isCourier!) {
+                                                              _createCourierOrder();
+                                                            } else if (aliexpressCart !=
+                                                                    null &&
+                                                                aliexpressCart!
+                                                                        .cart
+                                                                        .storeId ==
+                                                                    cart.storeId) {
+                                                              _createAliexpressOrder();
+                                                            } else {
+                                                              _createOrder();
+                                                            }
+                                                          } else {
+                                                            Service.showMessage(
+                                                              context: context,
+                                                              title:
+                                                                  "Payment was not completed or timed out. Please try again or contact support.",
+                                                              error: true,
+                                                            );
+                                                            setState(() {
+                                                              kifiyaMethod = -1;
+                                                            });
+                                                          }
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                        ///*******************************Telebirr InApp*******************************
+                                        ///
+                                        ///
+                                        ///*******************************Addis Pay*******************************
+                                        else if (paymentName == "addis pay") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using AddisPay",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Addis Pay?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        var uniqueId =
+                                                            RandomDigits.getString(
+                                                              6,
+                                                            );
+                                                        String uniqueIdString =
+                                                            '';
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+
+                                                        setState(() {
+                                                          uniqueIdString =
+                                                              uniqueId;
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return AddisPay(
+                                                                url:
+                                                                    "https://pgw.shekla.app/addispay/api/checkout",
+                                                                amount: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    "${widget.orderPaymentUniqueId!}_${uniqueIdString}",
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                firstName:
+                                                                    userData['user']["first_name"],
+                                                                lastName:
+                                                                    userData['user']["last_name"],
+                                                                email:
+                                                                    userData['user']["email"],
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                        ///*******************************Addis Pay*******************************
+                                        ///
+                                        ///
+                                        ///*******************************Yagout Pay*******************************
+                                        else if (paymentName == "yagoutpay") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using YagoutPay",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using YagoutPay?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        var uniqueId =
+                                                            RandomDigits.getString(
+                                                              6,
+                                                            );
+                                                        String uniqueIdString =
+                                                            '';
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+
+                                                        setState(() {
+                                                          uniqueIdString =
+                                                              uniqueId;
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return YagoutPay(
+                                                                url:
+                                                                    "https://pgw.shekla.app/yagout/payment_link",
+                                                                amount: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    "${widget.orderPaymentUniqueId!}_${uniqueIdString}",
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                firstName:
+                                                                    userData['user']["first_name"],
+                                                                lastName:
+                                                                    userData['user']["last_name"],
+                                                                email:
+                                                                    userData['user']["email"],
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                        //////////////////////////////// Yagout Pay ///////////////////////////////////////
+                                        ///**************************MoMo***************************************
+                                        //    else if (paymentResponse['payment_gateway']
+                                        //               [index]['name']
+                                        //           .toString()
+                                        //           .toLowerCase() ==
+                                        //       "momo") {
+                                        //     var data = await useBorsa();
+                                        //     if (data != null && data['success']) {
+                                        //       showDialog(
+                                        //           context: context,
+                                        //           builder: (context) {
+                                        //             return AlertDialog(  backgroundColor: kPrimaryColor,
+                                        //               title: Text("Pay Using MoMo"),
+                                        //               content: Text(
+                                        //                   "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using MoMo?"),
+                                        //               actions: [
+                                        //                 TextButton(
+                                        //                   child: Text(
+                                        //                     Provider.of<ZLanguage>(
+                                        //                             context)
+                                        //                         .cancel,
+                                        //                     style: TextStyle(
+                                        //                         color: kSecondaryColor),
+                                        //                   ),
+                                        //                   onPressed: () {
+                                        //                     Navigator.of(context).pop();
+                                        //                   },
+                                        //                 ),
+                                        //                 TextButton(
+                                        //                   child: Text(
+                                        //                     Provider.of<ZLanguage>(
+                                        //                             context)
+                                        //                         .cont,
+                                        //                     style: TextStyle(
+                                        //                         color: kBlackColor),
+                                        //                   ),
+                                        //                   onPressed: () {
+                                        //                     Navigator.of(context).pop();
+                                        //                     Navigator.push(
+                                        //                       context,
+                                        //                       MaterialPageRoute(
+                                        //                         builder: (context) {
+                                        //                           return MoMoUssd(
+                                        //                             userId:
+                                        //                                 userData['user']
+                                        //                                     ['_id'],
+                                        //                             serverToken: userData[
+                                        //                                     'user'][
+                                        //                                 'server_token'],
+                                        //                             url:
+                                        //                                 'https://pgw.shekla.app/momo/makepayment',
+                                        //                             hisab:
+                                        //                                 widget.price!,
+                                        //                             traceNo: widget
+                                        //                                 .orderPaymentUniqueId!,
+                                        //                             phone:
+                                        //                                 userData['user']
+                                        //                                     ['phone'],
+                                        //                             orderPaymentId: widget
+                                        //                                 .orderPaymentId!,
+                                        //                           );
+                                        //                         },
+                                        //                       ),
+                                        //                     ).then((value) {
+                                        //                       _boaVerify();
+                                        //                     });
+                                        //                   },
+                                        //                 )
+                                        //               ],
+                                        //             );
+                                        //           });
+                                        //     } else {
+                                        //       ScaffoldMessenger.of(context)
+                                        //           .showSnackBar(Service.showMessage1(
+                                        //               "Something went wrong! Please try again!",
+                                        //               true));
+                                        //       setState(() {
+                                        //         kifiyaMethod = -1;
+                                        //       });
+                                        //     }
+                                        //   }
+                                        ///*******************************MoMo end*******************************
+                                        //////////////////////////////// Wegagen Bank ///////////////////////////////////////
+                                        else if (paymentName.contains(
+                                          "wegagen",
+                                        )) {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using Wegagen Bank",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using Wegagen Bank?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        setState(() {
+                                                          uuid =
+                                                              (int.parse(uuid) +
+                                                                      1)
+                                                                  .toString();
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return WegagenUssd(
+                                                                title:
+                                                                    "Wegagen Bank Payment",
+                                                                url:
+                                                                    "$BASE_URL/admin/pay_payment_wegagen_ussd_pay",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo: widget
+                                                                    .orderPaymentUniqueId!, //no uuid
+                                                                //  traceNo:  uuid +"_" +widget .orderPaymentUniqueId!, //to prevent trace number duplication
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                                orderPaymentUniqueId:
+                                                                    widget
+                                                                        .orderPaymentUniqueId!,
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          // Wegagen confirms payment
+                                                          // synchronously, so on
+                                                          // approval we create the
+                                                          // order directly (no
+                                                          // _boaVerify step).
+                                                          if (value == true) {
+                                                            widget.isCourier!
+                                                                ? _createCourierOrder()
+                                                                : (aliexpressCart !=
+                                                                          null &&
+                                                                      aliexpressCart!
+                                                                              .cart
+                                                                              .storeId ==
+                                                                          cart.storeId)
+                                                                ? _createAliexpressOrder()
+                                                                : _createOrder();
+                                                          } else {
+                                                            Service.showMessage(
+                                                              context: context,
+                                                              title:
+                                                                  "Payment not completed. Please choose your payment method.",
+                                                              error: true,
+                                                            );
+                                                            setState(() {
+                                                              kifiyaMethod = -1;
+                                                            });
+                                                          }
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                        //////////////////////////////// Wegagen Bank end///////////////////////////////////////
+                                        else if (paymentName == "zemen") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using International Card",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using International Card?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        setState(() {
+                                                          uuid =
+                                                              (int.parse(uuid) +
+                                                                      1)
+                                                                  .toString();
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return Telebirr(
+                                                                url:
+                                                                    "https://pgw.shekla.app/zemen/post_bill",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    uuid +
+                                                                    "_" +
+                                                                    widget
+                                                                        .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                                title:
+                                                                    "Master Card Payment Gateway",
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        } else if (paymentName == "dashen") {
+                                          var data = await useBorsa();
+                                          if (data != null && data['success']) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      kPrimaryColor,
+                                                  title: Text(
+                                                    "Pay Using International Card",
+                                                  ),
+                                                  content: Text(
+                                                    "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using International Card?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cancel,
+                                                        style: TextStyle(
+                                                          color:
+                                                              kSecondaryColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                      },
+                                                    ),
+                                                    TextButton(
+                                                      child: Text(
+                                                        Provider.of<ZLanguage>(
+                                                          context,
+                                                        ).cont,
+                                                        style: TextStyle(
+                                                          color: kBlackColor,
+                                                        ),
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop();
+                                                        setState(() {
+                                                          uuid =
+                                                              (int.parse(uuid) +
+                                                                      1)
+                                                                  .toString();
+                                                        });
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) {
+                                                              return Telebirr(
+                                                                url:
+                                                                    "https://pgw.shekla.app/dashen/post_bill",
+                                                                hisab: widget
+                                                                    .price!,
+                                                                traceNo:
+                                                                    uuid +
+                                                                    "_" +
+                                                                    widget
+                                                                        .orderPaymentUniqueId!,
+                                                                phone:
+                                                                    userData['user']['phone'],
+                                                                orderPaymentId:
+                                                                    widget
+                                                                        .orderPaymentId!,
+                                                                title:
+                                                                    "Dashen Payment Gateway",
+                                                              );
+                                                            },
+                                                          ),
+                                                        ).then((value) {
+                                                          _boaVerify();
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            Service.showMessage(
+                                              context: context,
+                                              title:
+                                                  "Something went wrong! Please try again!",
+                                              error: true,
+                                            );
+                                            setState(() {
+                                              kifiyaMethod = -1;
+                                            });
+                                          }
+                                        }
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                              // SizedBox(
+                              //   height: getProportionateScreenHeight(kDefaultPadding),
+                              // ),
+                            ],
                           ),
                         ),
-                        // SizedBox(
-                        //   height: getProportionateScreenHeight(kDefaultPadding),
-                        // ),
-                      ],
-                    ),
-                  ),
                       ),
                     ),
                     // Place Order button moved inside the ModalProgressHUD so the
@@ -3243,8 +3477,13 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         ),
       );
     });
+    // var url ="${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order";
     var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order";
+        _selectedPaymentMethod == "telebirr inapp" ||
+            _selectedPaymentMethod == "telebirr in app" ||
+            _selectedPaymentMethod == "telebirr in-app"
+        ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order_for_telebirr_inapp"
+        : "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order";
     var postUri = Uri.parse(url);
     try {
       http.MultipartRequest request = new http.MultipartRequest("POST", postUri)
@@ -3347,30 +3586,44 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           .then((response) async {
             http.Response.fromStream(response).then((value) async {
               var data = json.decode(value.body);
+              // debugPrint( "courier order data>> $data\n_selectedPaymentMethod $_selectedPaymentMethod",);
               if (data != null && data['success']) {
-                if (mounted)
+                if (data['duplicate'] != null && data['duplicate'] == true) {
+                  // debugPrint("order duplicated>> ${data['duplicate']}}");
+                  // duplicate logic
                   Service.showMessage(
                     context: context,
-                    title: "Order successfully created",
-                    error: false,
+                    title:
+                        "This order has already been placed. Please check your order history.",
+                    // error: true,
                   );
-                await Service.remove("images");
-                if (mounted)
-                  setState(() {
-                    _loading = false;
-                    _placeOrder = false;
-                  });
-                // Navigate to report screen with isCourier flag for proper back navigation
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportScreen(
-                      price: widget.price,
-                      orderPaymentUniqueId: widget.orderPaymentUniqueId,
-                      isCourier: true,
+                } else {
+                  // debugPrint("order duplicated>> ${data['duplicate']}}");
+                  // normal success logic
+                  if (mounted)
+                    Service.showMessage(
+                      context: context,
+                      title: "Order successfully created",
+                      error: false,
+                    );
+                  await Service.remove("images");
+                  if (mounted)
+                    setState(() {
+                      _loading = false;
+                      _placeOrder = false;
+                    });
+                  // Navigate to report screen with isCourier flag for proper back navigation
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReportScreen(
+                        price: widget.price,
+                        orderPaymentUniqueId: widget.orderPaymentUniqueId,
+                        isCourier: true,
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               } else {
                 if (mounted)
                   setState(() {
@@ -3625,8 +3878,14 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         ),
       );
     });
+    // var url ="${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order";
     var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order";
+        _selectedPaymentMethod == "telebirr inapp" ||
+            _selectedPaymentMethod == "telebirr in app" ||
+            _selectedPaymentMethod == "telebirr in-app"
+        ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order_for_telebirr_inapp"
+        : "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order";
+    ;
     try {
       List<dynamic>? filteredOrderIds;
       if (aliexpressCart != null &&

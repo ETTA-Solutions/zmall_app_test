@@ -107,7 +107,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         // ],
                       ),
                       child: Icon(
-                        HeroiconsSolid.shieldCheck,
+                        HeroiconsMini.checkBadge,
                         color: kSecondaryColor,
                         size: getProportionateScreenWidth(kDefaultPadding * 8),
                       ),

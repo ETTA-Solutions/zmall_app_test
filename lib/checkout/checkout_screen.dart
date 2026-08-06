@@ -122,8 +122,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (data != null) {
       setState(() {
         cart = Cart.fromJson(data);
-        if (cart != null &&
-            cart!.destinationAddress?.name == "User Pickup") {
+        if (cart != null && cart!.destinationAddress?.name == "User Pickup") {
           selfPickup = true;
         }
       });
@@ -172,7 +171,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (data != null && data['error_code'] != null) {
         Service.showMessage(
           context: context,
-          title: "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}",
+          title:
+              "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}",
           error: true,
         );
       }
@@ -204,10 +204,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final destLat = cart.destinationAddress?.lat;
     final destLng = cart.destinationAddress?.long;
 
-    if (storeLat == null || storeLng == null || destLat == null || destLng == null) return;
+    if (storeLat == null ||
+        storeLng == null ||
+        destLat == null ||
+        destLng == null)
+      return;
 
     final distanceMeters = AddressValidationService.calculateDistanceInMeters(
-      storeLat, storeLng, destLat, destLng,
+      storeLat,
+      storeLng,
+      destLat,
+      destLng,
     );
     // Estimate time: ~2 min per km (urban average)
     final estimatedTimeSeconds = (distanceMeters / 1000) * 120;
@@ -252,7 +259,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (data != null && data['error_code'] != null) {
         Service.showMessage(
           context: context,
-          title: "${errorCodes['${data['error_code']}'] ?? 'Promo code failed'}",
+          title:
+              "${errorCodes['${data['error_code']}'] ?? 'Promo code failed'}",
           error: true,
         );
       }
@@ -399,10 +407,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     isLoading: _placeOrder,
                     title: Provider.of<ZLanguage>(context).placeOrder,
                     press: () {
-                      if (responseData == null || responseData['success'] != true) {
+                      if (responseData == null ||
+                          responseData['success'] != true) {
                         Service.showMessage(
                           context: context,
-                          title: "Please wait, your Invoice is being analyzed...",
+                          title:
+                              "Please wait, your Invoice is being analyzed...",
                           error: null,
                         );
                         return;
@@ -1403,18 +1413,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 30),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
 
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         Service.showMessage(
           context: context,
@@ -1472,17 +1484,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         Service.showMessage(
           context: context,
@@ -1546,9 +1560,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 30),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
 
               throw TimeoutException("The connection has timed out!");
             },
@@ -1621,21 +1636,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      if (mounted) setState(() {
-        this.promoCodeData = json.decode(response.body);
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this.promoCodeData = json.decode(response.body);
+          this._loading = false;
+        });
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         Service.showMessage(
           context: context,
@@ -1694,20 +1712,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      if (mounted) setState(() {
-        this.storeDetail = json.decode(response.body);
-      });
+      if (mounted)
+        setState(() {
+          this.storeDetail = json.decode(response.body);
+        });
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
+      if (mounted)
+        setState(() {
+          this._loading = false;
+        });
       if (mounted) {
         Service.showMessage(
           context: context,
@@ -1757,20 +1778,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .timeout(
             Duration(seconds: 20),
             onTimeout: () {
-              if (mounted) setState(() {
-                this._loading = false;
-              });
+              if (mounted)
+                setState(() {
+                  this._loading = false;
+                });
               throw TimeoutException("The connection has timed out!");
             },
           );
-      if (mounted) setState(() {
-        this.storeDetail = json.decode(response.body);
-      });
+      if (mounted)
+        setState(() {
+          this.storeDetail = json.decode(response.body);
+        });
       return json.decode(response.body);
     } catch (e) {
-      if (mounted) setState(() {
-        this._loading = false;
-      });
       if (mounted) {
         Service.showMessage(
           context: context,
@@ -1781,6 +1801,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       }
       return null;
+    } finally {
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
     }
   }
 

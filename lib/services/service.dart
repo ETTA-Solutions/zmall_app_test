@@ -48,13 +48,17 @@ class Service {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: error == null
-              ? kGreyColor
+              ? kWhiteColor
+              // kGreyColor
               : error
               ? kSecondaryColor
               : kGreenColor,
           content: Text(
             title!,
-            style: TextStyle(fontSize: 15, color: kPrimaryColor),
+            style: TextStyle(
+              fontSize: 15,
+              color: error == null ? kBlackColor : kPrimaryColor,
+            ),
           ),
           duration: Duration(seconds: duration),
           behavior: SnackBarBehavior.floating,
@@ -123,6 +127,14 @@ class Service {
   static Future<dynamic> save(String key, value) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString(key, json.encode(value));
+  }
+
+  static clearUserData() async {
+    await Service.saveBool('logged', false);
+    await Service.remove('user');
+    await Service.remove('cart');
+    await Service.remove('aliexpressCart'); //NEW
+    await Service.remove('images');
   }
 
   /// Append a structured log entry to a persistent list stored under 'service_logs'.
@@ -862,141 +874,15 @@ class Service {
     }
   }
 
-  ///////////////////////////Proximity Order Methods old Closed ==////////////////////
-  // ============= Proximity Order Methods =============
-
-  /// Fetch proximity order items using existing orders_list endpoint
-  /// Returns list of individual items from orders within specified radius from user location
-  // static Future<List<Map<String, dynamic>>> getProximityOrders({
-  //   required BuildContext context,
-  //   required double userLatitude,
-  //   required double userLongitude,
-  //   double radiusKm = 5.0,
-  // }) async {
-  //   try {
-  //     // Fetch all active delivery orders
-  //     var response = await CoreServices.getOrdersList(
-  //       context: context,
-  //       orderStatus: "all", // All statuses
-  //       paymentStatus: "all",
-  //       page: 1,
-  //       pickupType: "both",
-  //       createdBy: "both",
-  //       orderType: "both",
-  //       searchField: "user_detail.first_name",
-  //       searchValue: "",
-  //     );
-
-  //     if (response != null && response['success'] == true) {
-  //       List ordersList = response['orders'] ?? [];
-  //       List<Map<String, dynamic>> proximityItems = [];
-
-  //       for (var order in ordersList) {
-  //         // Get destination location
-  //         var cartDetail = order['cart_detail'];
-  //         if (cartDetail == null) {
-  //           continue;
-  //         }
-
-  //         var destAddresses = cartDetail['destination_addresses'] as List?;
-  //         if (destAddresses == null || destAddresses.isEmpty) {
-  //           continue;
-  //         }
-
-  //         var destLocation = destAddresses[0]['location'] as List?;
-  //         if (destLocation == null || destLocation.length < 2) {
-  //           continue;
-  //         }
-
-  //         double destLat = destLocation[0].toDouble();
-  //         double destLong = destLocation[1].toDouble();
-
-  //         // Calculate distance from user to delivery destination
-  //         double distance = calculateDistance(
-  //           userLatitude,
-  //           userLongitude,
-  //           destLat,
-  //           destLong,
-  //         );
-
-  //         // Filter by radius
-  //         if (distance <= radiusKm) {
-  //           // Check if urgent (created more than 30 minutes ago)
-  //           DateTime createdAt = DateTime.parse(order['created_at']);
-  //           Duration timeSinceCreation = DateTime.now().difference(createdAt);
-  //           // bool isUrgent = timeSinceCreation.inMinutes > 30;
-  //           bool isUrgent = timeSinceCreation.inMinutes < 10;
-  //           // 20000; //2*24*60 = 2880 minutes
-  //           // Extract items from order
-  //           var orderDetails = cartDetail['order_details'] as List? ?? [];
-  //           var storeDetail = order['store_detail'] ?? {};
-  //           var storeLocation = storeDetail['location'] as List? ?? [];
-
-  //           for (var orderDetail in orderDetails) {
-  //             var items = orderDetail['items'] as List? ?? [];
-
-  //             for (var item in items) {
-  //               // Create enriched item object with store and order info
-  //               Map<String, dynamic> enrichedItem = {
-  //                 // Item details
-  //                 'item_id': item['item_id'],
-  //                 'item_name': item['item_name'],
-  //                 'item_price': item['item_price'],
-  //                 'image_url': item['image_url'],
-  //                 'quantity': item['quantity'],
-  //                 'unique_id': item['unique_id'],
-  //                 'details': item['details'],
-  //                 'max_item_quantity': item['max_item_quantity'],
-  //                 'specifications': item['specifications'],
-  //                 'note_for_item': item['note_for_item'],
-
-  //                 // Store details
-  //                 'store_detail': storeDetail,
-  //                 'store_id': storeDetail['_id'],
-  //                 'store_name': storeDetail['name'],
-  //                 'store_location': storeLocation,
-
-  //                 // Order details
-  //                 'order_id': order['_id'],
-  //                 'order_unique_id': order['unique_id'],
-  //                 'distance_from_user': distance,
-  //                 'is_urgent': isUrgent,
-  //               };
-  //               if (isUrgent) {
-  //                 proximityItems.add(enrichedItem);
-  //               }
-  //             }
-  //           }
-  //         }
-  //       }
-
-  //       // Sort by distance (closest first)
-  //       proximityItems.sort((a, b) {
-  //         double distA = a['distance_from_user'] ?? double.infinity;
-  //         double distB = b['distance_from_user'] ?? double.infinity;
-  //         return distA.compareTo(distB);
-  //       });
-
-  //       return proximityItems;
-  //     }
-
-  //     return [];
-  //   } catch (e) {
-  //     // print("Error fetching proximity orders: $e");
-  //     return [];
-  //   }
-  // }
-
-  ///////////////////////////Proximity Order Methods Closed ==////////////////////
-
   /// Reads and clears a pending AI cart saved before login.
   /// Returns the cartId if one exists and is less than 2 hours old, else null.
   static Future<String?> consumePendingAiCart() async {
     final pendingRaw = await Service.read('pending_ai_cart');
     if (pendingRaw == null) return null;
 
-    final pending =
-        pendingRaw is Map ? pendingRaw : jsonDecode(pendingRaw.toString());
+    final pending = pendingRaw is Map
+        ? pendingRaw
+        : jsonDecode(pendingRaw.toString());
     final savedAt = pending['saved_at'] as int? ?? 0;
     final ageMs = DateTime.now().millisecondsSinceEpoch - savedAt;
 
@@ -1006,5 +892,23 @@ class Service {
       return pending['cart_id'] as String?;
     }
     return null;
+  }
+
+  // =================== Pagination Helper Methods ====================
+  static int calculateTotalPages(
+    Map<String, dynamic> result, {
+    int defaultLimit = 10,
+  }) {
+    if (result['total_pages'] != null) {
+      return result['total_pages'] as int;
+    }
+    final totalItems = result['total'] ?? result['item_length'] ?? 0;
+    final limit = result['limit'] ?? defaultLimit;
+    return (totalItems / limit).ceil().clamp(1, 9999);
+  }
+
+  static List appendPage(List? existing, List newItems) {
+    if (existing == null || existing.isEmpty) return List.from(newItems);
+    return [...existing, ...newItems];
   }
 }

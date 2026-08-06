@@ -35,8 +35,9 @@ class HelpActionCards extends StatelessWidget {
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: containerColor,
+                borderRadius: BorderRadius.circular(12)
                 //  kBlackColor.withValues(alpha: 0.05),
-                shape: BoxShape.circle,
+                // shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,

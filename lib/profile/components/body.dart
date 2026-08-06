@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:iconsx_plus/iconsx_plus.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:zmall/borsa/borsa_screen.dart';
+import 'package:zmall/profile/components/addresses.dart';
 import 'package:zmall/profile/components/change_password.dart';
+import 'package:zmall/profile/components/confirmation_bottom_sheet.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/help/help_screen.dart';
 import 'package:zmall/login/login_screen.dart';
@@ -18,6 +18,7 @@ import 'package:zmall/profile/components/profile_list_tile.dart';
 import 'package:zmall/profile/components/referral_code.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/services/biometric_services/biometric_service.dart';
+import 'package:zmall/services/url_launcher_service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:zmall/models/biometric_credential.dart';
@@ -235,10 +236,17 @@ class _BodyState extends State<Body> {
         await Service.remove('images');
         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
       }
-    } else {
+    } else if (deleteUserResponse != null &&
+        responseData['error_code'] != null) {
       Service.showMessage(
         context: context,
         title: errorCodes['${responseData['error_code']}'],
+        error: true,
+      );
+    } else {
+      Service.showMessage(
+        context: context,
+        title: "Faild to delete your account, please try again!",
         error: true,
       );
     }
@@ -453,41 +461,6 @@ class _BodyState extends State<Body> {
             child: Column(
               spacing: getProportionateScreenHeight(kDefaultPadding / 2),
               children: [
-                //profile image
-                // SizedBox(
-                //   width: getProportionateScreenWidth(80),
-                //   height: getProportionateScreenHeight(80),
-                //   child: Stack(
-                //     children: [
-                //       ImageContainer(
-                //         width: getProportionateScreenWidth(100),
-                //         height: getProportionateScreenHeight(100),
-                //         shape: BoxShape.circle,
-                //         url: userData == null
-                //             ? ''
-                //             : "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${userData['user']['image_url']}",
-                //       ),
-                //       // if (userData != null &&
-                //       //     userData['user'] != null &&
-                //       //     userData['user']['is_phone_number_verified'])
-                //       //   Positioned(
-                //       //     right: 4,
-                //       //     bottom: 4,
-                //       //     child: Container(
-                //       //       decoration: BoxDecoration(
-                //       //         shape: BoxShape.circle,
-                //       //         color: kWhiteColor,
-                //       //       ),
-                //       //       child: Icon(
-                //       //         HeroiconsSolid.checkBadge,
-                //       //         color: kSecondaryColor,
-                //       //         size: getProportionateScreenHeight(17),
-                //       //       ),
-                //       //     ),
-                //       //   ),
-                //     ],
-                //   ),
-                // ),
                 ImageContainer(
                   width: getProportionateScreenWidth(90),
                   height: getProportionateScreenHeight(90),
@@ -645,454 +618,456 @@ class _BodyState extends State<Body> {
                   _verifyPhoneWidget(textTheme: textTheme),
 
                 if (userData != null)
-                  _userActionCard(
-                    textTheme: textTheme,
-                    title: "Account",
+                  Column(
                     children: [
-                      // 1. Financial Section
-                      ProfileListTile(
-                        borderColor: kWhiteColor,
-                        icon: Icon(HeroiconsOutline.wallet),
-                        title: Provider.of<ZLanguage>(
-                          context,
-                          listen: false,
-                        ).wallet,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  BorsaScreen(userData: userData),
-                            ),
-                          ).then((value) => getUser());
-                        },
-                      ),
-
-                      // 2. Security Section
-                      if (_isBiometricAvailable)
-                        ProfileListTile(
-                          borderColor: kWhiteColor,
-                          icon: const Icon(HeroiconsOutline.fingerPrint),
-                          title: "Biometric Login",
-                          onTap: () {},
-                          trailing: Switch(
-                            value: _isBiometricEnabled,
-                            onChanged: (value) async {
-                              await _toggleBiometric(value);
+                      _userActionCard(
+                        textTheme: textTheme,
+                        title: "Account",
+                        backgroundColor: kPrimaryColor,
+                        topMargin: getProportionateScreenHeight(
+                          kDefaultPadding / 1.5,
+                        ),
+                        children: [
+                          // 1. Financial Section
+                          NewProfileListTile(
+                            borderColor: kWhiteColor,
+                            icon: Icon(HeroiconsOutline.wallet),
+                            title: Provider.of<ZLanguage>(
+                              context,
+                              listen: false,
+                            ).wallet,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      BorsaScreen(userData: userData),
+                                ),
+                              ).then((value) => getUser());
                             },
-                            activeTrackColor: kSecondaryColor,
                           ),
-                          margin: EdgeInsets.only(
-                            top: getProportionateScreenHeight(
-                              kDefaultPadding / 2,
-                            ),
-                            bottom: getProportionateScreenHeight(
-                              // _savedAccountsCount > 0 ? kDefaultPadding / 2 : 0),
-                              _savedAccountsCount > 0 ? 0 : kDefaultPadding / 2,
-                            ),
+                          Divider(color: kWhiteColor, height: 1),
+                          //  Address Section
+                          NewProfileListTile(
+                            borderColor: kWhiteColor,
+                            icon: Icon(HeroiconsOutline.mapPin),
+                            title: Provider.of<ZLanguage>(
+                              context,
+                              listen: false,
+                            ).addresses,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      MyAddresseScreen(userData: userData),
+                                ),
+                              ).then((value) => getUser());
+                            },
                           ),
-                        ),
-                      if (_savedAccountsCount > 0)
-                        ProfileListTile(
-                          borderColor: kWhiteColor,
-                          icon: Icon(HeroiconsOutline.arrowsRightLeft),
-                          margin: EdgeInsets.only(
-                            bottom: getProportionateScreenHeight(
-                              kDefaultPadding / 2,
-                            ),
+                          Divider(color: kWhiteColor, height: 1),
+                          NewProfileListTile(
+                            borderColor: kWhiteColor,
+                            icon: Icon(HeroiconsOutline.share),
+                            title: Provider.of<ZLanguage>(
+                              context,
+                              listen: false,
+                            ).referralCode,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ReferralScreen(
+                                    referralCode:
+                                        userData['user']['referral_code'],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          title: "Switch Account",
-                          onTap: _showSwitchAccountSheet,
-                          trailing: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: kSecondaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              '$_savedAccountsCount',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: kWhiteColor,
+                        ],
+                      ),
+                      _userActionCard(
+                        textTheme: textTheme,
+                        title: "Security",
+                        children: [
+                          // 2. Security Section
+                          if (_isBiometricAvailable)
+                            NewProfileListTile(
+                              borderColor: kWhiteColor,
+                              icon: const Icon(HeroiconsOutline.fingerPrint),
+                              title: "Biometric Login",
+                              onTap: () {},
+                              trailing: Switch(
+                                value: _isBiometricEnabled,
+                                onChanged: (value) async {
+                                  await _toggleBiometric(value);
+                                },
+                                activeTrackColor: kSecondaryColor,
+                              ),
+                              margin: EdgeInsets.only(
+                                top: getProportionateScreenHeight(
+                                  kDefaultPadding / 2,
+                                ),
                               ),
                             ),
-                          ),
-                        ),
 
-                      // 3. Promotional Section
-                      ProfileListTile(
-                        borderColor: kWhiteColor,
-                        icon: Icon(HeroiconsOutline.share),
-                        title: Provider.of<ZLanguage>(
-                          context,
-                          listen: false,
-                        ).referralCode,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ReferralScreen(
-                                referralCode: userData['user']['referral_code'],
+                          if (_savedAccountsCount > 0) ...[
+                            Divider(color: kWhiteColor, height: 1),
+
+                            NewProfileListTile(
+                              borderColor: kWhiteColor,
+                              icon: Icon(HeroiconsOutline.arrowsRightLeft),
+
+                              title: "Switch Account",
+                              onTap: _showSwitchAccountSheet,
+                              trailing: SizedBox(
+                                width: 70,
+                                height: 32,
+                                child: Stack(
+                                  children: [
+                                    // First avatar (back)
+                                    Positioned(
+                                      left: 0,
+                                      child: _buildMiniAvatar(
+                                        letter: 'A',
+                                        color: Colors.blueGrey,
+                                      ),
+                                    ),
+                                    // Second avatar
+                                    Positioned(
+                                      left: 16,
+                                      child: _buildMiniAvatar(
+                                        letter: 'B',
+
+                                        color: Colors.teal,
+                                      ),
+                                    ),
+                                    // Third avatar + count (front)
+                                    Positioned(
+                                      left: 32,
+                                      child: Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: kSecondaryColor,
+                                          border: Border.all(
+                                            color: kWhiteColor,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '+$_savedAccountsCount',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          );
-                        },
+                            Divider(color: kWhiteColor, height: 1),
+                            NewProfileListTile(
+                              borderColor: kWhiteColor,
+                              icon: Icon(HeroiconsOutline.lockClosed),
+                              title: 'Change Password',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ChangePassword(userData: userData),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ],
                       ),
+                      _userActionCard(
+                        textTheme: textTheme,
+                        title: "Other",
+                        children: [
+                          // 4. Support Section
+                          NewProfileListTile(
+                            borderColor: kWhiteColor,
+                            icon: Icon(HeroiconsOutline.questionMarkCircle),
+                            title:
+                                "${Provider.of<ZLanguage>(context, listen: false).help} & Support",
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                HelpScreen.routeName,
+                              );
+                            },
+                          ),
 
-                      // 4. Support Section
-                      ProfileListTile(
-                        borderColor: kWhiteColor,
-                        icon: Icon(HeroiconsOutline.questionMarkCircle),
-                        title:
-                            "${Provider.of<ZLanguage>(context, listen: false).help} & Support",
-                        onTap: () {
-                          Navigator.pushNamed(context, HelpScreen.routeName);
-                        },
-                        // margin: EdgeInsets.only(
-                        //   bottom: getProportionateScreenHeight(kDefaultPadding),
-                        // ),
+                          Divider(color: kWhiteColor, height: 1),
+                          NewProfileListTile(
+                            showTrailing: true,
+                            borderColor: kWhiteColor,
+                            icon: Icon(
+                              HeroiconsOutline.arrowLeftStartOnRectangle,
+                            ),
+                            title: Provider.of<ZLanguage>(
+                              context,
+                              listen: false,
+                            ).logout,
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isDismissible: true,
+                                builder: (context) => ConfirmationBottomSheet(
+                                  title: "Log out?",
+                                  message:
+                                      "Are you sure you want to log out of your account?",
+                                  confirmText: "Log out",
+                                  icon: HeroiconsOutline
+                                      .arrowLeftStartOnRectangle,
+                                  isDestructive: false,
+                                  onConfirm: () {
+                                    logOut();
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
+                      //
                       // Chat bot
                       // chatBot(
                       //   userId: userData["user"]["_id"],
                       //   serverToken: userData["user"]["server_token"],
                       // ),
-                      // 5. Account Management Section
-                      ProfileListTile(
-                        borderColor: kWhiteColor,
-                        icon: Icon(HeroiconsOutline.lockClosed),
-                        title: 'Change Password',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ChangePassword(userData: userData),
-                            ),
-                          );
-                        },
-                        margin: EdgeInsets.only(
-                          top: getProportionateScreenHeight(kDefaultPadding),
+                      _userActionCard(
+                        textTheme: textTheme,
+                        title: "Danger zone",
+                        backgroundColor: kPrimaryColor,
+                        topMargin: getProportionateScreenHeight(
+                          kDefaultPadding / 1.5,
                         ),
-                      ),
-                      ProfileListTile(
-                        showTrailing: false,
-                        borderColor: kWhiteColor,
-                        icon: Icon(HeroiconsOutline.arrowLeftStartOnRectangle),
-                        title: Provider.of<ZLanguage>(
-                          context,
-                          listen: false,
-                        ).logout,
-                        onTap: () {
-                          setState(() {
-                            isLoading = true;
-                          });
-                          _showDialog();
-                        },
-                      ),
-                      ProfileListTile(
-                        showTrailing: false,
-                        borderColor: kWhiteColor,
-                        titleColor: kSecondaryColor,
-                        icon: Icon(HeroiconsOutline.trash),
-                        title: "Delete Account?",
-                        margin: EdgeInsets.only(
-                          bottom: getProportionateScreenHeight(
-                            kDefaultPadding / 2,
-                          ),
-                        ),
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                backgroundColor: kPrimaryColor,
-                                title: Text("Delete User Account"),
-                                content: Text(
-                                  "Are you sure you want to delete your account? Once you delete your account you will be able to reactivate within 30 days.",
+                        children: [
+                          // 5. Account Management Section
+
+                          // Divider(color: kWhiteColor, height: 1),
+                          NewProfileListTile(
+                            showTrailing: true,
+                            // iconColor: kSecondaryColor,
+                            borderColor: kWhiteColor,
+                            // titleColor: kSecondaryColor,
+                            icon: Icon(HeroiconsOutline.trash),
+                            title: "Delete Account?",
+                            // margin: EdgeInsets.only(
+                            //   bottom: getProportionateScreenHeight(
+                            //     kDefaultPadding / 2,
+                            //   ),
+                            // ),
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isDismissible: true, // safer
+                                enableDrag: false,
+                                builder: (context) => ConfirmationBottomSheet(
+                                  title: "Delete Account?",
+                                  message:
+                                      "Are you sure you want to delete your account?\n\n"
+                                      "You can reactivate it within 30 days. After that, all your data will be permanently deleted.",
+                                  confirmText: "Delete",
+                                  icon: HeroiconsOutline.trash,
+                                  isDestructive: true, // makes the button red
+                                  onConfirm: () {
+                                    deleteUser();
+                                  },
+                                  onCancel: () {
+                                    setState(() => isLoading = false);
+                                  },
                                 ),
-                                actions: <Widget>[
-                                  TextButton(
-                                    child: Text(
-                                      "Think about it!",
-                                      style: TextStyle(
-                                        color: kSecondaryColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                      setState(() {
-                                        isLoading = false;
-                                      });
-                                    },
-                                  ),
-                                  TextButton(
-                                    child: Text(
-                                      Provider.of<ZLanguage>(
-                                        context,
-                                        listen: false,
-                                      ).submit,
-                                      style: TextStyle(color: kBlackColor),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                      deleteUser();
-                                    },
-                                  ),
-                                ],
                               );
                             },
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ],
                   ),
 
                 //Guest user section
                 if (userData == null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: kDefaultPadding,
-                      vertical: kDefaultPadding,
-                    ),
-                    child: Column(
-                      spacing: kDefaultPadding,
-                      children: [
-                        // 1. Authentication Section
-                        ProfileListTile(
-                          borderColor: kWhiteColor,
-                          icon: Icon(HeroiconsOutline.arrowLeftEndOnRectangle),
-                          title: Provider.of<ZLanguage>(
-                            context,
-                            listen: false,
-                          ).login,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    LoginScreen(firstRoute: false),
-                              ),
-                            ).then((value) => getUser());
-                          },
+                  Column(
+                    // spacing: kDefaultPadding,
+                    children: [
+                      // 1. Authentication Section
+                      _userActionCard(
+                        textTheme: textTheme,
+                        title: "Login & Support",
+                        backgroundColor: kPrimaryColor,
+                        topMargin: getProportionateScreenHeight(
+                          kDefaultPadding / 1.5,
                         ),
-
-                        // 2. Support Section
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: kDefaultPadding,
-                            vertical: kDefaultPadding / 2,
+                        children: [
+                          NewProfileListTile(
+                            hasBorder: false,
+                            borderColor: kWhiteColor,
+                            icon: Icon(
+                              HeroiconsOutline.arrowLeftEndOnRectangle,
+                            ),
+                            title: Provider.of<ZLanguage>(
+                              context,
+                              listen: false,
+                            ).login,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      LoginScreen(firstRoute: false),
+                                ),
+                              ).then((value) => getUser());
+                            },
                           ),
-                          decoration: BoxDecoration(
-                            color: kPrimaryColor,
-                            border: Border.all(color: kWhiteColor),
-                            borderRadius: BorderRadius.circular(
-                              kDefaultPadding,
+                          NewProfileListTile(
+                            hasBorder: false,
+                            borderColor: kWhiteColor,
+                            icon: Icon(HeroiconsOutline.questionMarkCircle),
+                            title:
+                                "${Provider.of<ZLanguage>(context, listen: false).help} & Support",
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                HelpScreen.routeName,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+
+                      // 2. Support Section
+                      _userActionCard(
+                        textTheme: textTheme,
+                        title: "Support",
+                        backgroundColor: kPrimaryColor,
+
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(
+                              top: getProportionateScreenWidth(
+                                kDefaultPadding / 2,
+                              ),
+                              left: getProportionateScreenWidth(
+                                kDefaultPadding,
+                              ),
+                            ),
+                            child: Text(
+                              "Quick Support",
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ),
-                          child: Column(
-                            spacing: kDefaultPadding / 4,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Quick Support",
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: getProportionateScreenWidth(
+                                kDefaultPadding,
                               ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _actionCards(
-                                    onTap: () {
-                                      launchUrl(
-                                        Uri(
-                                          scheme: 'tel',
-                                          path: '+251967575757',
-                                        ),
-                                      );
-                                    },
-                                    icon: HeroiconsOutline.phone,
-                                    title: "Call Now",
-                                  ),
-                                  _actionCards(
-                                    onTap: () {
-                                      launchUrl(
-                                        Uri(
-                                          scheme: 'mailto',
-                                          path: "info@zmallshop.com",
-                                        ),
-                                      );
-                                    },
-                                    icon: HeroiconsOutline.envelope,
-                                    title: "E-Mail",
-                                  ),
-                                  _actionCards(
-                                    onTap: () {
-                                      launchUrl(
-                                        Uri(scheme: 'tel', path: '+2518707'),
-                                      );
-                                    },
-                                    icon: Icons.support_agent,
-                                    title: "Call HOTLINE",
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _actionCards(
+                                  onTap: () async {
+                                    await UrlLauncherService.makePhoneCall(
+                                      '+251967575757',
+                                    );
+                                  },
+                                  icon: HeroiconsOutline.phone,
+                                  title: "Call Now",
+                                ),
+                                _actionCards(
+                                  onTap: () async {
+                                    await UrlLauncherService.openEmail(
+                                      "info@zmallshop.com",
+                                    );
+                                  },
+                                  icon: HeroiconsOutline.envelope,
+                                  title: "E-Mail",
+                                ),
+                                _actionCards(
+                                  onTap: () async {
+                                    await UrlLauncherService.makePhoneCall(
+                                      '+2518707',
+                                    );
+                                  },
+                                  icon: Icons.support_agent,
+                                  title: "Call HOTLINE",
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        // 3. Support Section
-                        ProfileListTile(
-                          borderColor: kWhiteColor,
-                          icon: Icon(HeroiconsOutline.questionMarkCircle),
-                          title:
-                              "${Provider.of<ZLanguage>(context, listen: false).help} & Support",
-                          onTap: () {
-                            Navigator.pushNamed(context, HelpScreen.routeName);
-                          },
-                        ),
-                        // // Legal Section
-                        // ProfileListTile(
-                        //   borderColor: kWhiteColor,
-                        //   icon: Icon(HeroiconsOutline.shieldCheck),
-                        //   title: "Privacy Policy",
-                        //   onTap: () {
-                        //     Service.launchInWebViewOrVC(
-                        //         "https://app.zmallshop.com/terms.html");
-                        //   },
-                        // ),
-                        // ProfileListTile(
-                        //   borderColor: kWhiteColor,
-                        //   icon: Icon(HeroiconsOutline.clipboardDocumentCheck),
-                        //   title: "Terms and Conditions",
-                        //   onTap: () {
-                        //     Service.launchInWebViewOrVC(
-                        //         "https://app.zmallshop.com/terms.html");
-                        //   },
-                        // ),
-
-                        // // Social Media Section
-                        // ProfileListTile(
-                        //   borderColor: kWhiteColor,
-                        //   icon: Icon(FontAwesome.instagram),
-                        //   title: "Follow us on Instagram",
-                        //   onTap: () {
-                        //     Service.launchInWebViewOrVC(
-                        //         "https://www.instagram.com/zmall_delivery/?hl=en");
-                        //   },
-                        // ),
-                        // ProfileListTile(
-                        //   borderColor: kWhiteColor,
-                        //   icon: Icon(Icons.facebook_outlined),
-                        //   title: "Follow us on Facebook",
-                        //   onTap: () {
-                        //     Service.launchInWebViewOrVC(
-                        //         "https://www.facebook.com/Zmallshop/");
-                        //   },
-                        // ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
+                Row(
+                  spacing: getProportionateScreenWidth(3),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "$appName v$appVersion+$appBuildNumber",
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: kGreyColor.withValues(alpha: 0.8),
+                      ),
+                    ),
+
+                    if (appUpdatedAt.isNotEmpty) ...[
+                      Container(
+                        width: 2,
+                        height: 2,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: kGreyColor.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      Text(
+                        "Updated at: $appUpdatedAt",
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: kGreyColor.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
     );
   }
 
-  // Chat Support Button
-  Widget chatBot({
-    required String userId,
-    required String serverToken,
-    // required String orderId,
-    // required List userLocation,
-  }) {
-    final userLat = Provider.of<ZMetaData>(context, listen: false).latitude;
-    final userLng = Provider.of<ZMetaData>(context, listen: false).longitude;
-    return InkWell(
-      onTap: () {
-        // Navigator.of(context).push(
-        //   MaterialPageRoute(
-        //     builder: (context) {
-        //       return SupportChatScreen(
-        //         userId: userId,
-        //         userData: userData,
-        //         serverToken: serverToken,
-        //         userLocation: ["$userLat", "$userLng"],
-        //       );
-        //     },
-        //   ),
-        // );
-        // Navigator.pushNamed(context, SupportChatScreen.routeName);
-      },
-      borderRadius: BorderRadius.circular(kDefaultPadding),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: getProportionateScreenWidth(kDefaultPadding),
-          vertical: getProportionateScreenHeight(kDefaultPadding),
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [kSecondaryColor, kSecondaryColor.withValues(alpha: 0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+  Widget _buildMiniAvatar({required String letter, required Color color}) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        border: Border.all(color: kWhiteColor, width: 2),
+      ),
+      child: Center(
+        child: Text(
+          letter,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
           ),
-          borderRadius: BorderRadius.circular(kDefaultPadding),
-          // boxShadow: [
-          //   BoxShadow(
-          //     color: kSecondaryColor.withValues(alpha: 0.3),
-          //     blurRadius: 12,
-          //     offset: Offset(0, 4),
-          //   ),
-          // ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: getProportionateScreenWidth(50),
-              height: getProportionateScreenWidth(50),
-              decoration: BoxDecoration(
-                color: kPrimaryColor.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Icon(
-                  FontAwesome.robot_solid,
-                  color: kPrimaryColor,
-                  size: getProportionateScreenWidth(24),
-                ),
-              ),
-            ),
-            SizedBox(width: getProportionateScreenWidth(kDefaultPadding)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "AI Chatbot Assistant",
-                    style: TextStyle(
-                      fontSize: getProportionateScreenWidth(16),
-                      fontWeight: FontWeight.bold,
-                      color: kPrimaryColor,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    "24/7 AI support • Always available",
-                    style: TextStyle(
-                      fontSize: getProportionateScreenWidth(12),
-                      color: kPrimaryColor.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              HeroiconsSolid.chevronRight,
-              color: kPrimaryColor,
-              size: getProportionateScreenWidth(20),
-            ),
-          ],
         ),
       ),
     );
@@ -1145,19 +1120,26 @@ class _BodyState extends State<Body> {
     required TextTheme textTheme,
     required List<Widget> children,
     double? spacing,
+    Color? backgroundColor = kPrimaryColor,
+    double? topMargin,
   }) {
     return Container(
-      // margin: EdgeInsets.symmetric(
-      //     horizontal: getProportionateScreenWidth(kDefaultPadding),
-      //     vertical: getProportionateScreenHeight(kDefaultPadding / 4)),
+      margin:
+          EdgeInsets.symmetric(
+            horizontal: getProportionateScreenWidth(kDefaultPadding),
+            // vertical: getProportionateScreenHeight(kDefaultPadding / 4)
+          ).copyWith(
+            top: topMargin,
+            bottom: getProportionateScreenHeight(kDefaultPadding / 1.5),
+          ),
       padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(kDefaultPadding),
-        vertical: getProportionateScreenHeight(kDefaultPadding / 2),
+        horizontal: getProportionateScreenWidth(kDefaultPadding / 4),
+        vertical: getProportionateScreenHeight(kDefaultPadding / 4),
       ),
       decoration: BoxDecoration(
-        color: kPrimaryColor,
-        // border: Border.all(color: kWhiteColor),
-        // borderRadius: BorderRadius.circular(kDefaultPadding),
+        color: backgroundColor,
+        border: Border.all(color: kWhiteColor),
+        borderRadius: BorderRadius.circular(kDefaultPadding * 1.2),
       ),
       child: Column(
         spacing: spacing ?? getProportionateScreenHeight(kDefaultPadding / 2),
@@ -1269,7 +1251,7 @@ class _BodyState extends State<Body> {
       margin: EdgeInsets.symmetric(
         horizontal: kDefaultPadding,
         vertical: kDefaultPadding / 2,
-      ),
+      ).copyWith(bottom: 0),
       // margin: EdgeInsets.only(top: kDefaultPadding),
       padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding / 2)),
       decoration: BoxDecoration(
@@ -1454,6 +1436,104 @@ class _BodyState extends State<Body> {
       },
     );
   }
+
+  // Chat Support Button
+  // Widget chatBot({
+  //   required String userId,
+  //   required String serverToken,
+  //   // required String orderId,
+  //   // required List userLocation,
+  // }) {
+  //   final userLat = Provider.of<ZMetaData>(context, listen: false).latitude;
+  //   final userLng = Provider.of<ZMetaData>(context, listen: false).longitude;
+  //   return InkWell(
+  //     onTap: () {
+  //       // Navigator.of(context).push(
+  //       //   MaterialPageRoute(
+  //       //     builder: (context) {
+  //       //       return SupportChatScreen(
+  //       //         userId: userId,
+  //       //         userData: userData,
+  //       //         serverToken: serverToken,
+  //       //         userLocation: ["$userLat", "$userLng"],
+  //       //       );
+  //       //     },
+  //       //   ),
+  //       // );
+  //       // Navigator.pushNamed(context, SupportChatScreen.routeName);
+  //     },
+  //     borderRadius: BorderRadius.circular(kDefaultPadding),
+  //     child: Container(
+  //       padding: EdgeInsets.symmetric(
+  //         horizontal: getProportionateScreenWidth(kDefaultPadding),
+  //         vertical: getProportionateScreenHeight(kDefaultPadding),
+  //       ),
+  //       decoration: BoxDecoration(
+  //         gradient: LinearGradient(
+  //           colors: [kSecondaryColor, kSecondaryColor.withValues(alpha: 0.8)],
+  //           begin: Alignment.topLeft,
+  //           end: Alignment.bottomRight,
+  //         ),
+  //         borderRadius: BorderRadius.circular(kDefaultPadding),
+  //         // boxShadow: [
+  //         //   BoxShadow(
+  //         //     color: kSecondaryColor.withValues(alpha: 0.3),
+  //         //     blurRadius: 12,
+  //         //     offset: Offset(0, 4),
+  //         //   ),
+  //         // ],
+  //       ),
+  //       child: Row(
+  //         children: [
+  //           Container(
+  //             width: getProportionateScreenWidth(50),
+  //             height: getProportionateScreenWidth(50),
+  //             decoration: BoxDecoration(
+  //               color: kPrimaryColor.withValues(alpha: 0.2),
+  //               shape: BoxShape.circle,
+  //             ),
+  //             child: Center(
+  //               child: Icon(
+  //                 FontAwesome.robot_solid,
+  //                 color: kPrimaryColor,
+  //                 size: getProportionateScreenWidth(24),
+  //               ),
+  //             ),
+  //           ),
+  //           SizedBox(width: getProportionateScreenWidth(kDefaultPadding)),
+  //           Expanded(
+  //             child: Column(
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 Text(
+  //                   "AI Chatbot Assistant",
+  //                   style: TextStyle(
+  //                     fontSize: getProportionateScreenWidth(16),
+  //                     fontWeight: FontWeight.bold,
+  //                     color: kPrimaryColor,
+  //                   ),
+  //                 ),
+  //                 SizedBox(height: 2),
+  //                 Text(
+  //                   "24/7 AI support • Always available",
+  //                   style: TextStyle(
+  //                     fontSize: getProportionateScreenWidth(12),
+  //                     color: kPrimaryColor.withValues(alpha: 0.9),
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //           Icon(
+  //             HeroiconsSolid.chevronRight,
+  //             color: kPrimaryColor,
+  //             size: getProportionateScreenWidth(20),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
   // Profile header with avatar and verification badge
   // Row(
   //   spacing: kDefaultPadding,
@@ -1510,191 +1590,6 @@ class _BodyState extends State<Body> {
   //           ),
   //       ],
   //     ),
-
-  //     // User info
-  //     Expanded(
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.start,
-  //         children: [
-  //           if (pData != null)
-  //             Row(
-  //               mainAxisAlignment:
-  //                   MainAxisAlignment.spaceBetween,
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 Expanded(
-  //                   child: Text(
-  //                     "${pData['first_name']} ${pData['last_name']}",
-  //                     style: TextStyle(
-  //                       fontSize: 22,
-  //                       fontWeight: FontWeight.bold,
-  //                       color: kPrimaryColor,
-  //                     ),
-  //                   ),
-  //                 ),
-  //                 Row(
-  //                   mainAxisSize: MainAxisSize.min,
-  //                   children: [
-  //                     Container(
-  //                       width: 10,
-  //                       height: 10,
-  //                       decoration: BoxDecoration(
-  //                         shape: BoxShape.circle,
-  //                         color: pData['is_online']
-  //                             ? kGreenColor
-  //                             : kErrorColor,
-  //                       ),
-  //                     ),
-  //                     SizedBox(width: 8),
-  //                     Text(
-  //                       pData['is_online']
-  //                           ? "Online"
-  //                           : "Offline",
-  //                       style: TextStyle(
-  //                         color: pData['is_online']
-  //                             ? kGreenColor
-  //                             : kErrorColor,
-  //                         fontWeight: FontWeight.bold,
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ],
-  //             ),
-  //           //phoen section
-  //           SizedBox(height: 8),
-  //           if (pData != null)
-  //             Row(
-  //               children: [
-  //                 Icon(HeroiconsOutline.phone,
-  //                     size: 16,
-  //                     color:
-  //                         kWhiteColor.withValues(alpha: 0.8)),
-  //                 SizedBox(width: 4),
-  //                 Expanded(
-  //                   child: Text(
-  //                     "+251 ${pData['phone']}",
-  //                     style: TextStyle(
-  //                       fontSize: 14,
-  //                       color: kPrimaryColor.withValues(
-  //                           alpha: 0.8),
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           SizedBox(height: 5),
-  //           //email section
-  //           if (pData != null)
-  //             Row(
-  //               children: [
-  //                 Icon(HeroiconsOutline.envelope,
-  //                     size: 16,
-  //                     color:
-  //                         kWhiteColor.withValues(alpha: 0.8)),
-  //                 SizedBox(width: 4),
-  //                 Expanded(
-  //                   child: Text(
-  //                     pData['email'],
-  //                     style: TextStyle(
-  //                       fontSize: 14,
-  //                       color: kPrimaryColor.withValues(
-  //                           alpha: 0.8),
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           SizedBox(
-  //             height: kDefaultPadding / 2,
-  //           ),
-  //           // Edit profile button
-  //           InkWell(
-  //             onTap: () {
-  //               Navigator.push(
-  //                 context,
-  //                 MaterialPageRoute(
-  //                     builder: (context) => const Profile()),
-  //               );
-  //             },
-  //             child: Container(
-  //               padding: EdgeInsets.symmetric(
-  //                   horizontal: 16, vertical: 8),
-  //               decoration: BoxDecoration(
-  //                 borderRadius: BorderRadius.circular(12),
-  //                 color: kWhiteColor,
-  //                 boxShadow: [
-  //                   BoxShadow(
-  //                     color:
-  //                         Colors.black.withValues(alpha: 0.1),
-  //                     blurRadius: 5,
-  //                     offset: Offset(0, 2),
-  //                   ),
-  //                 ],
-  //               ),
-  //               child: Row(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 mainAxisAlignment: MainAxisAlignment.center,
-  //                 children: [
-  //                   Icon(
-  //                     HeroiconsOutline.pencilSquare,
-  //                     size: 20,
-  //                     color: kSecondaryColor,
-  //                   ),
-  //                   SizedBox(width: kDefaultPadding),
-  //                   Text(
-  //                     "Edit Profile",
-  //                     style: TextStyle(
-  //                       color: kSecondaryColor,
-  //                       fontSize: 16,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   ],
-  // ),
-  void _showDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: kPrimaryColor,
-          title: Text("Logout"),
-          content: Text("Are you sure you want to logout?"),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                "Think about it!",
-                style: TextStyle(
-                  color: kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                setState(() {
-                  isLoading = false;
-                });
-              },
-            ),
-            TextButton(
-              child: Text("Sure", style: TextStyle(color: kBlackColor)),
-              onPressed: () {
-                Navigator.of(context).pop();
-                logOut();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   /////////////////new phone verification///////////////////////
   Future<bool> generateOtpAtLogin({

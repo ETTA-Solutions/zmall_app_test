@@ -24,6 +24,7 @@ import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/utils/tab_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:zmall/widgets/custom_text_field.dart';
+import 'package:zmall/services/app_update_service.dart';
 
 class LoginScreen extends StatefulWidget {
   static String routeName = "/login";
@@ -134,6 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     // getVersion();
+    AppUpdateService.checkVersionUpdate(context: context);
     _doLocationTask();
     getNearByMerchants();
     _checkBiometricAvailability();

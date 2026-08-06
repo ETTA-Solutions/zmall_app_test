@@ -103,6 +103,7 @@ class ZLanguage extends ChangeNotifier {
   String preOrder = "Pre Order";
   String diy = "Do It Yourself";
   String deliveryAddress = "Delivery Address";
+  String addresses = "Addresses";
   String orderDetail = "Order Detail";
   String servicePrice = "Service Price";
   String totalOrderPrice = "Total Order Price";
@@ -259,6 +260,7 @@ class ZLanguage extends ChangeNotifier {
       preOrder = "Pre Order";
       diy = "Do It Yourself";
       deliveryAddress = "Delivery Address";
+      addresses = "Addresses";
       orderDetail = "Order Detail";
       servicePrice = "Service Price";
       totalOrderPrice = "Total Order Price";

@@ -95,40 +95,12 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           Service.save('cart', cart);
         });
 
-        // DEBUG: print cart item IDs for deeplink testing
-        // print('\n');
-        // print('╔═══════════════════════════════════════════════════════════');
-        // print('║  CART ITEMS DEBUG — use these IDs to build AI cart deeplink');
-        // print('║  store_id   : ${cart!.storeId}');
-        // print('║  user_id    : ${userData['user']['_id']}');
-        // print('║  cart_id    : ${userData['user']['cart_id']}');
-        // print('║  item count : ${cart!.items!.length}');
-        // print('╠═══════════════════════════════════════════════════════════');
-        // for (var i = 0; i < cart!.items!.length; i++) {
-        //   final item = cart!.items![i];
-        //   print('║  [$i] _id       : ${item.id}');
-        //   print('║       item_name : ${item.itemName}');
-        //   print('║       price     : ${item.price}');
-        //   print('║       quantity  : ${item.quantity}');
-        //   print('║  ───────────────────────────────────────────────────────');
-        // }
-        // print('║');
-        // print('║  Test curl (create AI cart):');
-        // print('║  curl -X POST $BASE_URL/api/ai/cart \\');
-        // print('║    -H "Content-Type: application/json" \\');
-        // print('║    -d \'{"user_id":"${userData['user']['_id']}","server_token":"${userData['user']['server_token']}","store_id":"${cart!.storeId}","items":[${cart!.items!.map((i) => '{"item_id":"${i.id}","name":"${i.itemName}","price":${i.price},"quantity":${i.quantity}}').join(',')}]}\' ');
-        // print('╚═══════════════════════════════════════════════════════════\n');
         // debugPrint("ALI CART>>> ${aliCart != null}");
         if (aliCart != null) {
           setState(() {
             aliexpressCart = AliExpressCart.fromJson(aliCart);
             Service.save('aliexpressCart', aliexpressCart);
           });
-          // debugPrint("ALI CART>>> ${aliexpressCart!.toJson()}");
-          // debugPrint(
-          //     "ALI CART ITEM>>> ${aliexpressCart!.toJson()['cart']['items']}");
-          // debugPrint("ALI ItemIds ${aliexpressCart!.toJson()['item_ids']}");
-          // debugPrint("ALI ProductIds: ${aliexpressCart!.toJson()['product_ids']}");
         }
         // else {
         //   debugPrint("ALI CART NOT FOUND>>>");
@@ -136,7 +108,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         _getStoreExtraItemList();
 
         calculatePrice();
-        if (cart!.items!.isNotEmpty) {
+        if (cart != null && cart!.items!.isNotEmpty) {
           _getStoreDetail();
         } else {
           setState(() {
@@ -144,40 +116,15 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           });
         }
       }
-    } catch (e, st) {
-      // print('CART_FROMJSON_ERROR: $e\n$st');
+    } catch (e) {
+      // debugPrint('CART_FROMJSON_ERROR: $e\n$st');
+    } finally {
+      setState(() {
+        _loading = false;
+      });
     }
   }
-  // void getCart() async {
-  //   setState(() {
-  //     _loading = true;
-  //   });
-  //   try {
-  //     userData = await Service.read('user');
-  //     var data = await Service.read('cart');
-  //     if (data != null) {
-  //       setState(() {
-  //         cart = Cart.fromJson(data);
-  //         cart!.serverToken = userData['user']['server_token'];
-  //         //walletBalance = double.parse(userData['user']['wallet'].toString());
-  //         storeID = cart!.storeId!;
-  //         Service.save('cart', cart);
-  //       });
-  //       _getStoreExtraItemList();
 
-  //       calculatePrice();
-  //       if (cart != null && cart!.items!.length > 0) {
-  //         _getStoreDetail();
-  //       } else {
-  //         setState(() {
-  //           _loading = false;
-  //         });
-  //       }
-  //     }
-  //   } catch (e) {
-  //     debugPrint(e);
-  //   }
-  // }
   void _getStoreDetail() async {
     setState(() {
       _loading = true;
@@ -209,28 +156,6 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       _loading = false;
     });
   }
-  // void _getStoreDetail() async {
-  //   setState(() {
-  //     _loading = true;
-  //   });
-  //   var data = await getStoreDetail();
-  //   if (data != null && data['success']) {
-  //     setState(() {
-  //       storeDetail = data;
-  //       cart!.isLaundryService =
-  //           storeDetail['store']['is_provide_laundry_service'];
-  //       storeLocations = storeDetail['store']['location'];
-  //       storeName = storeDetail['store']['name'];
-  //     });
-  //     Service.save('cart', cart!.toJson());
-  //   } else {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //         Service.showMessage("${errorCodes['${data['error_code']}']}!", true));
-  //   }
-  //   setState(() {
-  //     _loading = false;
-  //   });
-  // }
 
   void _requestLocationPermission() async {
     // First, check if location services are enabled
@@ -1221,10 +1146,6 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       return json.decode(response.body);
     } catch (e) {
       BackendLogger.error(method: 'POST', url: url, error: e);
-      // debugPrint(e);
-      setState(() {
-        this._loading = false;
-      });
       if (mounted) {
         Service.showMessage(
           context: context,
@@ -1235,6 +1156,12 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         );
       }
       return null;
+    } finally {
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
     }
   }
   ///////////////////////////////////////////////////////////newly added

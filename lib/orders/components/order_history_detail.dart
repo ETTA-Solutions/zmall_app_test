@@ -12,11 +12,11 @@ import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/orders/components/order_rating.dart';
 import 'package:zmall/widgets/order_status_row.dart';
-import 'package:zmall/product/product_screen.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/image_container.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
+import 'package:zmall/orders/components/category_container.dart';
 
 class OrderHistoryDetail extends StatefulWidget {
   static String routeName = '/order_history_detail';

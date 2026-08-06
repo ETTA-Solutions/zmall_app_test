@@ -252,10 +252,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   // Delegates to CoreServices.searchItemGlobal
   Future<dynamic> searchItem(searchQuery) async {
-    return CoreServices.searchItemGlobal(
-      query: searchQuery,
-      context: context,
-    );
+    return CoreServices.searchItemGlobal(query: searchQuery, context: context);
   }
 
   // Delegates to CoreServices.getCompanyList
@@ -969,7 +966,7 @@ class ItemsTabView extends StatelessWidget {
                                               isOpen: isStoreOpen,
                                               statusText:
                                                   item['similarity'] != null
-                                                  ? "${((item['similarity'] as double) * 100).toInt().toString()}% ${Provider.of<ZLanguage>(context).match}"
+                                                  ? "${((item['similarity'] as num) * 100).toInt().toString()}% ${Provider.of<ZLanguage>(context).match}"
                                                   : "",
                                               color: item['similarity'] != null
                                                   ? ((item['similarity']
