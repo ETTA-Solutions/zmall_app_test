@@ -2281,14 +2281,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                               return TelebirrInApp(
                                                                 context:
                                                                     context,
-                                                                amount:
-                                                                    //  widget.price!,
-                                                                    // for testing courier payment with telebirr inapp payment
-                                                                    widget.isCourier ==
-                                                                        true
-                                                                    ? 1.0
-                                                                    : widget
-                                                                          .price!,
+                                                                amount:   widget.price!, 
                                                                 traceNo:
                                                                     inAppTraceNumber,
                                                                 phone:

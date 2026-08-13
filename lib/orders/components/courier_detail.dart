@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
+import 'package:zmall/orders/components/address_timeline.dart';
+import 'package:zmall/orders/components/order_info_row.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/location/components/provider_location.dart';
@@ -15,17 +17,25 @@ import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/widgets/order_status_row.dart';
 import 'order_history_detail.dart';
+//
+import 'package:zmall/borsa/refund/refund_confirmation_dialog.dart';
+import 'package:zmall/borsa/refund/refund_otp_sheet.dart';
+import 'package:zmall/borsa/refund/refund_service.dart';
 
 class CourierDetail extends StatefulWidget {
   const CourierDetail({
     super.key,
     this.courierData,
-    this.userId,
+    required this.userId,
     this.serverToken,
+    //
+    required this.userPhone,
   });
   final courierData;
-  final String? userId;
+  final String userId;
   final String? serverToken;
+  //
+  final String userPhone;
 
   @override
   _CourierDetailState createState() => _CourierDetailState();
@@ -39,10 +49,73 @@ class _CourierDetailState extends State<CourierDetail> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _getOrderStatus();
   }
+
+  //
+  // Future<void> _forceLogout() async {
+  //   await Service.saveBool('logged', false);
+  //   await Service.remove('user');
+  //   if (!mounted) return;
+  //   Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+  // }
+
+  // void _onRefundTap() {
+  //   final meta = Provider.of<ZMetaData>(context, listen: false);
+
+  //   // Build a transaction-like object from the order
+  //   // so the existing RefundService / OTP sheet can work with it.
+  //   final transaction = {
+  //     'unique_id': widget.courierData['unique_id'] ?? widget.courierData['_id'],
+  //     'from_amount': (widget.courierData['total_order_price'] as num)
+  //         .toDouble(),
+  //     'can_refund': true,
+  //     'is_refunded': false,
+  //     'wallet_description': 'Order Refund #${widget.courierData['unique_id']}',
+  //     // add any extra fields your RefundService expects
+  //   };
+
+  //   final service = RefundService(
+  //     userId: widget.userId,
+  //     phone: widget.userPhone,
+  //     context: context,
+  //   );
+
+  //   RefundOtpSheet.show(
+  //     context: context,
+  //     transaction: transaction,
+  //     service: service,
+  //     currency: meta.currency,
+  //     onVerified: (result) {
+  //       if (!mounted) return;
+
+  //       RefundConfirmationDialog.show(
+  //         context: this.context,
+  //         verifyResult: result,
+  //         transaction: transaction,
+  //         service: service,
+  //         currency: meta.currency,
+  //         onSuccess: () {
+  //           Service.showMessage(
+  //             context: context,
+  //             title: "Refund processed successfully!",
+  //             error: false,
+  //             duration: 5,
+  //           );
+  //           // Optionally refresh order status or pop the screen
+  //           if (mounted) {
+  //             _getOrderStatus(); // refresh
+  //             // or Navigator.of(context).pop();
+  //           }
+  //         },
+  //         onForceLogout: _forceLogout,
+  //       );
+  //     },
+  //     onForceLogout: _forceLogout,
+  //   );
+  // }
+  //
 
   void _getOrderStatus() async {
     var data = await getOrderStatus();
@@ -87,11 +160,10 @@ class _CourierDetailState extends State<CourierDetail> {
       setState(() {
         _loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${errorCodes['${data['error_code']}']}"),
-          backgroundColor: kSecondaryColor,
-        ),
+      Service.showMessage(
+        error: true,
+        context: context,
+        title: "${errorCodes['${data['error_code']}']}",
       );
     }
   }
@@ -161,432 +233,279 @@ class _CourierDetailState extends State<CourierDetail> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: getProportionateScreenWidth(kDefaultPadding),
             children: [
-              Text(
-                Provider.of<ZLanguage>(context, listen: false).orderDetails,
-                style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                  color: kBlackColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: getProportionateScreenHeight(17),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  vertical: getProportionateScreenHeight(kDefaultPadding),
+                  horizontal: getProportionateScreenWidth(kDefaultPadding),
                 ),
-              ),
-              SizedBox(
-                height: getProportionateScreenHeight(kDefaultPadding * 1.5),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.banknotes,
-                      value:
-                          "${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.courierData['total_order_price'].toStringAsFixed(2)}",
-                      title: "Total Price",
-                    ),
-                  ),
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.hashtag,
-                      value: "${widget.courierData['unique_id']}",
-                      title: "Order ID",
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.hashtag,
-                      value:
-                          "${widget.courierData['confirmation_code_for_complete_delivery']}",
-                      title: "Confirmation Code",
-                    ),
-                  ),
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.clock,
-                      value:
-                          widget.courierData['delivery_status'] != null &&
-                              widget.courierData['order_status'] == 7
-                          ? "${order_status['${widget.courierData['delivery_status']}']}"
-                          : "Pending...",
-                      title: "Order Status",
-                    ),
-                  ),
-                ],
-              ),
 
-              SizedBox(
-                height: getProportionateScreenHeight(kDefaultPadding * 2),
-              ),
-              Text(
-                // "Reciver Info",
-                Provider.of<ZLanguage>(context, listen: false).deliveryDetails,
-                style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                  color: kBlackColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: getProportionateScreenHeight(17),
-                ),
-              ),
-              SizedBox(
-                height: getProportionateScreenHeight(kDefaultPadding * 1.5),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.user,
-                      value:
-                          "${widget.courierData['destination_addresses'][0]['user_details']['name']}",
-                      title: "Reciver",
-                    ),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: kPrimaryColor,
+                  border: Border.all(color: kWhiteColor),
+                  borderRadius: BorderRadius.circular(
+                    getProportionateScreenWidth(kDefaultPadding / 1.5),
                   ),
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.phone,
-                      value:
-                          "${Provider.of<ZMetaData>(context, listen: false).areaCode}  ${widget.courierData['destination_addresses'][0]['user_details']['phone']}",
-                      title: Provider.of<ZLanguage>(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: getProportionateScreenWidth(kDefaultPadding / 2),
+                  children: [
+                    OrderStatusRow(
+                      icon: HeroiconsOutline.documentText,
+                      value: Provider.of<ZLanguage>(
                         context,
                         listen: false,
-                      ).receiverPhone,
+                      ).orderDetails,
+                      title: "Pricing, and order information",
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.mapPin,
-                      value:
-                          "${widget.courierData['pickup_addresses'][0]['address']}",
-                      // "${Service.capitalizeFirstLetters(widget.courierData['store_name'])}",
-                      title: "Pickup Address",
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: getProportionateScreenWidth(kDefaultPadding / 2),
+                      ),
+                      child: Column(
+                        children: [
+                          OrderInfoRow(
+                            label: "Order ID",
+                            value: "${widget.courierData['unique_id']}",
+                          ),
+                          OrderInfoRow(
+                            label: Provider.of<ZLanguage>(
+                              context,
+                              listen: false,
+                            ).totalOrderPrice,
+
+                            value:
+                                "${widget.courierData['total_order_price'].toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                          ),
+                          OrderInfoRow(
+                            label: "Confirmation Code",
+
+                            value:
+                                "${widget.courierData['confirmation_code_for_complete_delivery']}",
+                          ),
+                          OrderInfoRow(
+                            label: "Order Status",
+
+                            value:
+                                widget.courierData['delivery_status'] != null &&
+                                    widget.courierData['order_status'] == 7
+                                ? "${order_status['${widget.courierData['delivery_status']}']}"
+                                : "Pending...",
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+              ),
+
+              // Delivery info
+              Container(
+                padding: EdgeInsets.symmetric(
+                  vertical: getProportionateScreenHeight(kDefaultPadding),
+                  horizontal: getProportionateScreenWidth(kDefaultPadding),
+                ),
+
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: kPrimaryColor,
+                  border: Border.all(color: kWhiteColor),
+                  borderRadius: BorderRadius.circular(
+                    getProportionateScreenWidth(kDefaultPadding / 1.5),
                   ),
-                  Flexible(
-                    child: OrderStatusRow(
-                      icon: HeroiconsOutline.mapPin,
-                      value:
-                          "${widget.courierData['destination_addresses'][0]['address']}",
-                      title: Provider.of<ZLanguage>(
-                        context,
-                        listen: false,
-                      ).deliveryAddress,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: getProportionateScreenWidth(kDefaultPadding / 2),
+                  children: [
+                    OrderStatusRow(
+                      icon: HeroiconsOutline.truck,
+                      value: "Delivery Information",
+                      title: "View pickup, delivery, and address information",
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: getProportionateScreenWidth(kDefaultPadding / 2),
+                      ),
+                      child: Column(
+                        children: [
+                          OrderInfoRow(
+                            label: "Reciver",
+                            value:
+                                "${widget.courierData['destination_addresses'][0]['user_details']['name']}",
+                          ),
+                          OrderInfoRow(
+                            label: Provider.of<ZLanguage>(
+                              context,
+                              listen: false,
+                            ).receiverPhone,
+
+                            value:
+                                "${Provider.of<ZMetaData>(context, listen: false).areaCode}  ${widget.courierData['destination_addresses'][0]['user_details']['phone']}",
+                          ),
+                          OrderInfoRow(
+                            moreText: true,
+                            label: "Item Description",
+                            value:
+                                widget.courierData['destination_addresses'][0]['note'] !=
+                                    ''
+                                ? widget
+                                      .courierData['destination_addresses'][0]['note']
+                                : "No descroption",
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: kWhiteColor.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(
+                                kDefaultPadding,
+                              ),
+                            ),
+                            margin: EdgeInsets.only(
+                              top: getProportionateScreenHeight(
+                                kDefaultPadding / 2,
+                              ),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              vertical: getProportionateScreenHeight(
+                                kDefaultPadding / 2,
+                              ),
+                              horizontal: getProportionateScreenWidth(
+                                kDefaultPadding / 2,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                AddressTimelineNode(
+                                  isLast: false,
+                                  isPickup: true,
+                                  title: "Pickup Address",
+                                  address:
+                                      "${widget.courierData['pickup_addresses'][0]['address']}",
+                                ),
+
+                                AddressTimelineNode(
+                                  isLast: true,
+                                  isPickup: false,
+                                  address:
+                                      "${widget.courierData['destination_addresses'][0]['address']}",
+
+                                  title: Provider.of<ZLanguage>(
+                                    context,
+                                    listen: false,
+                                  ).deliveryAddress,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Text(
+                    //   // "Reciver Info",
+                    //   Provider.of<ZLanguage>(
+                    //     context,
+                    //     listen: false,
+                    //   ).deliveryDetails,
+                    //   style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                    //     color: kBlackColor,
+                    //     fontWeight: FontWeight.bold,
+                    //     fontSize: getProportionateScreenHeight(17),
+                    //   ),
+                    // ),
+                    // SizedBox(
+                    //   height: getProportionateScreenHeight(
+                    //     kDefaultPadding * 1.5,
+                    //   ),
+                    // ),
+                    // Row(
+                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    //   children: [
+                    //     Flexible(
+                    //       child: OrderStatusRow(
+                    //         icon: HeroiconsOutline.user,
+                    //         value:
+                    //             "${widget.courierData['destination_addresses'][0]['user_details']['name']}",
+                    //         title: "Reciver",
+                    //       ),
+                    //     ),
+                    //     Flexible(
+                    //       child: OrderStatusRow(
+                    //         icon: HeroiconsOutline.phone,
+                    //         value:
+                    //             "${Provider.of<ZMetaData>(context, listen: false).areaCode}  ${widget.courierData['destination_addresses'][0]['user_details']['phone']}",
+                    //         title: Provider.of<ZLanguage>(
+                    //           context,
+                    //           listen: false,
+                    //         ).receiverPhone,
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
+                    // SizedBox(
+                    //   height: getProportionateScreenHeight(kDefaultPadding),
+                    // ),
+
+                    // Row(
+                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    //   children: [
+                    //     Flexible(
+                    //       child: OrderStatusRow(
+                    //         icon: HeroiconsOutline.mapPin,
+                    //         value:
+                    //             "${widget.courierData['pickup_addresses'][0]['address']}",
+                    //         // "${Service.capitalizeFirstLetters(widget.courierData['store_name'])}",
+                    //         title: "Pickup Address",
+                    //       ),
+                    //     ),
+                    //     Flexible(
+                    //       child: OrderStatusRow(
+                    //         icon: HeroiconsOutline.mapPin,
+                    //         value:
+                    //             "${widget.courierData['destination_addresses'][0]['address']}",
+                    //         title: Provider.of<ZLanguage>(
+                    //           context,
+                    //           listen: false,
+                    //         ).deliveryAddress,
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
+                    // SizedBox(
+                    //   height: getProportionateScreenHeight(kDefaultPadding),
+                    // ),
+                    // OrderStatusRow(
+                    //   icon: HeroiconsOutline.bars3BottomLeft,
+                    //   value:
+                    //       widget.courierData['destination_addresses'][0]['note'] !=
+                    //           ''
+                    //       ? widget
+                    //             .courierData['destination_addresses'][0]['note']
+                    //       : "No descroption",
+                    //   title: "Item Description",
+                    // ),
+                  ],
+                ),
               ),
-              SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
-              OrderStatusRow(
-                icon: HeroiconsOutline.bars3BottomLeft,
-                value:
-                    widget.courierData['destination_addresses'][0]['note'] != ''
-                    ? widget.courierData['destination_addresses'][0]['note']
-                    : "No descroption",
-                title: "Item Description",
-              ),
 
-              ///user detail
-
-              /////confirmation/ item detail
-
-              //////location
-
-              // Container(
-              //   padding: EdgeInsets.symmetric(
-              //       vertical: getProportionateScreenHeight(kDefaultPadding)),
-              //   width: double.infinity,
-              //   decoration: BoxDecoration(
-              //     color: kPrimaryColor,
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       Center(
-              //         child: Text(
-              //           "PICKUP ADDRESS",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kGreyColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(
-              //           height:
-              //               getProportionateScreenHeight(kDefaultPadding / 3)),
-              //       Center(
-              //         child: Text(
-              //           "${widget.courierData['pickup_addresses'][0]['address']}",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kBlackColor,
-              //             fontWeight: FontWeight.bold,
-              //           ),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // Container(
-              //   padding: EdgeInsets.symmetric(
-              //       vertical: getProportionateScreenHeight(kDefaultPadding)),
-              //   width: double.infinity,
-              //   decoration: BoxDecoration(
-              //     color: kSecondaryColor,
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       Center(
-              //         child: Text(
-              //           "DELIVERY ADDRESS",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kBlackColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(
-              //           height:
-              //               getProportionateScreenHeight(kDefaultPadding / 3)),
-              //       Center(
-              //         child: Text(
-              //           "${widget.courierData['destination_addresses'][0]['address']}",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kPrimaryColor,
-              //             fontWeight: FontWeight.bold,
-              //           ),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // Container(
-              //   padding: EdgeInsets.symmetric(
-              //       vertical: getProportionateScreenHeight(kDefaultPadding)),
-              //   width: double.infinity,
-              //   decoration: BoxDecoration(
-              //     color: kPrimaryColor,
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       Center(
-              //         child: Text(
-              //           "RECEIVER",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kGreyColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(
-              //           height:
-              //               getProportionateScreenHeight(kDefaultPadding / 3)),
-              //       Center(
-              //         child: Text(
-              //           "${widget.courierData['destination_addresses'][0]['user_details']['name']}",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kBlackColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // Container(
-              //   padding: EdgeInsets.symmetric(
-              //       vertical: getProportionateScreenHeight(kDefaultPadding)),
-              //   width: double.infinity,
-              //   decoration: BoxDecoration(
-              //     color: kSecondaryColor,
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       Center(
-              //         child: Text(
-              //           "RECEIVER PHONE",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kBlackColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(
-              //           height:
-              //               getProportionateScreenHeight(kDefaultPadding / 3)),
-              //       Center(
-              //         child: Text(
-              //           "+251 ${widget.courierData['destination_addresses'][0]['user_details']['phone']}",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kPrimaryColor,
-              //             fontWeight: FontWeight.bold,
-              //           ),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // Container(
-              //   padding: EdgeInsets.symmetric(
-              //       vertical: getProportionateScreenHeight(kDefaultPadding)),
-              //   width: double.infinity,
-              //   decoration: BoxDecoration(
-              //     color: kPrimaryColor,
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       Center(
-              //         child: Text(
-              //           "CONFIRMATION CODE",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kGreyColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(
-              //           height:
-              //               getProportionateScreenHeight(kDefaultPadding / 3)),
-              //       Center(
-              //         child: Text(
-              //           "${widget.courierData['confirmation_code_for_complete_delivery']}",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kBlackColor,
-              //             fontWeight: FontWeight.bold,
-              //           ),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // Container(
-              //   padding: EdgeInsets.symmetric(
-              //       vertical: getProportionateScreenHeight(kDefaultPadding)),
-              //   width: double.infinity,
-              //   decoration: BoxDecoration(
-              //     color: kSecondaryColor,
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       Center(
-              //         child: Text(
-              //           "ITEM DESCRIPTION",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kBlackColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(
-              //           height:
-              //               getProportionateScreenHeight(kDefaultPadding / 3)),
-              //       Center(
-              //         child: Text(
-              //           "${widget.courierData['destination_addresses'][0]['note']}",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kPrimaryColor,
-              //             fontWeight: FontWeight.bold,
-              //           ),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // Container(
-              //   padding: EdgeInsets.symmetric(
-              //       vertical: getProportionateScreenHeight(kDefaultPadding)),
-              //   width: double.infinity,
-              //   decoration: BoxDecoration(
-              //     color: kPrimaryColor,
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       Center(
-              //         child: Text(
-              //           "STATUS",
-              //           textAlign: TextAlign.center,
-              //           style: TextStyle(
-              //             color: kGreyColor,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(
-              //           height:
-              //               getProportionateScreenHeight(kDefaultPadding / 3)),
-              //       Center(
-              //         child: widget.courierData['delivery_status'] != null &&
-              //                 widget.courierData['order_status'] == 7
-              //             ? Text(
-              //                 "${order_status['${widget.courierData['delivery_status']}']}",
-              //                 textAlign: TextAlign.center,
-              //                 style: TextStyle(
-              //                   color: kBlackColor,
-              //                   fontWeight: FontWeight.bold,
-              //                 ),
-              //               )
-              //             : Text(
-              //                 "Pending...",
-              //                 textAlign: TextAlign.center,
-              //                 style: TextStyle(
-              //                   color: kBlackColor,
-              //                   fontWeight: FontWeight.bold,
-              //                 ),
-              //               ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              //             SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
-              //             Center(
-              //               child: Column(
-              //                 children: [
-              //                   Text(
-              //                     "Total",
-              //                     style: TextStyle(
-              //                       fontSize:
-              //                           getProportionateScreenWidth(kDefaultPadding * .7),
-              //                     ),
-              //                   ),
-              //                   SizedBox(
-              //                       height:
-              //                           getProportionateScreenHeight(kDefaultPadding / 3)),
-              //                   Text(
-              //                     "${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.courierData['total_order_price'].toStringAsFixed(2)}",
-              //                     style: Theme.of(context)
-              //                         .textTheme
-              //                         .headlineSmall
-              //                         ?.copyWith(fontWeight: FontWeight.bold),
-              //                   ),
-              //                 ],
-              //               ),
-              //             ),
-              // //            Text("
-              // //            ${widget.courierData
-              // //            ['order_status'] ==
-              // //                7
-              // //                ? "${order_status['${widget.courierData['delivery_status']}']}"
-              // //                : "${order_status['${widget.courierData['order_status']}']},"}),
-              // SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 2)),
               Spacer(),
               orderStatus != null &&
                       orderStatus['provider_id'] != null &&
@@ -714,11 +633,10 @@ class _CourierDetailState extends State<CourierDetail> {
               setState(() {
                 this._loading = false;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Something went wrong!"),
-                  backgroundColor: kSecondaryColor,
-                ),
+              Service.showMessage(
+                context: context,
+                title: "Something went wrong!",
+                error: true,
               );
               throw TimeoutException("The connection has timed out!");
             },
@@ -733,89 +651,202 @@ class _CourierDetailState extends State<CourierDetail> {
       setState(() {
         this._loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Your internet connection is bad!"),
-          backgroundColor: kSecondaryColor,
-        ),
+      Service.showMessage(
+        error: true,
+        context: context,
+        title: "Your internet connection is bad!",
       );
       return null;
     }
   }
 
   void _showDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      backgroundColor: kPrimaryColor,
+      isScrollControlled: true,
+      showDragHandle: true,
+      constraints: BoxConstraints(
+        minHeight: MediaQuery.sizeOf(context).height * 0.40,
+        maxHeight: MediaQuery.sizeOf(context).height * 1.0,
+      ),
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: kPrimaryColor,
-          title: Text("Keep Order"),
-          content: Text("Are you sure you want to cancel?"),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                "Think about it!",
-                style: TextStyle(
-                  color: kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom:
+                MediaQuery.of(context).viewInsets.bottom + kDefaultPadding / 2,
+          ),
+          child: SafeArea(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: kPrimaryColor,
+                borderRadius: BorderRadius.circular(kDefaultPadding),
               ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text("Sure", style: TextStyle(color: kBlackColor)),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showCancelDialog();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionateScreenWidth(kDefaultPadding),
+                vertical: getProportionateScreenHeight(kDefaultPadding),
+              ).copyWith(top: 0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: getProportionateScreenHeight(kDefaultPadding / 2),
+                children: <Widget>[
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        spacing: getProportionateScreenWidth(
+                          kDefaultPadding / 2,
+                        ),
+                        children: [
+                          Text(
+                            "Cancel Order?",
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: kBlackColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Icon(
+                            color: kBlackColor,
+                            HeroiconsOutline.faceFrown,
+                            size: getProportionateScreenHeight(24),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(
+                          color: kBlackColor,
+                          HeroiconsOutline.xCircle,
+                          size: getProportionateScreenHeight(24),
+                        ),
+                      ),
+                    ],
+                  ),
 
-  void _showCancelDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: kPrimaryColor,
-          title: Text("Reason ☹"),
-          content: TextField(
-            style: TextStyle(color: kBlackColor),
-            keyboardType: TextInputType.text,
-            onChanged: (val) {
-              reason = val;
-            },
-            decoration: textFieldInputDecorator.copyWith(
-              labelText: "Reason",
-              hintText: "$reason",
+                  Text("Are you sure you want to cancel the order?"),
+
+                  // Reason field
+                  Container(
+                    constraints: BoxConstraints(minHeight: 120),
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: kGreyColor.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: TextField(
+                      style: TextStyle(color: kBlackColor),
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      onChanged: (val) {
+                        reason = val;
+                      },
+                      decoration: InputDecoration.collapsed(
+                        hintText: "$reason",
+                        hintStyle: TextStyle(color: kGreyColor),
+                      ),
+                    ),
+                  ),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      // Cancel → money goes to wallet
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _userCancelOrder();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: kBlackColor,
+                            backgroundColor: kWhiteColor,
+                            side: const BorderSide(color: Colors.white24),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // SizedBox(width: getProportionateScreenWidth(12)),
+
+                      // // Refund → OTP flow
+                      // Expanded(
+                      //   child: ElevatedButton(
+                      //     onPressed: () {
+                      //       Navigator.of(context).pop();
+                      //       _onRefundTap();
+                      //     },
+                      //     style: ElevatedButton.styleFrom(
+                      //       elevation: 0,
+                      //       foregroundColor: kSecondaryColor,
+                      //       backgroundColor: kPrimaryColor,
+                      //       side: BorderSide(
+                      //         color: kSecondaryColor.withValues(alpha: 0.4),
+                      //       ),
+                      //       padding: const EdgeInsets.symmetric(vertical: 14),
+                      //       shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(12),
+                      //       ),
+                      //     ),
+                      //     child: const Text(
+                      //       "Refund",
+                      //       style: TextStyle(
+                      //         fontWeight: FontWeight.w600,
+                      //         fontSize: 15,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                      SizedBox(
+                        width: getProportionateScreenHeight(kDefaultPadding),
+                      ),
+
+                      // Keep It
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            foregroundColor: Colors.white,
+                            backgroundColor: kSecondaryColor,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Keep It",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                "Think about it!",
-                style: TextStyle(
-                  color: kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text("Sure", style: TextStyle(color: kBlackColor)),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _userCancelOrder();
-              },
-            ),
-          ],
         );
       },
     );
@@ -850,11 +881,10 @@ class _CourierDetailState extends State<CourierDetail> {
               setState(() {
                 this._loading = false;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Something went wrong!"),
-                  backgroundColor: kSecondaryColor,
-                ),
+              Service.showMessage(
+                context: context,
+                title: "Something went wrong!",
+                error: true,
               );
               throw TimeoutException("The connection has timed out!");
             },
@@ -868,11 +898,10 @@ class _CourierDetailState extends State<CourierDetail> {
       setState(() {
         this._loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Your internet connection is bad!"),
-          backgroundColor: kSecondaryColor,
-        ),
+      Service.showMessage(
+        context: context,
+        title: "Your internet connection is bad!",
+        error: true,
       );
       return null;
     }
@@ -920,3 +949,82 @@ class _CourierDetailState extends State<CourierDetail> {
     }
   }
 }
+
+
+  // void _showDialogOld() {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         backgroundColor: kPrimaryColor,
+  //         title: Text("Keep Order"),
+  //         content: Text("Are you sure you want to cancel?"),
+  //         actions: <Widget>[
+  //           TextButton(
+  //             child: Text(
+  //               "Think about it!",
+  //               style: TextStyle(
+  //                 color: kSecondaryColor,
+  //                 fontWeight: FontWeight.bold,
+  //               ),
+  //             ),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //           ),
+  //           TextButton(
+  //             child: Text("Sure", style: TextStyle(color: kBlackColor)),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //               _showCancelDialog();
+  //             },
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+
+  // void _showCancelDialog() {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         backgroundColor: kPrimaryColor,
+  //         title: Text("Reason ☹"),
+  //         content: TextField(
+  //           style: TextStyle(color: kBlackColor),
+  //           keyboardType: TextInputType.text,
+  //           onChanged: (val) {
+  //             reason = val;
+  //           },
+  //           decoration: textFieldInputDecorator.copyWith(
+  //             labelText: "Reason",
+  //             hintText: "$reason",
+  //           ),
+  //         ),
+  //         actions: <Widget>[
+  //           TextButton(
+  //             child: Text(
+  //               "Think about it!",
+  //               style: TextStyle(
+  //                 color: kSecondaryColor,
+  //                 fontWeight: FontWeight.bold,
+  //               ),
+  //             ),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //           ),
+  //           TextButton(
+  //             child: Text("Sure", style: TextStyle(color: kBlackColor)),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //               _userCancelOrder();
+  //             },
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }

@@ -18,7 +18,9 @@ import 'package:zmall/utils/constants.dart';
 class Service {
   // Secure storage instance for sensitive data
   static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    // aOptions: AndroidOptions(
+      // encryptedSharedPreferences: true
+      // ),
   );
 
   // Keys for biometric authentication
@@ -34,10 +36,10 @@ class Service {
   }
 
   static void showMessage({
-    required BuildContext context,
-    String? title,
     bool? error,
+    String? title,
     int duration = 2,
+    required BuildContext context,
   }) {
     // Check if the context is still mounted and valid before showing SnackBar
     if (!context.mounted) {

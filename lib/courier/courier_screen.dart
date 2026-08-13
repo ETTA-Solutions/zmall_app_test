@@ -206,7 +206,7 @@ class _CourierScreenState extends State<CourierScreen> {
           minimum: EdgeInsets.only(
             left: getProportionateScreenWidth(kDefaultPadding),
             right: getProportionateScreenWidth(kDefaultPadding),
-            bottom: getProportionateScreenHeight(kDefaultPadding / 2),
+            bottom: getProportionateScreenHeight(kDefaultPadding),
           ),
           child: CustomButton(
             title: "Continue",
@@ -271,16 +271,21 @@ class _CourierScreenState extends State<CourierScreen> {
                     children: [
                       Container(
                         height:
-                            size.height * 0.22 -
+                            size.height * 0.2 -
                             getProportionateScreenHeight(kDefaultPadding),
-                        padding: EdgeInsets.symmetric(
-                          vertical: getProportionateScreenHeight(
-                            kDefaultPadding / 2,
-                          ),
-                          horizontal: getProportionateScreenWidth(
-                            kDefaultPadding,
-                          ),
-                        ),
+                        padding:
+                            EdgeInsets.symmetric(
+                              // vertical: getProportionateScreenHeight(
+                              //   kDefaultPadding / 2,
+                              // ),
+                              horizontal: getProportionateScreenWidth(
+                                kDefaultPadding,
+                              ),
+                            ).copyWith(
+                              bottom: getProportionateScreenHeight(
+                                kDefaultPadding / 2,
+                              ),
+                            ),
                         decoration: BoxDecoration(
                           color: kSecondaryColor,
                           borderRadius: BorderRadius.only(

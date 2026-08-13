@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:zmall/orders/components/address_timeline.dart';
+import 'package:zmall/orders/components/order_info_row.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/location/components/provider_location.dart';
@@ -15,6 +17,10 @@ import 'package:zmall/widgets/order_status_row.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/orders/components/category_container.dart';
+//
+import 'package:zmall/borsa/refund/refund_confirmation_dialog.dart';
+import 'package:zmall/borsa/refund/refund_otp_sheet.dart';
+import 'package:zmall/borsa/refund/refund_service.dart';
 
 class OrderDetail extends StatefulWidget {
   const OrderDetail({
@@ -22,10 +28,14 @@ class OrderDetail extends StatefulWidget {
     required this.order,
     required this.userId,
     required this.serverToken,
+    //
+    required this.userPhone,
   });
 
   final order;
   final String userId, serverToken;
+  //
+  final String userPhone;
 
   @override
   _OrderDetailState createState() => _OrderDetailState();
@@ -45,6 +55,69 @@ class _OrderDetailState extends State<OrderDetail> {
     _getOrderStatus();
   }
 
+  //
+  // Future<void> _forceLogout() async {
+  //   await Service.saveBool('logged', false);
+  //   await Service.remove('user');
+  //   if (!mounted) return;
+  //   Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+  // }
+
+  // void _onRefundTap() {
+  //   final meta = Provider.of<ZMetaData>(context, listen: false);
+
+  //   // Build a transaction-like object from the order
+  //   // so the existing RefundService / OTP sheet can work with it.
+  //   final transaction = {
+  //     'unique_id': widget.order['unique_id'] ?? widget.order['_id'],
+  //     'from_amount': (widget.order['total_order_price'] as num).toDouble(),
+  //     'can_refund': true,
+  //     'is_refunded': false,
+  //     'wallet_description': 'Order Refund #${widget.order['unique_id']}',
+  //     // add any extra fields your RefundService expects
+  //   };
+
+  //   final service = RefundService(
+  //     userId: widget.userId,
+  //     phone: widget.userPhone,
+  //     context: context,
+  //   );
+
+  //   RefundOtpSheet.show(
+  //     context: context,
+  //     transaction: transaction,
+  //     service: service,
+  //     currency: meta.currency,
+  //     onVerified: (result) {
+  //       if (!mounted) return;
+
+  //       RefundConfirmationDialog.show(
+  //         context: this.context,
+  //         verifyResult: result,
+  //         transaction: transaction,
+  //         service: service,
+  //         currency: meta.currency,
+  //         onSuccess: () {
+  //           Service.showMessage(
+  //             context: context,
+  //             title: "Refund processed successfully!",
+  //             error: false,
+  //             duration: 5,
+  //           );
+  //           // Optionally refresh order status or pop the screen
+  //           if (mounted) {
+  //             _getOrderStatus(); // refresh
+  //             // or Navigator.of(context).pop();
+  //           }
+  //         },
+  //         onForceLogout: _forceLogout,
+  //       );
+  //     },
+  //     onForceLogout: _forceLogout,
+  //   );
+  // }
+
+  //
   void _getOrderStatus() async {
     var data = await getOrderStatus();
     if (data != null && data['success']) {
@@ -139,11 +212,10 @@ class _OrderDetailState extends State<OrderDetail> {
       setState(() {
         _loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${errorCodes['${data['error_code']}']}"),
-          backgroundColor: kSecondaryColor,
-        ),
+      Service.showMessage(
+        error: true,
+        context: context,
+        title: "${errorCodes['${data['error_code']}']}",
       );
     }
   }
@@ -171,26 +243,22 @@ class _OrderDetailState extends State<OrderDetail> {
                     ),
                     height: 24,
                     width: 2,
-                    color: isCompleted ? kSecondaryColor : kGreyColor,
+                    color: isCompleted ? kSecondaryColor : kWhiteColor,
                   ),
                 Container(
-                  width: getProportionateScreenWidth(20),
-                  height: getProportionateScreenHeight(20),
+                  width: getProportionateScreenWidth(18),
+                  height: getProportionateScreenHeight(18),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isCompleted
-                        ? kSecondaryColor
-                        : kGreyColor.withValues(alpha: 0.6),
-                    border: Border.all(
-                      color: isCompleted
-                          ? kSecondaryColor
-                          : kGreyColor.withValues(alpha: 0.6),
-                      width: 1,
-                    ),
+                    color: isCompleted ? kSecondaryColor : kWhiteColor,
+                    border: Border.all(color: kWhiteColor, width: 1),
                   ),
+
                   child: Icon(
-                    isCompleted ? Icons.check : Icons.circle,
-                    color: Colors.white,
+                    isCompleted
+                        ? HeroiconsSolid.check
+                        : HeroiconsSolid.minusCircle,
+                    color: kPrimaryColor,
                     size: getProportionateScreenHeight(kDefaultPadding),
                   ),
                 ),
@@ -240,7 +308,7 @@ class _OrderDetailState extends State<OrderDetail> {
               Column(
                 children: [
                   Tab(
-                    icon: Icon(Icons.delivery_dining, color: kSecondaryColor),
+                    icon: Icon(HeroiconsOutline.truck, color: kSecondaryColor),
                   ),
                   Text("Order Status", style: TextStyle(color: kBlackColor)),
                 ],
@@ -262,356 +330,486 @@ class _OrderDetailState extends State<OrderDetail> {
         body: TabBarView(
           children: [
             //////Order status Tab section/////
-            SafeArea(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ////order price section///
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          vertical: getProportionateScreenHeight(
-                            kDefaultPadding,
-                          ),
-                          horizontal: getProportionateScreenWidth(
-                            kDefaultPadding,
-                          ),
-                        ),
-                        margin: EdgeInsets.symmetric(
-                          vertical: getProportionateScreenHeight(
-                            kDefaultPadding / 2,
-                          ),
-                          horizontal: getProportionateScreenWidth(
-                            kDefaultPadding,
-                          ),
-                        ),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: kPrimaryColor,
-                          border: Border.all(color: kWhiteColor),
-                          borderRadius: BorderRadius.circular(
-                            getProportionateScreenWidth(kDefaultPadding / 1.5),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: getProportionateScreenHeight(
-                            kDefaultPadding,
-                          ),
-                          children: [
-                            Text(
-                              Provider.of<ZLanguage>(
-                                context,
-                                listen: false,
-                              ).orderDetails,
-                              style: Theme.of(context).textTheme.titleLarge!
-                                  .copyWith(
-                                    color: kBlackColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: getProportionateScreenHeight(17),
-                                  ),
+            SingleChildScrollView(
+              child: SafeArea(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ////order price section///
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: getProportionateScreenHeight(
+                              kDefaultPadding,
                             ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: OrderStatusRow(
-                                    icon: HeroiconsOutline.banknotes,
-                                    value:
-                                        "${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.order['total_order_price'].toStringAsFixed(2)}",
-                                    title: Provider.of<ZLanguage>(
-                                      context,
-                                      listen: false,
-                                    ).totalOrderPrice,
-                                  ),
-                                ),
-                                Flexible(
-                                  child: OrderStatusRow(
-                                    icon: HeroiconsOutline.hashtag,
-                                    value: "${widget.order['unique_id']}",
-                                    title: "Order ID",
+                            horizontal: getProportionateScreenWidth(
+                              kDefaultPadding,
+                            ),
+                          ),
+                          margin: EdgeInsets.symmetric(
+                            vertical: getProportionateScreenHeight(
+                              kDefaultPadding / 2,
+                            ),
+                            horizontal: getProportionateScreenWidth(
+                              kDefaultPadding,
+                            ),
+                          ),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: kPrimaryColor,
+                            border: Border.all(color: kWhiteColor),
+                            borderRadius: BorderRadius.circular(
+                              getProportionateScreenWidth(
+                                kDefaultPadding / 1.5,
+                              ),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            spacing: getProportionateScreenHeight(
+                              kDefaultPadding,
+                            ),
+                            children: [
+                              OrderStatusRow(
+                                icon: HeroiconsOutline.documentText,
+                                value: Provider.of<ZLanguage>(
+                                  context,
+                                  listen: false,
+                                ).orderDetails,
+                                title: "Pricing, and order information",
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  // vertical: getProportionateScreenHeight(
+                                  //   kDefaultPadding,
+                                  // ),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding / 2,
                                   ),
                                 ),
-                              ],
-                            ),
-                            OrderStatusRow(
-                              icon: HeroiconsOutline.mapPin,
-                              value:
-                                  "${widget.order['destination_addresses'][0]['address']}",
-                              title: Provider.of<ZLanguage>(
-                                context,
-                                listen: false,
-                              ).deliveryAddress,
-                            ),
-                            OrderStatusRow(
-                              icon: HeroiconsOutline.buildingStorefront,
-                              value:
-                                  "${Service.capitalizeFirstLetters(widget.order['store_name'])}",
-                              title: "Store",
-                            ),
-                          ],
+                                child: Column(
+                                  spacing: getProportionateScreenWidth(
+                                    kDefaultPadding / 2,
+                                  ),
+                                  children: [
+                                    OrderInfoRow(
+                                      label: "Order ID",
+                                      value: "${widget.order['unique_id']}",
+                                    ),
+                                    OrderInfoRow(
+                                      label: Provider.of<ZLanguage>(
+                                        context,
+                                        listen: false,
+                                      ).totalOrderPrice,
+
+                                      value:
+                                          "${widget.order['total_order_price'].toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                                    ),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: kWhiteColor.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          kDefaultPadding,
+                                        ),
+                                      ),
+
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: getProportionateScreenHeight(
+                                          kDefaultPadding / 2,
+                                        ),
+                                        horizontal: getProportionateScreenWidth(
+                                          kDefaultPadding / 2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          AddressTimelineNode(
+                                            isLast: false,
+                                            isPickup: true,
+                                            title: "Pickup Address",
+                                            address:
+                                                "${Service.capitalizeFirstLetters(widget.order['store_name'])}",
+                                          ),
+
+                                          AddressTimelineNode(
+                                            isLast: true,
+                                            isPickup: false,
+                                            address:
+                                                "${widget.order['destination_addresses'][0]['address']}",
+
+                                            title: Provider.of<ZLanguage>(
+                                              context,
+                                              listen: false,
+                                            ).deliveryAddress,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Text(
+                              //   Provider.of<ZLanguage>(
+                              //     context,
+                              //     listen: false,
+                              //   ).orderDetails,
+                              //   style: Theme.of(context).textTheme.titleLarge!
+                              //       .copyWith(
+                              //         color: kBlackColor,
+                              //         fontWeight: FontWeight.bold,
+                              //         fontSize: getProportionateScreenHeight(17),
+                              //       ),
+                              // ),
+                              // Row(
+                              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              //   children: [
+                              //     Flexible(
+                              //       child: OrderStatusRow(
+                              //         icon: HeroiconsOutline.banknotes,
+                              //         value:
+                              //             "${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.order['total_order_price'].toStringAsFixed(2)}",
+                              // title: Provider.of<ZLanguage>(
+                              //   context,
+                              //   listen: false,
+                              // ).totalOrderPrice,
+                              //       ),
+                              //     ),
+                              //     Flexible(
+                              //       child: OrderStatusRow(
+                              //         icon: HeroiconsOutline.hashtag,
+                              //         value: "${widget.order['unique_id']}",
+                              //         title: "Order ID",
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
+
+                              // OrderStatusRow(
+                              //   icon: HeroiconsOutline.mapPin,
+                              //   value:
+                              //       "${widget.order['destination_addresses'][0]['address']}",
+                              //   title: Provider.of<ZLanguage>(
+                              //     context,
+                              //     listen: false,
+                              //   ).deliveryAddress,
+                              // ),
+                              // OrderStatusRow(
+                              //   icon: HeroiconsOutline.buildingStorefront,
+                              //   value:
+                              //       "${Service.capitalizeFirstLetters(widget.order['store_name'])}",
+                              //   title: "Store",
+                              // ),
+                            ],
+                          ),
                         ),
+
+                        orderStatus['order_status'] != 25 &&
+                                orderStatus['delivery_status'] != null &&
+                                orderStatus['delivery_status'] < 100
+                            ? Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: getProportionateScreenHeight(
+                                    kDefaultPadding,
+                                  ),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
+                                ),
+                                margin: EdgeInsets.symmetric(
+                                  vertical: getProportionateScreenHeight(
+                                    kDefaultPadding / 2,
+                                  ),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
+                                ),
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: kPrimaryColor,
+                                  border: Border.all(color: kWhiteColor),
+                                  borderRadius: BorderRadius.circular(
+                                    getProportionateScreenWidth(
+                                      kDefaultPadding / 1.5,
+                                    ),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.04,
+                                      ),
+                                      blurRadius: 24,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    OrderStatusRow(
+                                      icon: HeroiconsOutline.clock,
+                                      value: "Order Status",
+                                      title:
+                                          "Track the current status of your order",
+                                    ),
+                                    // Text(
+                                    //   "Order Status",
+                                    //   style: Theme.of(context)
+                                    //       .textTheme
+                                    //       .titleLarge!
+                                    //       .copyWith(
+                                    //         color: kBlackColor,
+                                    //         fontWeight: FontWeight.bold,
+                                    //         fontSize:
+                                    //             getProportionateScreenHeight(17),
+                                    //       ),
+                                    // ),
+                                    SizedBox(
+                                      height: getProportionateScreenHeight(
+                                        kDefaultPadding * 1.2,
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: getProportionateScreenWidth(
+                                          kDefaultPadding / 2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          // Order status timeline nodes
+                                          _buildTimelineNode(
+                                            isCompleted:
+                                                orderStatus['order_status'] >=
+                                                1,
+                                            title: "${order_status['1']}",
+                                            isLast: false,
+                                          ),
+
+                                          _buildTimelineNode(
+                                            isCompleted:
+                                                orderStatus['order_status'] >=
+                                                3,
+                                            title: "${order_status['3']}",
+                                            isLast: false,
+                                          ),
+
+                                          _buildTimelineNode(
+                                            isCompleted:
+                                                orderStatus['order_status'] >=
+                                                5,
+                                            title: "${order_status['5']}",
+                                            isLast: false,
+                                          ),
+
+                                          _buildTimelineNode(
+                                            isCompleted:
+                                                orderStatus['order_status'] >=
+                                                7,
+                                            title: "${order_status['7']}",
+                                            isLast:
+                                                widget
+                                                    .order['destination_addresses'][0]['address']
+                                                    .toString()
+                                                    .toLowerCase() ==
+                                                "user pickup",
+                                          ),
+                                          // Delivery status timeline nodes
+                                          if (widget
+                                                  .order['destination_addresses'][0]['address']
+                                                  .toString()
+                                                  .toLowerCase() !=
+                                              "user pickup")
+                                            Column(
+                                              children: [
+                                                _buildTimelineNode(
+                                                  isCompleted:
+                                                      orderStatus['delivery_status'] >=
+                                                      19,
+                                                  title:
+                                                      "${order_status['19']}",
+                                                  isLast: false,
+                                                ),
+                                                _buildTimelineNode(
+                                                  isCompleted:
+                                                      orderStatus['delivery_status'] >=
+                                                      23,
+                                                  title:
+                                                      "${order_status['23']}",
+                                                  isLast: true,
+                                                ),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: getProportionateScreenHeight(
+                                    kDefaultPadding,
+                                  ),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
+                                ),
+                                width: double.infinity,
+                                decoration: BoxDecoration(color: kPrimaryColor),
+                                child: _buildTimelineNode(
+                                  isCompleted: true,
+                                  title:
+                                      "${order_status['${orderStatus['order_status']}']}",
+                                  isLast: true,
+                                ),
+                              ),
+                        orderStatus['order_status'] != 25 &&
+                                orderStatus['delivery_status'] != null &&
+                                orderStatus['delivery_status'] > 100
+                            ? Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: getProportionateScreenHeight(
+                                    kDefaultPadding,
+                                  ),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
+                                ),
+                                margin: EdgeInsets.symmetric(
+                                  vertical: getProportionateScreenHeight(
+                                    kDefaultPadding / 2,
+                                  ),
+                                  horizontal: getProportionateScreenWidth(
+                                    kDefaultPadding,
+                                  ),
+                                ),
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: kPrimaryColor,
+                                  border: Border.all(color: kWhiteColor),
+                                  borderRadius: BorderRadius.circular(
+                                    getProportionateScreenWidth(
+                                      kDefaultPadding / 1.5,
+                                    ),
+                                  ),
+                                ),
+                                child: _buildTimelineNode(
+                                  isCompleted: true,
+                                  title:
+                                      "${order_status['${orderStatus['delivery_status']}']}",
+                                  isLast: true,
+                                ),
+                              )
+                            : Container(),
+                      ],
+                    ),
+                    Container(
+                      margin: EdgeInsets.only(
+                        top: getProportionateScreenHeight(kDefaultPadding),
                       ),
-
-                      orderStatus['order_status'] != 25 &&
-                              orderStatus['delivery_status'] != null &&
-                              orderStatus['delivery_status'] < 100
-                          ? Container(
-                              padding: EdgeInsets.symmetric(
-                                vertical: getProportionateScreenHeight(
-                                  kDefaultPadding,
-                                ),
-                                horizontal: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              margin: EdgeInsets.symmetric(
-                                vertical: getProportionateScreenHeight(
-                                  kDefaultPadding / 2,
-                                ),
-                                horizontal: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: kPrimaryColor,
-                                border: Border.all(color: kWhiteColor),
-                                borderRadius: BorderRadius.circular(
-                                  getProportionateScreenWidth(
-                                    kDefaultPadding / 1.5,
+                      child: Column(
+                        children: [
+                          orderStatus['order_status'] == 3
+                              ? TextButton(
+                                  onPressed: () {
+                                    _showDialog();
+                                  },
+                                  child: Text(
+                                    "Cancel Order",
+                                    style: TextStyle(color: kBlackColor),
                                   ),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Order Status",
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge!
-                                        .copyWith(
+                                )
+                              : Container(),
+                          orderStatus != null &&
+                                  orderStatus['provider_id'] != null &&
+                                  orderStatus['order_status'] != 25 &&
+                                  orderStatus['delivery_status'] != null &&
+                                  orderStatus['delivery_status'] >= 17 &&
+                                  orderStatus['delivery_status'] < 25
+                              ? Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: getProportionateScreenHeight(
+                                      kDefaultPadding,
+                                    ),
+                                    left: getProportionateScreenWidth(
+                                      kDefaultPadding,
+                                    ),
+                                    right: getProportionateScreenWidth(
+                                      kDefaultPadding,
+                                    ),
+                                  ),
+                                  child: CustomButton(
+                                    title: "Track My Order",
+                                    press: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) {
+                                            return ProviderLocation(
+                                              providerId:
+                                                  orderStatus['provider_id'],
+                                              providerImage:
+                                                  orderStatus['provider_image'],
+                                              providerName:
+                                                  orderStatus['provider_first_name'],
+                                              providerPhone:
+                                                  orderStatus['provider_phone'],
+                                              destLat:
+                                                  orderStatus['destination_addresses'][0]['location'][0],
+                                              destLong:
+                                                  orderStatus['destination_addresses'][0]['location'][1],
+                                              userId: widget.userId,
+                                              serverToken: widget.serverToken,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    },
+                                    color: kSecondaryColor,
+                                  ),
+                                )
+                              : Container(),
+                          orderStatus['order_status'] == 25
+                              ? Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: getProportionateScreenHeight(
+                                      kDefaultPadding,
+                                    ),
+                                    left: getProportionateScreenWidth(
+                                      kDefaultPadding,
+                                    ),
+                                    right: getProportionateScreenWidth(
+                                      kDefaultPadding,
+                                    ),
+                                  ),
+                                  child: _loading
+                                      ? Container()
+                                      : CustomButton(
+                                          title: "SUBMIT",
+                                          press: () {
+                                            _showInvoice();
+                                          },
                                           color: kBlackColor,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize:
-                                              getProportionateScreenHeight(17),
                                         ),
-                                  ),
-                                  SizedBox(
-                                    height: getProportionateScreenHeight(
-                                      kDefaultPadding * 1.2,
-                                    ),
-                                  ),
-                                  // Order status timeline nodes
-                                  _buildTimelineNode(
-                                    isCompleted:
-                                        orderStatus['order_status'] >= 1,
-                                    title: "${order_status['1']}",
-                                    isLast: false,
-                                  ),
-
-                                  _buildTimelineNode(
-                                    isCompleted:
-                                        orderStatus['order_status'] >= 3,
-                                    title: "${order_status['3']}",
-                                    isLast: false,
-                                  ),
-
-                                  _buildTimelineNode(
-                                    isCompleted:
-                                        orderStatus['order_status'] >= 5,
-                                    title: "${order_status['5']}",
-                                    isLast: false,
-                                  ),
-
-                                  _buildTimelineNode(
-                                    isCompleted:
-                                        orderStatus['order_status'] >= 7,
-                                    title: "${order_status['7']}",
-                                    isLast:
-                                        widget
-                                            .order['destination_addresses'][0]['address']
-                                            .toString()
-                                            .toLowerCase() ==
-                                        "user pickup",
-                                  ),
-                                  // Delivery status timeline nodes
-                                  if (widget
-                                          .order['destination_addresses'][0]['address']
-                                          .toString()
-                                          .toLowerCase() !=
-                                      "user pickup")
-                                    Column(
-                                      children: [
-                                        _buildTimelineNode(
-                                          isCompleted:
-                                              orderStatus['delivery_status'] >=
-                                              19,
-                                          title: "${order_status['19']}",
-                                          isLast: false,
-                                        ),
-                                        _buildTimelineNode(
-                                          isCompleted:
-                                              orderStatus['delivery_status'] >=
-                                              23,
-                                          title: "${order_status['23']}",
-                                          isLast: true,
-                                        ),
-                                      ],
-                                    ),
-                                ],
-                              ),
-                            )
-                          : Container(
-                              padding: EdgeInsets.symmetric(
-                                vertical: getProportionateScreenHeight(
-                                  kDefaultPadding,
-                                ),
-                                horizontal: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              width: double.infinity,
-                              decoration: BoxDecoration(color: kPrimaryColor),
-                              child: _buildTimelineNode(
-                                isCompleted: true,
-                                title:
-                                    "${order_status['${orderStatus['order_status']}']}",
-                                isLast: true,
-                              ),
-                            ),
-                      orderStatus['order_status'] != 25 &&
-                              orderStatus['delivery_status'] != null &&
-                              orderStatus['delivery_status'] > 100
-                          ? Container(
-                              padding: EdgeInsets.symmetric(
-                                vertical: getProportionateScreenHeight(
-                                  kDefaultPadding,
-                                ),
-                                horizontal: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              margin: EdgeInsets.symmetric(
-                                vertical: getProportionateScreenHeight(
-                                  kDefaultPadding / 2,
-                                ),
-                                horizontal: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: kPrimaryColor,
-                                border: Border.all(color: kWhiteColor),
-                                borderRadius: BorderRadius.circular(
-                                  getProportionateScreenWidth(
-                                    kDefaultPadding / 1.5,
-                                  ),
-                                ),
-                              ),
-                              child: _buildTimelineNode(
-                                isCompleted: true,
-                                title:
-                                    "${order_status['${orderStatus['delivery_status']}']}",
-                                isLast: true,
-                              ),
-                            )
-                          : Container(),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      orderStatus['order_status'] == 3
-                          ? TextButton(
-                              onPressed: () {
-                                _showDialog();
-                              },
-                              child: Text(
-                                "Cancel Order",
-                                style: TextStyle(color: kBlackColor),
-                              ),
-                            )
-                          : Container(),
-                      orderStatus != null &&
-                              orderStatus['provider_id'] != null &&
-                              orderStatus['order_status'] != 25 &&
-                              orderStatus['delivery_status'] != null &&
-                              orderStatus['delivery_status'] >= 17 &&
-                              orderStatus['delivery_status'] < 25
-                          ? Padding(
-                              padding: EdgeInsets.only(
-                                bottom: getProportionateScreenHeight(
-                                  kDefaultPadding,
-                                ),
-                                left: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                                right: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              child: CustomButton(
-                                title: "Track My Order",
-                                press: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return ProviderLocation(
-                                          providerId:
-                                              orderStatus['provider_id'],
-                                          providerImage:
-                                              orderStatus['provider_image'],
-                                          providerName:
-                                              orderStatus['provider_first_name'],
-                                          providerPhone:
-                                              orderStatus['provider_phone'],
-                                          destLat:
-                                              orderStatus['destination_addresses'][0]['location'][0],
-                                          destLong:
-                                              orderStatus['destination_addresses'][0]['location'][1],
-                                          userId: widget.userId,
-                                          serverToken: widget.serverToken,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                },
-                                color: kSecondaryColor,
-                              ),
-                            )
-                          : Container(),
-                      orderStatus['order_status'] == 25
-                          ? Padding(
-                              padding: EdgeInsets.only(
-                                bottom: getProportionateScreenHeight(
-                                  kDefaultPadding,
-                                ),
-                                left: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                                right: getProportionateScreenWidth(
-                                  kDefaultPadding,
-                                ),
-                              ),
-                              child: _loading
-                                  ? Container()
-                                  : CustomButton(
-                                      title: "SUBMIT",
-                                      press: () {
-                                        _showInvoice();
-                                      },
-                                      color: kBlackColor,
-                                    ),
-                            )
-                          : Container(),
-                    ],
-                  ),
-                ],
+                                )
+                              : Container(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -834,12 +1032,17 @@ class _OrderDetailState extends State<OrderDetail> {
     showModalBottomSheet(
       context: context,
       backgroundColor: kPrimaryColor,
+      isScrollControlled: true,
+      showDragHandle: true,
+      constraints: BoxConstraints(
+        minHeight: MediaQuery.sizeOf(context).height * 0.40,
+        maxHeight: MediaQuery.sizeOf(context).height * 1.0,
+      ),
       builder: (BuildContext context) {
         return Padding(
           padding: EdgeInsets.only(
             bottom:
-                MediaQuery.of(context).viewInsets.bottom +
-                kDefaultPadding, // Adjust for keyboard
+                MediaQuery.of(context).viewInsets.bottom + kDefaultPadding / 2,
           ),
           child: SafeArea(
             child: Container(
@@ -851,12 +1054,13 @@ class _OrderDetailState extends State<OrderDetail> {
               padding: EdgeInsets.symmetric(
                 horizontal: getProportionateScreenWidth(kDefaultPadding),
                 vertical: getProportionateScreenHeight(kDefaultPadding),
-              ),
+              ).copyWith(top: 0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: getProportionateScreenHeight(kDefaultPadding / 2),
                 children: <Widget>[
+                  // Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -890,7 +1094,10 @@ class _OrderDetailState extends State<OrderDetail> {
                       ),
                     ],
                   ),
+
                   Text("Are you sure you want to cancel the order?"),
+
+                  // Reason field
                   Container(
                     constraints: BoxConstraints(minHeight: 120),
                     padding: EdgeInsets.all(12),
@@ -914,59 +1121,93 @@ class _OrderDetailState extends State<OrderDetail> {
                       ),
                     ),
                   ),
+
+                  // Action buttons
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton(
-                        child: Row(
-                          spacing: getProportionateScreenWidth(
-                            kDefaultPadding / 2,
+                      // Cancel → money goes to wallet
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _userCancelOrder();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: kBlackColor,
+                            backgroundColor: kWhiteColor,
+                            side: const BorderSide(color: Colors.white24),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          children: [
-                            Text(
-                              "Sure",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: kBlackColor,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
                             ),
-                            Icon(
-                              color: kGreyColor,
-                              HeroiconsOutline.faceFrown,
-                              size: getProportionateScreenHeight(24),
-                            ),
-                          ],
+                          ),
                         ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _userCancelOrder();
-                        },
                       ),
-                      TextButton(
-                        child: Row(
-                          spacing: getProportionateScreenWidth(
-                            kDefaultPadding / 2,
+
+                      // SizedBox(width: getProportionateScreenWidth(12)),
+
+                      // // Refund → OTP flow
+                      // Expanded(
+                      //   child: ElevatedButton(
+                      //     onPressed: () {
+                      //       Navigator.of(context).pop();
+                      //       _onRefundTap();
+                      //     },
+                      //     style: ElevatedButton.styleFrom(
+                      //       elevation: 0,
+                      //       foregroundColor: kSecondaryColor,
+                      //       backgroundColor: kPrimaryColor,
+                      //       side: BorderSide(
+                      //         color: kSecondaryColor.withValues(alpha: 0.4),
+                      //       ),
+                      //       padding: const EdgeInsets.symmetric(vertical: 14),
+                      //       shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(12),
+                      //       ),
+                      //     ),
+                      //     child: const Text(
+                      //       "Refund",
+                      //       style: TextStyle(
+                      //         fontWeight: FontWeight.w600,
+                      //         fontSize: 15,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                      SizedBox(
+                        width: getProportionateScreenHeight(kDefaultPadding),
+                      ),
+
+                      // Keep It
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            foregroundColor: Colors.white,
+                            backgroundColor: kSecondaryColor,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          children: [
-                            Text(
-                              "Keep It",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: kSecondaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          child: const Text(
+                            "Keep It",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
                             ),
-                            Icon(
-                              color: kSecondaryColor,
-                              HeroiconsOutline.faceSmile,
-                              size: getProportionateScreenHeight(24),
-                            ),
-                          ],
+                          ),
                         ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
                       ),
                     ],
                   ),
@@ -1049,11 +1290,10 @@ class _OrderDetailState extends State<OrderDetail> {
               setState(() {
                 this._loading = false;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Something went wrong!"),
-                  backgroundColor: kSecondaryColor,
-                ),
+              Service.showMessage(
+                error: true,
+                context: context,
+                title: "Something went wrong!",
               );
               throw TimeoutException("The connection has timed out!");
             },
@@ -1068,11 +1308,10 @@ class _OrderDetailState extends State<OrderDetail> {
       setState(() {
         this._loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Your internet connection is bad!"),
-          backgroundColor: kSecondaryColor,
-        ),
+      Service.showMessage(
+        error: true,
+        context: context,
+        title: "Your internet connection is bad!",
       );
       return null;
     }
@@ -1108,11 +1347,10 @@ class _OrderDetailState extends State<OrderDetail> {
               setState(() {
                 this._loading = false;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Something went wrong!"),
-                  backgroundColor: kSecondaryColor,
-                ),
+              Service.showMessage(
+                error: true,
+                context: context,
+                title: "Something went wrong!",
               );
               throw TimeoutException("The connection has timed out!");
             },
@@ -1126,11 +1364,10 @@ class _OrderDetailState extends State<OrderDetail> {
       setState(() {
         this._loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Your internet connection is bad!"),
-          backgroundColor: kSecondaryColor,
-        ),
+      Service.showMessage(
+        error: true,
+        context: context,
+        title: "Your internet connection is bad!",
       );
       return null;
     }
@@ -1175,5 +1412,183 @@ class InfoContainer extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// void _showDialog() {
+//   showModalBottomSheet(
+//     context: context,
+//     backgroundColor: kPrimaryColor,
+//     builder: (BuildContext context) {
+//       return Padding(
+//         padding: EdgeInsets.only(
+//           bottom:
+//               MediaQuery.of(context).viewInsets.bottom +
+//               kDefaultPadding, // Adjust for keyboard
+//         ),
+//         child: SafeArea(
+//           child: Container(
+//             width: double.infinity,
+//             decoration: BoxDecoration(
+//               color: kPrimaryColor,
+//               borderRadius: BorderRadius.circular(kDefaultPadding),
+//             ),
+//             padding: EdgeInsets.symmetric(
+//               horizontal: getProportionateScreenWidth(kDefaultPadding),
+//               vertical: getProportionateScreenHeight(kDefaultPadding),
+//             ),
+//             child: Column(
+//               mainAxisSize: MainAxisSize.min,
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               spacing: getProportionateScreenHeight(kDefaultPadding / 2),
+//               children: <Widget>[
+//                 Row(
+//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                   children: [
+//                     Row(
+//                       spacing: getProportionateScreenWidth(
+//                         kDefaultPadding / 2,
+//                       ),
+//                       children: [
+//                         Text(
+//                           "Cancel Order?",
+//                           style: TextStyle(
+//                             fontSize: 18,
+//                             color: kBlackColor,
+//                             fontWeight: FontWeight.bold,
+//                           ),
+//                         ),
+//                         Icon(
+//                           color: kBlackColor,
+//                           HeroiconsOutline.faceFrown,
+//                           size: getProportionateScreenHeight(24),
+//                         ),
+//                       ],
+//                     ),
+//                     IconButton(
+//                       onPressed: () => Navigator.of(context).pop(),
+//                       icon: Icon(
+//                         color: kBlackColor,
+//                         HeroiconsOutline.xCircle,
+//                         size: getProportionateScreenHeight(24),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//                 Text("Are you sure you want to cancel the order?"),
+//                 Container(
+//                   constraints: BoxConstraints(minHeight: 120),
+//                   padding: EdgeInsets.all(12),
+//                   decoration: BoxDecoration(
+//                     color: Colors.white,
+//                     borderRadius: BorderRadius.circular(12),
+//                     border: Border.all(
+//                       color: kGreyColor.withValues(alpha: 0.2),
+//                     ),
+//                   ),
+//                   child: TextField(
+//                     style: TextStyle(color: kBlackColor),
+//                     maxLines: null,
+//                     keyboardType: TextInputType.multiline,
+//                     onChanged: (val) {
+//                       reason = val;
+//                     },
+//                     decoration: InputDecoration.collapsed(
+//                       hintText: "$reason",
+//                       hintStyle: TextStyle(color: kGreyColor),
+//                     ),
+//                   ),
+//                 ),
+//                 Row(
+//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                   children: [
+//                     TextButton(
+//                       child: Row(
+//                         spacing: getProportionateScreenWidth(
+//                           kDefaultPadding / 2,
+//                         ),
+//                         children: [
+//                           Text(
+//                             "Sure",
+//                             style: TextStyle(
+//                               fontSize: 14,
+//                               color: kBlackColor,
+//                               fontWeight: FontWeight.bold,
+//                             ),
+//                           ),
+//                           Icon(
+//                             color: kGreyColor,
+//                             HeroiconsOutline.faceFrown,
+//                             size: getProportionateScreenHeight(24),
+//                           ),
+//                         ],
+//                       ),
+//                       onPressed: () {
+//                         Navigator.of(context).pop();
+//                         _userCancelOrder();
+//                       },
+//                     ),
+//                     TextButton(
+//                       child: Row(
+//                         spacing: getProportionateScreenWidth(
+//                           kDefaultPadding / 2,
+//                         ),
+//                         children: [
+//                           Text(
+//                             "Keep It",
+//                             style: TextStyle(
+//                               fontSize: 16,
+//                               color: kSecondaryColor,
+//                               fontWeight: FontWeight.bold,
+//                             ),
+//                           ),
+//                           Icon(
+//                             color: kSecondaryColor,
+//                             HeroiconsOutline.faceSmile,
+//                             size: getProportionateScreenHeight(24),
+//                           ),
+//                         ],
+//                       ),
+//                       onPressed: () {
+//                         Navigator.of(context).pop();
+//                       },
+//                     ),
+//                   ],
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       );
+//     },
+//   );
+// }
+class DashedLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = kSecondaryColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    const dashHeight = 5.0;
+    const gap = 5.0;
+
+    double y = 0;
+
+    while (y < size.height) {
+      canvas.drawLine(
+        Offset(size.width / 2, y),
+        Offset(size.width / 2, y + dashHeight),
+        paint,
+      );
+
+      y += dashHeight + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }

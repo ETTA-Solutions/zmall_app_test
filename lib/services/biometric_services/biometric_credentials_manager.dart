@@ -5,9 +5,9 @@ import 'package:zmall/models/biometric_credential.dart';
 /// Manages multiple saved biometric credentials
 class BiometricCredentialsManager {
   static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
+    // aOptions: AndroidOptions(
+    //   // encryptedSharedPreferences: true,
+    // ),
   );
 
   static const String _savedAccountsKey = 'saved_biometric_accounts';

@@ -40,7 +40,7 @@ android {
     namespace = "com.enigma.zmall"
     ndkVersion =  "29.0.14206865" //"29.0.14033849"//
     // ndkVersion = "29.0.14206865" //"29.0.13113456 rc1"
-    compileSdk = 36
+    compileSdk = 37
     // ndkVersion = "29.0.13113456"  
     // flutter.compileSdkVersion
     // ndkVersion = flutter.ndkVersion

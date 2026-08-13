@@ -21,13 +21,13 @@ const BASE_URL_JUBA = "https://juba.zmallapp.com"; //Juba Production
 // Ethiopia production
 //  // const BASE_URL = "http://196.188.187.43:8000"; //new production
 
-// const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
+const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 
 //  // const BASE_URL_HTTP = "http://159.65.147.111:8000";
 
 // Ethiopia test
-// // const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
-//
+//  // const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
+//  // const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test.  the current test domain
 //  // Blen
 //  // const BASE_URL_TEST = "http://196.189.124.132:8000"; //test (blen)
 //  // const new_test_zmall = "http://196.189.126.150:8002"; // new test blen
@@ -36,17 +36,16 @@ const BASE_URL_JUBA = "https://juba.zmallapp.com"; //Juba Production
 // const BASE_URL = BASE_URL_HTTP;
 // const BASE_URL = kDebugMode ? BASE_URL_TEST : BASE_URL_PROD;
 //
-// const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test.  the current test domain
-const BASE_URL_TEST =
-    "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
+
+// const BASE_URL_TEST ="https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
-const BASE_URL = BASE_URL_TEST;
-// const BASE_URL = BASE_URL_PROD;
+// const BASE_URL = BASE_URL_TEST;
+const BASE_URL = BASE_URL_PROD;
 
 //
 String appName = "ZMall";
 String appUpdatedAt = "";
-String appVersion = "3.2.8";
+String appVersion = "3.2.10";
 String appBuildNumber = "";
 const kPrimaryColor = Colors.white;
 const kWhiteColor = Color(0xFFF3F4F8);

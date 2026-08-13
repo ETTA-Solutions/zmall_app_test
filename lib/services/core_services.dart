@@ -789,4 +789,63 @@ class CoreServices {
       return null;
     }
   }
+
+  // get tarnsactions History Details
+  static Future<dynamic> transactionHistoryDetails({
+    bool isLoadMore = false,
+    required String userId,
+    required int adminType,
+    required String serverToken,
+    required int page,
+    required int pageLimit,
+    required BuildContext context,
+  }) async {
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/admin/get_wallet_history_new";
+    Map data = {
+      "id": userId,
+      "type": adminType,
+      "server_token": serverToken,
+      "page": page,
+      "limit": pageLimit,
+    };
+    var body = json.encode(data);
+
+    // debugPrint('### [WALLET_HISTORY] REQUEST page=$page, limit=$_pageLimit');
+    // debugPrint('### [WALLET_HISTORY] URL: $url');
+    // debugPrint('### [WALLET_HISTORY] BODY: $body');
+
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            Duration(seconds: 10),
+            onTimeout: () {
+              Service.showMessage(
+                context: context,
+                title: "Network error",
+                error: true,
+              );
+
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+
+      // debugPrint( '### [WALLET_HISTORY] RESPONSE (page $page): ${json.decode(response.body)}', );
+
+      // debugPrint('### [WALLET_HISTORY] items received: ${newItems.length}, hasMore: ${newItems.length >= _pageLimit}');
+
+      return json.decode(response.body);
+    } catch (e) {
+      // debugPrint('### [WALLET_HISTORY] ERROR: $e');
+      return null;
+    }
+  }
 }

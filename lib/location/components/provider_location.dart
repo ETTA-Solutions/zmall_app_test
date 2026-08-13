@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:zmall/services/url_launcher_service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/utils/size_config.dart';
@@ -50,7 +49,6 @@ class _ProviderLocationState extends State<ProviderLocation> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     initialLocation = CameraPosition(
       target: LatLng(widget.destLat!, widget.destLong!),
@@ -72,9 +70,9 @@ class _ProviderLocationState extends State<ProviderLocation> {
     final Marker marker = Marker(
       markerId: MarkerId('user'),
       position: a,
-      icon: BitmapDescriptor.fromBytes(imageData),
+      icon: BitmapDescriptor.bytes(imageData),
       draggable: false,
-      zIndex: 1,
+      zIndexInt: 1,
       flat: true,
       anchor: Offset(0.5, 0.5),
     );
@@ -89,10 +87,10 @@ class _ProviderLocationState extends State<ProviderLocation> {
         markerId: MarkerId("provider"),
         position: latLng,
         draggable: false,
-        zIndex: 2,
+        zIndexInt: 2,
         flat: true,
         anchor: Offset(0.5, 0.5),
-        icon: BitmapDescriptor.fromBytes(imageData),
+        icon: BitmapDescriptor.bytes(imageData),
       );
     });
     setState(() {
@@ -121,17 +119,22 @@ class _ProviderLocationState extends State<ProviderLocation> {
         _controller.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
-              target: LatLng(location['provider_location'][0],
-                  location['provider_location'][1]),
+              target: LatLng(
+                location['provider_location'][0],
+                location['provider_location'][1],
+              ),
               tilt: 0,
               zoom: zoomLevel,
             ),
           ),
         );
-              updateMarkerAndCircle(
-            LatLng(location['provider_location'][0],
-                location['provider_location'][1]),
-            imageData);
+        updateMarkerAndCircle(
+          LatLng(
+            location['provider_location'][0],
+            location['provider_location'][1],
+          ),
+          imageData,
+        );
       }
       await Future.delayed(Duration(seconds: 6), () => getCurrentLocation());
     } on PlatformException {
@@ -149,77 +152,73 @@ class _ProviderLocationState extends State<ProviderLocation> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Order Tracker",
-          style: TextStyle(color: kBlackColor),
+        title: Text("Order Tracker", style: TextStyle(color: kBlackColor)),
+      ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: GoogleMap(
+                rotateGesturesEnabled: false,
+                compassEnabled: false,
+                myLocationButtonEnabled: false,
+                initialCameraPosition: initialLocation,
+                markers: Set<Marker>.of(markers.values),
+                onMapCreated: (GoogleMapController controller) {
+                  _controller = controller;
+                },
+              ),
+            ),
+            Container(
+              color: kPrimaryColor,
+              padding: EdgeInsets.symmetric(
+                vertical: getProportionateScreenHeight(kDefaultPadding),
+                horizontal: getProportionateScreenWidth(kDefaultPadding),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.providerName!,
+                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        "+251 ${widget.providerPhone}",
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.call, color: kSecondaryColor),
+                        onPressed: () async {
+                          await UrlLauncherService.makePhoneCall(
+                            "tel:+251${widget.providerPhone}",
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: GoogleMap(
-              rotateGesturesEnabled: false,
-              compassEnabled: false,
-              myLocationButtonEnabled: false,
-              initialCameraPosition: initialLocation,
-              markers: Set<Marker>.of(markers.values),
-              onMapCreated: (GoogleMapController controller) {
-                _controller = controller;
-              },
-            ),
-          ),
-          Container(
-            color: kPrimaryColor,
-            padding: EdgeInsets.symmetric(
-              vertical: getProportionateScreenHeight(kDefaultPadding),
-              horizontal: getProportionateScreenWidth(kDefaultPadding),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.providerName!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge!
-                      .copyWith(fontWeight: FontWeight.w500),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      "+251 ${widget.providerPhone}",
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.call,
-                        color: kSecondaryColor,
-                      ),
-                      onPressed: () {
-                        launch("tel:+251${widget.providerPhone}");
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
-          backgroundColor: kSecondaryColor,
-          child: Icon(
-            Icons.delivery_dining,
-            color: kPrimaryColor,
-            size: getProportionateScreenWidth(kDefaultPadding),
-          ),
-          onPressed: () {
-            getCurrentLocation();
-          }),
+        backgroundColor: kSecondaryColor,
+        child: Icon(
+          Icons.delivery_dining,
+          color: kPrimaryColor,
+          size: getProportionateScreenWidth(kDefaultPadding),
+        ),
+        onPressed: () {
+          getCurrentLocation();
+        },
+      ),
     );
   }
 
@@ -236,25 +235,25 @@ class _ProviderLocationState extends State<ProviderLocation> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Something went wrong!"),
-              backgroundColor: kSecondaryColor,
-            ),
+            Duration(seconds: 10),
+            onTimeout: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Something went wrong!"),
+                  backgroundColor: kSecondaryColor,
+                ),
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
           );
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
       setState(() {
         providerLocationData = json.decode(response.body);
       });
