@@ -219,6 +219,7 @@ class Item {
     this.price,
     this.itemName,
     this.imageURL,
+    this.odooProductId,
   });
 
   String? id;
@@ -228,6 +229,7 @@ class Item {
   double? price;
   String? itemName;
   String? imageURL;
+  int? odooProductId;
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
         id: json["_id"],
@@ -238,6 +240,7 @@ class Item {
         price: json["price"],
         itemName: json["item_name"],
         imageURL: json["image_url"],
+        odooProductId: json["odoo_product_id"],
       );
 
   Map<String, dynamic> toJson() => {
@@ -249,6 +252,7 @@ class Item {
         "price": price,
         "item_name": itemName,
         "image_url": imageURL,
+        "odoo_product_id": odooProductId,
       };
 }
 

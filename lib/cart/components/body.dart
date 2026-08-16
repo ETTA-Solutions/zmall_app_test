@@ -22,6 +22,7 @@ import 'package:zmall/models/metadata.dart';
 import 'package:zmall/notifications/notification_store.dart';
 import 'package:zmall/widgets/order_status_row.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/services/zmall_availability_service.dart';
 import 'package:zmall/utils/backend_logger.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/image_container.dart';
@@ -324,6 +325,72 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     return "0.00";
   }
 
+  Future<bool> _checkAvailability() async {
+    if (cart == null || cart!.items == null || cart!.items!.isEmpty) {
+      return true;
+    }
+
+    String branchSlug = kZmallBranchSlugs[cart!.storeId] ??
+        kZmallDefaultBranchSlug;
+
+    List<Map<String, dynamic>> products = [];
+    for (var item in cart!.items!) {
+      int? odooProductId =
+          item.odooProductId ?? int.tryParse(item.id ?? '');
+      if (odooProductId == null) {
+        continue;
+      }
+      products.add({
+        "product_id": odooProductId,
+        "quantity": item.quantity ?? 1,
+      });
+    }
+
+    if (products.isEmpty) {
+      return true;
+    }
+
+    var result = await ZmallAvailabilityService.check(
+      branchSlug: branchSlug,
+      products: products,
+    );
+
+    if (result == null) {
+      Service.showMessage(
+        context: context,
+        title:
+            "Could not verify item availability. Please check your connection and try again.",
+        error: true,
+      );
+      return false;
+    }
+
+    if (!result.success) {
+      Service.showMessage(
+        context: context,
+        title: result.error ?? "Availability check failed.",
+        error: true,
+      );
+      return false;
+    }
+
+    if (!result.canCheckout) {
+      var unavailable = result.unavailableProducts;
+      String message = unavailable.isEmpty
+          ? "Some items in your cart are not available right now."
+          : "Some items in your cart are out of stock. Please remove them and try again.";
+      Service.showMessage(
+        context: context,
+        title: message,
+        error: true,
+        duration: 3,
+      );
+      return false;
+    }
+
+    return true;
+  }
+
   void addToCart(item, destination, storeLocation, storeId) {
     cart = Cart(
       userId: userData['user']['_id'],
@@ -426,6 +493,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                   );
                                   _doLocationTask();
                                 } else {
+                                  if (!await _checkAvailability()) {
+                                    return;
+                                  }
                                   DateFormat dateFormat = new DateFormat.Hm();
                                   DateTime now = DateTime.now().toUtc().add(
                                     Duration(hours: 3),
@@ -1437,6 +1507,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                             0
                                         ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${extraItems[index]['image_url']}"
                                         : "https://ibb.co/vkhzjd6",
+                                    odooProductId:
+                                        extraItems[index]['odoo_product_id'],
                                   );
                                   // debugPrint('item... $item');
                                   StoreLocation storeLocation = StoreLocation(

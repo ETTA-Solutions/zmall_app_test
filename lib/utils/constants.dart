@@ -42,6 +42,24 @@ const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 // const BASE_URL = BASE_URL_TEST;
 const BASE_URL = BASE_URL_PROD;
 
+/// Zmall branch availability check (Odoo).
+/// This endpoint lives on the Odoo server, NOT the regular Zmall backend.
+const String kZmallOdooBaseUrl = "http://196.191.117.85:9070";
+
+/// JSON field on each item (from the store API) carrying the Odoo
+/// product.template id used by the availability endpoint.
+const String kZmallOdooProductIdField = "odoo_product_id";
+
+/// Fallback branch slug used when a store is not in [kZmallBranchSlugs].
+const String kZmallDefaultBranchSlug = "ayat";
+
+/// Maps Zmall store_id -> Odoo pos.config.zmall_branch_slug.
+/// Fill these in with the real store ids and their branch slugs.
+const Map<String, String> kZmallBranchSlugs = {
+  // "5b3f76f2022985030cd3a437": "ayat",
+  // "5b406b24d2ddf8062d11b787": "mexico",
+};
+
 //
 String appName = "ZMall";
 String appUpdatedAt = "";
