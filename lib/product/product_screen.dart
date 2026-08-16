@@ -567,6 +567,7 @@ class _ProductScreenState extends State<ProductScreen> {
       imageURL: item['image_url'] != null && item['image_url'].length > 0
           ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${item['image_url'][0]}"
           : "https://ibb.co/vkhzjd6",
+      odooProductId: item['odoo_product_id'],
     );
 
     final StoreLocation storeLocation = StoreLocation(

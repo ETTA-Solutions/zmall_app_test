@@ -322,6 +322,7 @@ class _NotificationStoreState extends State<NotificationStore> {
                                       item['image_url'].length > 0
                                   ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${item['image_url'][0]}"
                                   : "https://ibb.co/vkhzjd6",
+                              odooProductId: item['odoo_product_id'],
                             );
                             StoreLocation storeLocation = StoreLocation(
                               long: store['location'][1],
