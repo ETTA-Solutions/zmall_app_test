@@ -486,6 +486,12 @@ class Service {
       cart.items![existingItemIndex].quantity = newQuantity;
       cart.items![existingItemIndex].price = unitPrice * newQuantity;
 
+      // Backfill Odoo id when an older cart line was saved without one.
+      if (cart.items![existingItemIndex].odooProductId == null &&
+          newItem.odooProductId != null) {
+        cart.items![existingItemIndex].odooProductId = newItem.odooProductId;
+      }
+
       return true; // Item was merged
     } else {
       // Item not found - add as new
@@ -589,7 +595,8 @@ class Service {
   /// ```
   static Future<bool> isStoreOpen(var store) async {
     List<bool> result = await storeOpen([store]);
-    return result.isNotEmpty ? result[0] : false;
+    return true;
+    // return result.isNotEmpty ? result[0] : false;
   }
 
   /// Determine which stores are currently open based on their schedules (Pattern 2)
@@ -612,6 +619,10 @@ class Service {
   /// }
   /// ```
   static Future<List<bool>> storeOpen(List stores) async {
+    // BYPASS store closed-time check: treat every store as open so badges,
+    // list filtering, and ProductScreen add-to-cart never block on time.
+    return List<bool>.filled(stores.length, true);
+    // ignore: dead_code
     List<bool> isOpen = [];
     DateFormat dateFormat = DateFormat.Hm();
     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));

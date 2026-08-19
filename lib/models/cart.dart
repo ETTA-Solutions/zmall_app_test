@@ -118,7 +118,7 @@ class AbroadCart {
             ? null
             : DateTime.parse(json["schedule_start"]),
         isForOthers: json["delivery_for_other"],
-        isOpen: json['is_open'],
+        isOpen: true, // BYPASS store closed flag — was: json['is_open']
         isAbroad: json["is_abroad"],
         userName: json["username"],
         phone: json['phone'],
@@ -240,7 +240,9 @@ class Item {
         price: json["price"],
         itemName: json["item_name"],
         imageURL: json["image_url"],
-        odooProductId: json["odoo_product_id"],
+        odooProductId: parseOdooProductId(json['odoo_product_id']) ??
+            parseOdooProductId(json['pos_id']) ??
+            extractOdooProductId(json),
       );
 
   Map<String, dynamic> toJson() => {
@@ -253,7 +255,33 @@ class Item {
         "item_name": itemName,
         "image_url": imageURL,
         "odoo_product_id": odooProductId,
+        "pos_id": odooProductId,
       };
+}
+
+int? parseOdooProductId(dynamic raw) {
+  if (raw == null) return null;
+  if (raw is int) return raw;
+  final str = raw.toString().trim();
+  return int.tryParse(str);
+}
+
+int? extractOdooProductId(Map<String, dynamic>? map) {
+  if (map == null) return null;
+  for (final key in [
+    'odoo_product_id',
+    'odoo_id',
+    'pos_product_id',
+    'template_id',
+    'product_template_id',
+    'odooProductId',
+    'pos_id',
+  ]) {
+    final val = map[key];
+    final parsed = parseOdooProductId(val);
+    if (parsed != null) return parsed;
+  }
+  return null;
 }
 
 class Specification {

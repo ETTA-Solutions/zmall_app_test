@@ -27,7 +27,8 @@ const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 
 // Ethiopia test
 //  // const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
-//  // const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test.  the current test domain
+const BASE_URL_TEST =
+    "https://testapp.zmall.et"; //Etih new test.  the current test domain
 //  // Blen
 //  // const BASE_URL_TEST = "http://196.189.124.132:8000"; //test (blen)
 //  // const new_test_zmall = "http://196.189.126.150:8002"; // new test blen
@@ -40,7 +41,7 @@ const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 // const BASE_URL_TEST ="https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
 // const BASE_URL = BASE_URL_TEST;
-const BASE_URL = BASE_URL_PROD;
+const BASE_URL = BASE_URL_TEST;
 
 /// Zmall branch availability check (Odoo).
 /// This endpoint lives on the Odoo server, NOT the regular Zmall backend.
@@ -50,15 +51,22 @@ const String kZmallOdooBaseUrl = "http://196.191.117.85:9070";
 /// product.template id used by the availability endpoint.
 const String kZmallOdooProductIdField = "odoo_product_id";
 
-/// Fallback branch slug used when a store is not in [kZmallBranchSlugs].
-const String kZmallDefaultBranchSlug = "ayat";
-
 /// Maps Zmall store_id -> Odoo pos.config.zmall_branch_slug.
 /// Fill these in with the real store ids and their branch slugs.
 const Map<String, String> kZmallBranchSlugs = {
-  // "5b3f76f2022985030cd3a437": "ayat",
-  // "5b406b24d2ddf8062d11b787": "mexico",
+  "5b3f76f2022985030cd3a437": "ayat",
+  "5b406b24d2ddf8062d11b787": "mexico",
+  "6a6b0c4a56bef41124383ca2": "mexico",
 };
+
+/// Resolves the Odoo branch slug for a Zmall store, or null if not POS-linked.
+String? zmallBranchSlugForStore(String? storeId) {
+  if (storeId == null || storeId.isEmpty) return null;
+  return kZmallBranchSlugs[storeId.trim()];
+}
+
+bool isOdooAvailabilityStore(String? storeId) =>
+    zmallBranchSlugForStore(storeId) != null;
 
 //
 String appName = "ZMall";

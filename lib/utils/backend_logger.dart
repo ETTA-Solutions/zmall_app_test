@@ -11,26 +11,28 @@ class BackendLogger {
     Object? body,
   }) {
     if (!_isEnabled) return;
-    // debugPrintSynchronously('[BACKEND] [$method] $url');
-    // if (headers != null) {
-    //   debugPrintSynchronously('[BACKEND] headers: ${_safeText(headers)}');
-    // }
-    // if (body != null) {
-    //   debugPrintSynchronously('[BACKEND] body: ${_safeText(body)}');
-    // }
+    debugPrintSynchronously('[BACKEND] [$method] $url');
+    if (headers != null) {
+      debugPrintSynchronously('[BACKEND] headers: ${_safeText(headers)}');
+    }
+    if (body != null) {
+      debugPrintSynchronously('[BACKEND] body: ${_safeText(body)}');
+    }
   }
 
   static void response({
     required String method,
     required String url,
     required int statusCode,
+    Duration? duration,
     Object? body,
   }) {
     if (!_isEnabled) return;
-    // debugPrintSynchronously('[BACKEND] [$method] $url -> $statusCode');
-    // if (body != null) {
-    //   debugPrintSynchronously('[BACKEND] response: ${_safeText(body)}');
-    // }
+    final elapsed = duration == null ? '' : ' (${duration.inMilliseconds} ms)';
+    debugPrintSynchronously('[BACKEND] [$method] $url -> $statusCode$elapsed');
+    if (body != null) {
+      debugPrintSynchronously('[BACKEND] response: ${_safeText(body)}');
+    }
   }
 
   static void error({
@@ -39,7 +41,7 @@ class BackendLogger {
     required Object error,
   }) {
     if (!_isEnabled) return;
-    // debugPrintSynchronously('[BACKEND] [$method] $url -> ERROR: $error');
+    debugPrintSynchronously('[BACKEND] [$method] $url -> ERROR: $error');
   }
 
   static String _safeText(Object value) {

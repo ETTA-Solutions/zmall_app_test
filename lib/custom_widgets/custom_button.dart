@@ -12,6 +12,7 @@ class CustomButton extends StatelessWidget {
     this.isLoading,
     this.titleColor,
     this.borderColor,
+    this.enabled = true,
   });
   final Widget? child;
   final String title;
@@ -19,15 +20,22 @@ class CustomButton extends StatelessWidget {
   final bool? isLoading;
   final Color? titleColor;
   final Color? borderColor;
+  final bool enabled;
   final GestureTapCallback press;
 
   @override
   Widget build(BuildContext context) {
+    final Color buttonColor = !enabled
+        ? const Color(0xFFE0E0E0)
+        : (color ?? kSecondaryColor);
+    final Color textColor = !enabled
+        ? const Color(0xFF9E9E9E)
+        : (titleColor ?? kPrimaryColor);
     return Container(
       width: double.infinity,
       height: 50,
       decoration: BoxDecoration(
-        color: color ?? kSecondaryColor,
+        color: buttonColor,
         border: Border.all(color: borderColor ?? Colors.transparent),
         borderRadius: BorderRadius.circular(kDefaultPadding),
       ),
@@ -35,18 +43,18 @@ class CustomButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(kDefaultPadding),
-          onTap: press,
+          onTap: enabled ? press : null,
           child: Center(
             child: isLoading != null && isLoading!
                 ? Row(
                     spacing: kDefaultPadding / 2,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      loadingIndicator(size: 30, color: Colors.white),
+                      loadingIndicator(size: 30, color: textColor),
                       Text(
                         title,
                         style: TextStyle(
-                          color: titleColor ?? kPrimaryColor,
+                          color: textColor,
                           fontSize: getProportionateScreenWidth(
                               kDefaultPadding / 1.1),
                           fontWeight: FontWeight.bold,
@@ -58,7 +66,7 @@ class CustomButton extends StatelessWidget {
                 : Text(
                     title,
                     style: TextStyle(
-                      color: titleColor ?? kPrimaryColor,
+                      color: textColor,
                       fontSize:
                           getProportionateScreenWidth(kDefaultPadding / 1.1),
                       fontWeight: FontWeight.bold,

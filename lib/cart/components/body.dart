@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:fl_location/fl_location.dart';
 import 'package:flutter/material.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
@@ -27,6 +28,7 @@ import 'package:zmall/utils/backend_logger.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/image_container.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
+import 'package:zmall/widgets/stock_availability_dialog.dart';
 
 class Body extends StatefulWidget {
   @override
@@ -38,6 +40,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   Cart? cart;
   AliExpressCart? aliexpressCart;
   bool _loading = true;
+  bool _checkingAvailability = false;
+  bool _checkoutBlocked = false;
   double price = 0;
   var appClose;
   var appOpen;
@@ -93,7 +97,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           cart!.serverToken = userData['user']['server_token'];
           //walletBalance = double.parse(userData['user']['wallet'].toString());
           storeID = cart!.storeId!;
-          Service.save('cart', cart);
+          Service.save('cart', cart!.toJson());
         });
 
         // debugPrint("ALI CART>>> ${aliCart != null}");
@@ -109,6 +113,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         _getStoreExtraItemList();
 
         calculatePrice();
+        _refreshAvailability();
         if (cart != null && cart!.items!.isNotEmpty) {
           _getStoreDetail();
         } else {
@@ -330,14 +335,19 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       return true;
     }
 
-    String branchSlug = kZmallBranchSlugs[cart!.storeId] ??
-        kZmallDefaultBranchSlug;
+    final String? branchSlug = zmallBranchSlugForStore(cart!.storeId);
+    if (branchSlug == null) {
+      // Non-POS store — Odoo availability does not apply.
+      return true;
+    }
 
-    List<Map<String, dynamic>> products = [];
-    for (var item in cart!.items!) {
-      int? odooProductId =
-          item.odooProductId ?? int.tryParse(item.id ?? '');
+    final List<Map<String, dynamic>> products = [];
+    final List<Item> itemsMissingOdooId = [];
+
+    for (final item in cart!.items!) {
+      final int? odooProductId = item.odooProductId;
       if (odooProductId == null) {
+        itemsMissingOdooId.add(item);
         continue;
       }
       products.add({
@@ -346,11 +356,34 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       });
     }
 
+    if (itemsMissingOdooId.isNotEmpty) {
+      BackendLogger.error(
+        method: 'POST',
+        url: '$kZmallOdooBaseUrl/zmall_order/$branchSlug',
+        error:
+            'Missing odoo_product_id for: ${itemsMissingOdooId.map((i) => i.itemName ?? i.id).join(", ")}',
+      );
+      Service.showMessage(
+        context: context,
+        title:
+            "Some items are missing store inventory IDs. Remove them and add again from the product list.",
+        error: true,
+        duration: 4,
+      );
+      return false;
+    }
+
     if (products.isEmpty) {
       return true;
     }
 
-    var result = await ZmallAvailabilityService.check(
+    BackendLogger.request(
+      method: 'POST',
+      url: '$kZmallOdooBaseUrl/zmall_order/$branchSlug',
+      body: 'branch=$branchSlug storeId=${cart!.storeId} products=$products',
+    );
+
+    final result = await ZmallAvailabilityService.check(
       branchSlug: branchSlug,
       products: products,
     );
@@ -374,21 +407,147 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       return false;
     }
 
-    if (!result.canCheckout) {
-      var unavailable = result.unavailableProducts;
-      String message = unavailable.isEmpty
-          ? "Some items in your cart are not available right now."
-          : "Some items in your cart are out of stock. Please remove them and try again.";
-      Service.showMessage(
+    if (!result.canCheckout ||
+        result.products.any((p) => !p.isAvailableForRequestedQuantity)) {
+      await StockAvailabilityDialog.show(
         context: context,
-        title: message,
-        error: true,
-        duration: 3,
+        cartItems: cart!.items!,
+        availabilityResult: result,
+        onAdjustItem: _applyStockAdjustment,
+        onAdjustAll: () => _applyAllStockAdjustments(result),
       );
       return false;
     }
 
     return true;
+  }
+
+  /// Silent availability check that updates [_checkoutBlocked] so the
+  /// Checkout button can be locked while items are out of stock.
+  Future<void> _refreshAvailability() async {
+    if (!mounted) return;
+
+    final bool? available = await _isCartAvailable();
+    final bool block = available != null && !available;
+    if (!mounted) return;
+    if (_checkoutBlocked != block) {
+      setState(() => _checkoutBlocked = block);
+    }
+    _debugDumpCart(available);
+  }
+
+  /// Debug-only dump of everything the availability/lock logic depends on.
+  /// Run with `flutter run` (debug build) and read the [CART DEBUG] lines.
+  void _debugDumpCart(bool? available) {
+    if (!kDebugMode) return;
+    final StringBuffer sb = StringBuffer('\n===== CART DEBUG =====\n');
+    sb.writeln('storeId: ${cart?.storeId ?? 'null'} (trimmed: "${cart?.storeId?.trim() ?? ''}")');
+    final String? slug = zmallBranchSlugForStore(cart?.storeId);
+    sb.writeln('branchSlug: ${slug ?? 'null  <-- NOT MAPPED: availability check is SKIPPED, checkout stays open'}');
+    if (cart?.items != null && cart!.items!.isNotEmpty) {
+      sb.writeln('items:');
+      for (final item in cart!.items!) {
+        sb.writeln(
+          '  - ${item.itemName ?? '(no name)'} | qty=${item.quantity ?? 1} | odoo_product_id=${item.odooProductId ?? 'null  <-- cannot be checked'}',
+        );
+      }
+    } else {
+      sb.writeln('items: (empty)');
+    }
+    sb.writeln('availability: ${available == null ? 'UNKNOWN (network/server error -> not blocking)' : available ? 'available -> checkout UNLOCKED' : 'NOT available -> checkout LOCKED'}');
+    sb.writeln('_checkoutBlocked: $_checkoutBlocked');
+    sb.writeln('===== /CART DEBUG =====');
+    debugPrintSynchronously(sb.toString());
+  }
+
+  /// Core availability logic shared by the tap-time and auto checks.
+  /// Returns:
+  ///  - `true`   → all items available, checkout allowed
+  ///  - `false`  → checkout must be blocked (out of stock / missing IDs)
+  ///  - `null`   → could not verify (network/server error) — do not hard-block
+  Future<bool?> _isCartAvailable() async {
+    if (cart == null || cart!.items == null || cart!.items!.isEmpty) {
+      return true;
+    }
+
+    final String? branchSlug = zmallBranchSlugForStore(cart!.storeId);
+    if (branchSlug == null) {
+      // Non-POS store — Odoo availability does not apply.
+      return true;
+    }
+
+    final List<Map<String, dynamic>> products = [];
+    final List<Item> itemsMissingOdooId = [];
+
+    for (final item in cart!.items!) {
+      final int? odooProductId = item.odooProductId;
+      if (odooProductId == null) {
+        itemsMissingOdooId.add(item);
+        continue;
+      }
+      products.add({
+        "product_id": odooProductId,
+        "quantity": item.quantity ?? 1,
+      });
+    }
+
+    if (itemsMissingOdooId.isNotEmpty) {
+      return false;
+    }
+
+    if (products.isEmpty) {
+      return true;
+    }
+
+    final result = await ZmallAvailabilityService.check(
+      branchSlug: branchSlug,
+      products: products,
+    );
+
+    if (result == null || !result.success) {
+      // Could not verify — leave the button unlocked so the tap-time
+      // check can surface the connection/server error.
+      return null;
+    }
+
+    return result.canCheckout &&
+        result.products.every((p) => p.isAvailableForRequestedQuantity);
+  }
+
+  void _applyStockAdjustment(Item item, int maxAvailable) {
+    final int index = cart!.items!.indexOf(item);
+    if (index < 0 || maxAvailable <= 0) return;
+
+    final int currentQty = cart!.items![index].quantity ?? 1;
+    if (currentQty <= 0) return;
+
+    final double unitPrice = (cart!.items![index].price ?? 0) / currentQty;
+    setState(() {
+      cart!.items![index].quantity = maxAvailable;
+      cart!.items![index].price = unitPrice * maxAvailable;
+    });
+    Service.save('cart', cart!.toJson());
+    calculatePrice();
+    _refreshAvailability();
+  }
+
+  void _applyAllStockAdjustments(ZmallAvailabilityResult result) {
+    for (final item in cart!.items!) {
+      final int? odooId = item.odooProductId;
+      if (odooId == null) continue;
+
+      for (final product in result.products) {
+        if (product.productId == odooId &&
+            !product.isAvailableForRequestedQuantity) {
+          final double forecasted = product.forecastedQuantity ?? 0;
+          if (forecasted > 0) {
+            _applyStockAdjustment(item, forecasted.toInt());
+          }
+          break;
+        }
+      }
+    }
+    _refreshAvailability();
   }
 
   void addToCart(item, destination, storeLocation, storeId) {
@@ -476,8 +635,17 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                           ),
                           Expanded(
                             child: CustomButton(
-                              title: Provider.of<ZLanguage>(context).checkout,
-                              press: () async {
+                              title: _checkoutBlocked
+                                  ? "Out of stock"
+                                  : _checkingAvailability
+                                      ? "Checking stock..."
+                                      : Provider.of<ZLanguage>(
+                                          context,
+                                        ).checkout,
+                              enabled: !_checkoutBlocked,
+                              press: (_checkingAvailability || _checkoutBlocked)
+                                  ? () {}
+                                  : () async {
                                 //   if (isDonation && !isCheckout) {
                                 //   setState(() {
                                 //     isCheckout = !isCheckout;
@@ -493,8 +661,15 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                   );
                                   _doLocationTask();
                                 } else {
-                                  if (!await _checkAvailability()) {
-                                    return;
+                                  setState(() => _checkingAvailability = true);
+                                  try {
+                                    if (!await _checkAvailability()) {
+                                      return;
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => _checkingAvailability = false);
+                                    }
                                   }
                                   DateFormat dateFormat = new DateFormat.Hm();
                                   DateTime now = DateTime.now().toUtc().add(
@@ -533,8 +708,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                     zmallClose.minute,
                                   );
 
-                                  if (now.isAfter(zmallOpen) &&
-                                      now.isBefore(zmallClose)) {
+                                  // if (now.isAfter(zmallOpen) &&
+                                  //     now.isBefore(zmallClose)) {
+                                  if (true) {
                                     Navigator.pushNamed(
                                       context,
                                       DeliveryScreen.routeName,
@@ -818,7 +994,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                               (currQty - 1);
                                                           Service.save(
                                                             'cart',
-                                                            cart,
+                                                            cart!.toJson(),
                                                           );
                                                           if (aliexpressCart !=
                                                                   null &&
@@ -845,6 +1021,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                           }
                                                         });
                                                         calculatePrice();
+                                                        _refreshAvailability();
                                                       },
                                               ),
                                               Text(
@@ -872,7 +1049,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                     item.price =
                                                         unitPrice *
                                                         (currQty + 1);
-                                                    Service.save('cart', cart);
+                                                    Service.save('cart', cart!.toJson());
                                                     if (aliexpressCart !=
                                                             null &&
                                                         aliexpressCart!
@@ -897,6 +1074,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                     }
                                                   });
                                                   calculatePrice();
+                                                  _refreshAvailability();
                                                 },
                                               ),
                                             ],
@@ -905,7 +1083,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                             onTap: () {
                                               setState(() {
                                                 cart?.items?.removeAt(index);
-                                                Service.save('cart', cart);
+                                                Service.save('cart', cart!.toJson());
                                                 if (aliexpressCart != null &&
                                                     aliexpressCart!
                                                             .cart
@@ -924,6 +1102,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                 }
                                               });
                                               calculatePrice();
+                                              _refreshAvailability();
                                             },
                                             child: Text(
                                               Provider.of<ZLanguage>(
@@ -1508,7 +1687,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                         ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${extraItems[index]['image_url']}"
                                         : "https://ibb.co/vkhzjd6",
                                     odooProductId:
-                                        extraItems[index]['odoo_product_id'],
+                                        extractOdooProductId(extraItems[index]),
                                   );
                                   // debugPrint('item... $item');
                                   StoreLocation storeLocation = StoreLocation(
@@ -1534,17 +1713,12 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                     if (cart!.storeId! ==
                                         extraItems[index]['store_id']) {
                                       setState(() {
-                                        cart!.items!.add(item);
-                                        Service.save('cart', cart)
+                                        Service.addOrMergeCartItem(cart!, item);
+                                        Service.save('cart', cart!.toJson())
                                             .then((value) => calculatePrice())
-                                            // .then(
-                                            //   (value) => Service.showMessage(
-                                            //     context: context,
-                                            //     title: "Item added to cart",
-                                            //   ),
-                                            // )
                                             .then((value) => setState(() {}));
                                       });
+                                      _refreshAvailability();
                                     } else {
                                       _showDialog(
                                         item,

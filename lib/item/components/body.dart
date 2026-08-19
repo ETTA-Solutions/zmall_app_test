@@ -308,7 +308,7 @@ class _BodyState extends State<Body> {
                             imageURL: widget.item['image_url'].length > 0
                                 ? "$baseUrl/${widget.item['image_url'][0]}"
                                 : "https://ibb.co/vkhzjd6",
-                            odooProductId: widget.item['odoo_product_id'],
+                            odooProductId: extractOdooProductId(widget.item),
                           );
                           StoreLocation storeLocation = StoreLocation(
                             long: widget.location[1],
@@ -333,7 +333,7 @@ class _BodyState extends State<Body> {
                                 setState(() {
                                   // Use Service method to add or merge item
                                   Service.addOrMergeCartItem(cart!, item);
-                                  Service.save('cart', cart);
+                                  Service.save('cart', cart!.toJson());
                                   Navigator.of(context).pop();
                                 });
                               } else {

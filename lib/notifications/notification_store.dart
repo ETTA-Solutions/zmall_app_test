@@ -322,7 +322,7 @@ class _NotificationStoreState extends State<NotificationStore> {
                                       item['image_url'].length > 0
                                   ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${item['image_url'][0]}"
                                   : "https://ibb.co/vkhzjd6",
-                              odooProductId: item['odoo_product_id'],
+                              odooProductId: extractOdooProductId(item),
                             );
                             StoreLocation storeLocation = StoreLocation(
                               long: store['location'][1],
@@ -340,7 +340,7 @@ class _NotificationStoreState extends State<NotificationStore> {
                                 if (cart!.storeId == item['store_id']) {
                                   setState(() {
                                     Service.addOrMergeCartItem(cart!, cartItem);
-                                    Service.save('cart', cart);
+                                    Service.save('cart', cart!.toJson());
                                   });
                                   Service.showMessage(
                                     context: context,
@@ -486,8 +486,8 @@ class _NotificationStoreState extends State<NotificationStore> {
   // product list with pageination
   Future<dynamic> getStoreProductList({int page = 1}) async {
     var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_store_product_item_list_paginated";
-    Map data = {"store_id": widget.storeId, "page": page.toString()};
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/user_get_store_product_item_list";
+    Map data = {"store_id": widget.storeId};
     var body = json.encode(data);
     try {
       http.Response response = await http

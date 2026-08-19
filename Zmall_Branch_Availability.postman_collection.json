@@ -1,0 +1,338 @@
+{
+  "info": {
+    "name": "Zmall Branch Availability Check",
+    "_postman_id": "b7e2a6b1-9f2e-4f1a-8a9a-2b5f0c1d0e11",
+    "description": "POST /zmall_order/<branch_slug> -- branch-scoped forecasted inventory check for Zmall checkout. Branch is determined ONLY by the URL path segment, never by anything in the request body. See docs/superpowers/specs/2026-08-11-zmall-branch-availability-design.md for the full design.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8069", "type": "string" },
+    { "key": "branch_slug_a", "value": "ayat", "type": "string", "description": "Set this to whatever you set pos.config.zmall_branch_slug to for Branch A" },
+    { "key": "branch_slug_b", "value": "mexico", "type": "string", "description": "Set this to whatever you set pos.config.zmall_branch_slug to for Branch B" },
+    { "key": "product_id", "value": "101", "type": "string", "description": "A product.template id that exists in your database and is available_in_pos" },
+    { "key": "unknown_product_id", "value": "999999999", "type": "string" },
+    { "key": "unknown_branch_slug", "value": "does-not-exist", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Happy path",
+      "item": [
+        {
+          "name": "Check availability - Branch A",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": 5 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. success=true, branch={{branch_slug_a}}, one product result with forecasted_quantity reflecting ONLY this branch's stock."
+          },
+          "response": []
+        },
+        {
+          "name": "Check availability - Branch B (same product, should differ)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": 5 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_b}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_b}}"]
+            },
+            "description": "Expect 200. Compare forecasted_quantity against the Branch A response for the SAME product_id -- they must be independent (this is the whole point of the feature)."
+          },
+          "response": []
+        },
+        {
+          "name": "Multiple products, mixed availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": 1 },\n    { \"product_id\": {{product_id}}, \"quantity\": 999999 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. First item likely available:true, second (absurdly high qty) available:false, so can_checkout should be false overall."
+          },
+          "response": []
+        },
+        {
+          "name": "Empty cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. products=[], can_checkout=true (nothing to block on)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Per-item error handling (still 200)",
+      "item": [
+        {
+          "name": "Unknown product_id",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{unknown_product_id}}, \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. That item: available=false, error=\"product not found\". Request does NOT hard-fail."
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid quantity - zero",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": 0 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. available=false, error=\"invalid quantity\"."
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid quantity - negative",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": -3 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. available=false, error=\"invalid quantity\"."
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid quantity - non-numeric string",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": \"abc\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. available=false, error=\"invalid quantity\"."
+          },
+          "response": []
+        },
+        {
+          "name": "Missing quantity field",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}} }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 200. available=false, error=\"invalid quantity\"."
+          },
+          "response": []
+        },
+        {
+          "name": "Boolean quantity (JSON true)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": true }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Regression check: in Python, bool is a subclass of int, so True could silently be treated as quantity=1 if not explicitly excluded. Expect 200, available=false, error=\"invalid quantity\"."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Top-level errors",
+      "item": [
+        {
+          "name": "Unknown branch slug (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{unknown_branch_slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{unknown_branch_slug}}"]
+            },
+            "description": "Expect 404. Body: {\"success\": false, \"error\": \"Unknown Zmall branch '...'\"}"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid JSON body (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{not valid json"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 400. Body: {\"success\": false, \"error\": \"Invalid JSON payload: ...\"}"
+          },
+          "response": []
+        },
+        {
+          "name": "Branch misconfigured - no warehouse (503)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "Expect 503 ONLY if you've temporarily cleared warehouse_id on this branch's pos.config to test the misconfiguration path. Body: {\"success\": false, \"error\": \"Zmall branch '...' is misconfigured: no warehouse set.\"}. Restore warehouse_id afterward -- this is a destructive test setup, not a normal request."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "skip_inventory_check behavior",
+      "item": [
+        {
+          "name": "skip_inventory_check enabled - everything available",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{product_id}}, \"quantity\": 999999 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "First enable Skip Inventory Validation on this branch's pos.config in Odoo Settings. Expect 200, available=true, forecasted_quantity=-1 (sentinel meaning 'not checked') even for an absurd quantity."
+          },
+          "response": []
+        },
+        {
+          "name": "skip_inventory_check enabled - unknown product still flagged",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"products\": [\n    { \"product_id\": {{unknown_product_id}}, \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/zmall_order/{{branch_slug_a}}",
+              "host": ["{{base_url}}"],
+              "path": ["zmall_order", "{{branch_slug_a}}"]
+            },
+            "description": "With skip_inventory_check still enabled on this branch. Expect 200, available=false, error=\"product not found\" -- skip_inventory_check bypasses the STOCK check, not product-existence validation."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

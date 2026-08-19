@@ -585,9 +585,8 @@ class _GlobalProductState extends State<GlobalProduct> {
   // product list with pagination
   Future<dynamic> getStoreProductList({int page = 1}) async {
     var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_store_product_item_list_paginated";
-    // user_get_store_product_item_list_with_pagination
-    Map data = {"store_id": widget.store['_id'], "page": page.toString()};
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/user_get_store_product_item_list";
+    Map data = {"store_id": widget.store['_id']};
     var body = json.encode(data);
 
     try {

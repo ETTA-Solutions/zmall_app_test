@@ -567,7 +567,7 @@ class _ProductScreenState extends State<ProductScreen> {
       imageURL: item['image_url'] != null && item['image_url'].length > 0
           ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${item['image_url'][0]}"
           : "https://ibb.co/vkhzjd6",
-      odooProductId: item['odoo_product_id'],
+      odooProductId: extractOdooProductId(item),
     );
 
     final StoreLocation storeLocation = StoreLocation(
@@ -587,7 +587,7 @@ class _ProductScreenState extends State<ProductScreen> {
         if (cart!.storeId == item['store_id']) {
           setState(() {
             Service.addOrMergeCartItem(cart!, cartItem);
-            Service.save('cart', cart);
+            Service.save('cart', cart!.toJson());
           });
           Service.showMessage(
             context: context,
@@ -1157,8 +1157,8 @@ class _ProductScreenState extends State<ProductScreen> {
   // product list with pageination
   Future<dynamic> getStoreProductList({int page = 1}) async {
     var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_store_product_item_list_paginated";
-    Map data = {"store_id": widget.store['_id'], "page": page.toString()};
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/user_get_store_product_item_list";
+    Map data = {"store_id": widget.store['_id']};
     var body = json.encode(data);
     // debugPrint("body : $body");
 
