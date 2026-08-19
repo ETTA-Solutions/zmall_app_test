@@ -29,7 +29,7 @@ import 'package:zmall/report/report_screen.dart';
 import 'package:zmall/splash/splash_screen.dart';
 import 'package:zmall/mcp/mcp_cart_screen.dart';
 import 'package:zmall/debug/service_logs_screen.dart';
-// import 'package:zmall/help/support_chat/support_chat_screen.dart';
+import 'package:zmall/help/support_chat/support_chat_screen.dart';
 import 'package:zmall/utils/tab_screen.dart';
 import 'package:zmall/store/store_screen.dart';
 import '../global/home_page/global_home.dart';
@@ -72,7 +72,7 @@ final Map<String, WidgetBuilder> routes = {
     return McpCartScreen(cartId: args['cartId']);
   },
   ServiceLogsScreen.routeName: (context) => ServiceLogsScreen(),
-  // SupportChatScreen.routeName: (context) => SupportChatScreen(),
+  SupportChatScreen.routeName: (context) => SupportChatScreen(),
   FAQScreen.routeName: (context) => FAQScreen(),
   // ScannerScreen.routeName: (context) => ScannerScreen(),
 };

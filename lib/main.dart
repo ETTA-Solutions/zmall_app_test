@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'dart:io' show Platform;
 import 'package:app_links/app_links.dart';
 import 'package:facebook_app_events/facebook_app_events.dart';

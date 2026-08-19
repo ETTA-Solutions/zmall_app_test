@@ -84,6 +84,11 @@ const double kDefaultPadding = 15.0;
 
 final double zmall_latitude = 8.999578803663903;
 final double zmall_longitude = 38.769460522577134;
+
+// Gemini chatbot config (used as fallback when the chat backend is down)
+const String kGeminiApiKey = "AIzaSyDZD94UbvnltvJcALnZ7Ch4cn0No7EaEcI";
+const String kGeminiModel = "gemini-3.6-flash";
+
 final eKey = Encrypt.Key.fromUtf8("T-aie)c(ko,o=>ue1ir^UW&I90jm@@9!");
 final b64key = Encrypt.Key.fromBase64(base64Encode(eKey.bytes));
 final fernet = Encrypt.Fernet(b64key);

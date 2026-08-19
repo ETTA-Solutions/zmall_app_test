@@ -8,7 +8,10 @@ import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/profile/components/profile_list_tile.dart';
 import 'package:zmall/help/support_chat/service/chat_service.dart';
+import 'package:zmall/help/support_chat/service/gemini_service.dart';
+import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/cart/cart_screen.dart';
 import 'package:zmall/help/support_chat/components/chat_bubble.dart';
 import 'package:zmall/help/support_chat/components/chat_input.dart';
 import 'package:zmall/help/support_chat/components/quick_replies.dart';
@@ -196,7 +199,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     }
   }
 
-  void _addBotMessage(String message) {
+  void _addBotMessage(String message, {bool showCartAction = false}) {
     setState(() {
       _messages.add(
         ChatMessage(
@@ -204,6 +207,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           message: message,
           isUser: false,
           timestamp: DateTime.now(),
+          showCartAction: showCartAction,
         ),
       );
     });
@@ -274,46 +278,157 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (response != null && response['error'] != true) {
+        // Try different possible response field names from API
+        String botMessage =
+            response['response'] ??
+            response['message'] ??
+            response['reply'] ??
+            response['answer'] ??
+            response['text'] ??
+            'I received your message. How else can I help you?';
 
-      if (response != null) {
-        if (response['error'] == true) {
-          // Handle error from API
-          _addBotMessage(
-            "Sorry, I'm having trouble connecting right now. 😔\nPlease try again later.\nYou can also:\n Call: +251 967 575757\n Email: info@zmallshop.com",
-            // "Sorry, I'm having trouble connecting right now. 😔\n${response['message'] ?? 'Please try again later.'}\nYou can also:\n Call: +251 967 575757\n Email: info@zmallshop.com",
-          );
-        } else {
-          // Try different possible response field names from API
-          String botMessage =
-              response['response'] ??
-              response['message'] ??
-              response['reply'] ??
-              response['answer'] ??
-              response['text'] ??
-              'I received your message. How else can I help you?';
-
-          _addBotMessage(botMessage);
-        }
-      } else {
-        // Response is null
+        setState(() {
+          _isLoading = false;
+        });
         _addBotMessage(
-          "Sorry, I'm having trouble connecting right now. 😔\nPlease check your internet connection and try again.\nYou can also:\n Call: +251 967 575757\n Email: info@zmallshop.com",
+          botMessage,
+          showCartAction: _shouldShowCartAction(userMessage),
+        );
+      } else {
+        // Backend unavailable or returned an error — fall back to Gemini,
+        // and to mock data only if Gemini is unreachable too.
+        final fallback = await _fallbackReply(userMessage);
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+        _addBotMessage(
+          fallback,
+          showCartAction: _shouldShowCartAction(userMessage),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
+      final fallback = await _fallbackReply(userMessage);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
-
       _addBotMessage(
-        "Oops! Something went wrong. 😔\nPlease try again or contact us directly:\n Call: +251 967 575757\n Email: info@zmallshop.com",
+        fallback,
+        showCartAction: _shouldShowCartAction(userMessage),
       );
     }
+  }
+
+  /// Tries Gemini for a real AI reply and only falls back to the offline
+  /// mock data if Gemini is unreachable.
+  Future<String> _fallbackReply(String userMessage) async {
+    try {
+      final geminiReply = await GeminiService.sendMessage(userMessage);
+      if (geminiReply != null) {
+        return geminiReply;
+      }
+    } catch (_) {
+      // Gemini failed — fall through to mock data
+    }
+    return _getMockResponse(userMessage);
+  }
+
+  /// Returns true when the user's message asks about finding products or
+  /// their cart, so the bot reply shows an in-chat "View Cart" action button.
+  bool _shouldShowCartAction(String userMessage) {
+    final lower = userMessage.toLowerCase();
+    if (searchMockProducts(userMessage).isNotEmpty) {
+      return true;
+    }
+    return lower.contains('cart') ||
+        lower.contains('basket') ||
+        lower.contains('find') ||
+        lower.contains('view') ||
+        lower.contains('checkout') ||
+        lower.contains('order') && lower.contains('item');
+  }
+
+  /// Generates a mock bot reply when the backend is unreachable
+  /// (e.g. expired token, network issue) so the chat still works offline.
+  String _getMockResponse(String message) {
+    final lower = message.toLowerCase();
+
+    final products = searchMockProducts(message);
+    if (products.isNotEmpty) {
+      return formatMockProducts(products);
+    }
+
+    if (lower.contains('where') && lower.contains('order') ||
+        lower.contains('track') && lower.contains('order')) {
+      return "Here's how to track your order:\n\n1. Go to the Orders tab\n2. Select your active order\n3. View real-time tracking\n\nOr tell me your order ID and I'll help you track it! 📦";
+    }
+
+    if (lower.contains('last order')) {
+      if (userLastOrderId != null && userLastOrderId!.isNotEmpty) {
+        return "Your last order is #$userLastOrderId.\nStatus: ${userOrderStatus ?? 'In progress'}.\n\nYou can view more details in the Orders tab.";
+      }
+      return "I couldn't find any past orders on your account yet.\nOnce you place an order, I'll be able to show it here.";
+    }
+
+    if (lower.contains('status')) {
+      if (userLastOrderId != null && userLastOrderId!.isNotEmpty) {
+        return "Order #$userLastOrderId is currently: ${userOrderStatus ?? 'processing'}.\n\nYou can get live updates in the Orders tab.";
+      }
+      return "I couldn't find an order on your account.\nPlease place an order first, then I can check its status.";
+    }
+
+    if (lower.contains('refund')) {
+      return "Refunds are processed within 3-5 business days.\n\nRefund goes to:\n• Original payment method\n• ZMall Wallet (instant)\n\nProvide your order ID to check refund status. 💳";
+    }
+
+    if (lower.contains('payment') || lower.contains('pay')) {
+      return "We accept these payment methods:\n• Telebirr\n• CBE Birr\n• Amole\n• Credit/Debit Cards\n\nWhat payment issue are you facing?";
+    }
+
+    if (lower.contains('delivery') || lower.contains('deliver')) {
+      return "Delivery times vary by location:\n\n🚴 Standard: 30-45 mins\n🚗 Express: 15-30 mins\n\nYour estimated time is shown at checkout.";
+    }
+
+    if (lower.contains('cancel')) {
+      return "To cancel an order:\n\n1. Go to Orders\n2. Select the order\n3. Tap 'Cancel Order'\n\nNote: You can cancel before the store accepts it.";
+    }
+
+    if (lower.contains('special') || lower.contains('offer') ||
+        lower.contains('discount') || lower.contains('promo')) {
+      return "Today's special offers:\n\n• Free delivery on orders over 500 ETB\n• 20% off first order\n• Weekly flash deals on selected stores\n\nCheck the Home tab for all current deals! 🎉";
+    }
+
+    if (lower.contains('restaurant') || lower.contains('near me')) {
+      return "Here are some popular restaurants near you:\n\n1. 🍔 ZMall Burgers\n2. 🍕 Pizza Express\n3. ☕ Coffee Corner\n4. 🍜 Asian Wok\n\nOpen a store to see their menu and delivery time.";
+    }
+
+    if (lower.contains('top selling') || lower.contains('top store')) {
+      return "This week's top selling stores:\n\n1. ZMall Burgers 🔥\n2. Habesha Mart\n3. Coffee Corner\n4. Fresh Basket\n\nTap any store to start shopping!";
+    }
+
+    if (lower.contains('cart') || lower.contains('basket')) {
+      return "You can tap the green \"View Cart\" button to see your cart.\n\nYou can also:\n• Adjust quantities\n• Remove items\n• Proceed to checkout";
+    }
+
+    if (lower.contains('hello') || lower.contains('hi') ||
+        lower.contains('hey') || lower.contains('salam')) {
+      return "Hello! 😊 I'm ZMall Support. How can I help you today?";
+    }
+
+    if (lower.contains('thank')) {
+      return "You're welcome! 🎉\n\nIs there anything else I can help you with?";
+    }
+
+    if (lower.contains('agent') || lower.contains('human') ||
+        lower.contains('talk') || lower.contains('live')) {
+      return "I'll connect you with a live agent!\n\n📞 Call: +251 967 575757\n📧 Email: info@zmallshop.com\n⏰ Hours: 8 AM - 10 PM\n\nOur team will assist you shortly.";
+    }
+
+    return "I understand you're asking about \"$message\".\n\nI can help with:\n• Order tracking\n• Payment issues\n• Delivery questions\n• Cancellations\n• Refunds\n\nOr connect you with a live agent. What would you like to know?";
   }
 
   void _scrollToBottom() {
@@ -458,6 +573,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                     _messages[index],
                                   )
                                 : null,
+                            onViewCart: () => Navigator.pushNamed(
+                              context,
+                              CartScreen.routeName,
+                            ),
                           );
                         },
                       ),
@@ -519,7 +638,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ChatBotIcon(),
+          ChatBotIcon(width: 56, height: 56, iconSize: 36),
           SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
           Text(
             "Welcome to ZMall Support",

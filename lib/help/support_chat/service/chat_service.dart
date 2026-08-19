@@ -89,14 +89,14 @@ class ChatService {
             },
           );
 
-      // debugPrint("=====Chat API Response Status: ${response.statusCode}");
-      // debugPrint("====Chat API Response Body: ${response.body}");
+      debugPrint("=====Chat API Response Status: ${response.statusCode}");
+      debugPrint("====Chat API Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         return responseData;
       } else {
-        // debugPrint("====Chat API Error: Status ${response.statusCode}");
+        debugPrint("====Chat API Error: Status ${response.statusCode}");
         return {
           'error': true,
 

@@ -4,6 +4,7 @@ class ChatMessage {
   final bool isUser;
   final DateTime timestamp;
   final MessageType type;
+  final bool showCartAction;
 
   ChatMessage({
     required this.id,
@@ -11,6 +12,7 @@ class ChatMessage {
     required this.isUser,
     required this.timestamp,
     this.type = MessageType.text,
+    this.showCartAction = false,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class ChatMessage {
         (e) => e.toString() == 'MessageType.${json['type']}',
         orElse: () => MessageType.text,
       ),
+      showCartAction: json['showCartAction'] ?? false,
     );
   }
 
@@ -35,6 +38,7 @@ class ChatMessage {
       'isUser': isUser,
       'timestamp': timestamp.toIso8601String(),
       'type': type.toString().split('.').last,
+      'showCartAction': showCartAction,
     };
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:zmall/help/support_chat/components/chat_bot_icon.dart';
 import 'package:zmall/models/chat_message.dart';
@@ -10,12 +11,14 @@ class ChatBubble extends StatelessWidget {
   final ChatMessage message;
   final String? imageUrl;
   final VoidCallback? onLongPress;
+  final VoidCallback? onViewCart;
 
   const ChatBubble({
     super.key,
     required this.message,
     this.imageUrl,
     this.onLongPress,
+    this.onViewCart,
   });
 
   @override
@@ -78,6 +81,55 @@ class ChatBubble extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (!message.isUser && message.showCartAction) ...[
+                  SizedBox(height: getProportionateScreenHeight(6)),
+                  InkWell(
+                    onTap: onViewCart,
+                    borderRadius: BorderRadius.circular(30),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: getProportionateScreenWidth(
+                          kDefaultPadding / 1.2,
+                        ),
+                        vertical: getProportionateScreenHeight(
+                          kDefaultPadding / 2.4,
+                        ),
+                      ),
+                      decoration: BoxDecoration(
+                        color: kGreenColor,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: kGreenColor.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            HeroiconsSolid.shoppingCart,
+                            color: kPrimaryColor,
+                            size: getProportionateScreenWidth(16),
+                          ),
+                          SizedBox(
+                            width: getProportionateScreenWidth(4),
+                          ),
+                          Text(
+                            "View Cart",
+                            style: TextStyle(
+                              color: kPrimaryColor,
+                              fontSize: getProportionateScreenWidth(12),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 SizedBox(height: getProportionateScreenHeight(4)),
                 Padding(
                   padding: EdgeInsets.symmetric(
