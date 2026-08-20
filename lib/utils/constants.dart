@@ -43,7 +43,11 @@ const BASE_URL_TEST =
 // const BASE_URL = BASE_URL_TEST;
 const BASE_URL = BASE_URL_TEST;
 
+// const ayat = "6a6b069856bef41124383c9e";
+// const mexico = "6a6b0c4a56bef41124383ca2";
+
 /// Zmall branch availability check (Odoo).
+///
 /// This endpoint lives on the Odoo server, NOT the regular Zmall backend.
 const String kZmallOdooBaseUrl = "http://196.191.117.85:9070";
 
@@ -54,7 +58,7 @@ const String kZmallOdooProductIdField = "odoo_product_id";
 /// Maps Zmall store_id -> Odoo pos.config.zmall_branch_slug.
 /// Fill these in with the real store ids and their branch slugs.
 const Map<String, String> kZmallBranchSlugs = {
-  "5b3f76f2022985030cd3a437": "ayat",
+  "6a6b069856bef41124383c9e": "ayat",
   "5b406b24d2ddf8062d11b787": "mexico",
   "6a6b0c4a56bef41124383ca2": "mexico",
 };

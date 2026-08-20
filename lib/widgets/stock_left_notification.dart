@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/utils/constants.dart';
 
-/// One cart item where the Odoo `forecasted_quantity` is higher than the
-/// quantity currently in the cart (more stock is available than requested).
+/// One cart item where the quantity currently in the cart is higher than the
+/// Odoo `forecasted_quantity` (more requested than stock available).
 class StockLeftItem {
   const StockLeftItem({
     required this.item,
@@ -14,14 +14,10 @@ class StockLeftItem {
   final Item item;
   final int forecastedQty;
   final int cartQty;
-
-  /// How many more units are available beyond what is in the cart.
-  int get leftQty => forecastedQty - cartQty;
 }
 
-/// Popup notification shown when Odoo reports `forecasted_quantity` greater
-/// than the current cart quantity, e.g. cart has 5 and forecast is 10 →
-/// "You have 5 left".
+/// Popup notification shown when the cart quantity is higher than the Odoo
+/// `forecasted_quantity`, e.g. forecast is 10 but cart has 15 → "Only 10 left".
 class StockLeftNotification extends StatelessWidget {
   const StockLeftNotification({super.key, required this.items});
 
@@ -80,16 +76,16 @@ class StockLeftNotification extends StatelessWidget {
                     width: 58,
                     height: 58,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: const Color(0xFFFFF3E0),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: const Color(0xFF66BB6A).withValues(alpha: 0.5),
+                        color: const Color(0xFFFFB74D).withValues(alpha: 0.5),
                         width: 2,
                       ),
                     ),
                     child: const Icon(
                       Icons.inventory_2_outlined,
-                      color: Color(0xFF2E7D32),
+                      color: Color(0xFFEF6C00),
                       size: 30,
                     ),
                   ),
@@ -97,7 +93,7 @@ class StockLeftNotification extends StatelessWidget {
 
                   // Title
                   const Text(
-                    "Good News",
+                    "Limited Stock",
                     style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.bold,
@@ -110,8 +106,8 @@ class StockLeftNotification extends StatelessWidget {
                   // Description
                   Text(
                     items.length == 1
-                        ? "More of this item is available than what you added."
-                        : "More of these items are available than what you added.",
+                        ? "You added more of this item than what's available."
+                        : "You added more of these items than what's available.",
                     style: TextStyle(
                       fontSize: 13,
                       color: kGreyColor.withValues(alpha: 0.9),
@@ -150,12 +146,12 @@ class StockLeftNotification extends StatelessWidget {
                                   width: 38,
                                   height: 38,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE8F5E9),
+                                    color: const Color(0xFFFFF3E0),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Icon(
-                                    Icons.check_circle_outline,
-                                    color: Color(0xFF2E7D32),
+                                    Icons.info_outline,
+                                    color: Color(0xFFEF6C00),
                                     size: 20,
                                   ),
                                 ),
@@ -178,40 +174,25 @@ class StockLeftNotification extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 4,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        children: [
-                                          Text(
-                                            "You have ${info.leftQty} left",
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: Color(0xFF2E7D32),
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFF3E0),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
                                           ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 1,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFE8F5E9),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              "In stock: ${info.forecastedQty}",
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF2E7D32),
-                                              ),
-                                            ),
+                                        ),
+                                        child: Text(
+                                          "Only ${info.forecastedQty} available",
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFFEF6C00),
                                           ),
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),

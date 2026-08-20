@@ -434,10 +434,13 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   }
 
   /// Silent availability check that updates [_checkoutBlocked] so the
-  /// Checkout button can be locked while items are out of stock. Also
-  /// surfaces the "You have X left" popup when Odoo forecasts more stock
-  /// than what is currently in the cart.
-  Future<void> _refreshAvailability() async {
+  /// Checkout button can be locked while items are out of stock. When
+  /// [showStockLeftNotification] is true (only when the user increases an
+  /// item quantity) it also surfaces the "Limited Stock" popup based on the
+  /// Odoo `forecasted_quantity`.
+  Future<void> _refreshAvailability({
+    bool showStockLeftNotification = false,
+  }) async {
     if (!mounted) return;
 
     final _CartAvailability availability = await _fetchCartAvailability();
@@ -448,7 +451,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       setState(() => _checkoutBlocked = block);
     }
     _debugDumpCart(available);
-    _maybeShowStockLeftNotification(availability.result);
+    if (showStockLeftNotification) {
+      _maybeShowStockLeftNotification(availability.result);
+    }
   }
 
   /// Debug-only dump of everything the availability/lock logic depends on.
@@ -532,9 +537,10 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     );
   }
 
-  /// Shows the "You have X left" popup for every cart item whose Odoo
-  /// `forecasted_quantity` is greater than the quantity in the cart, e.g.
-  /// cart has 5 and the forecast is 10 → "You have 5 left".
+  /// Shows the "Limited Stock" popup for every cart item whose quantity in
+  /// the cart is greater than the Odoo `forecasted_quantity`, e.g. cart has
+  /// 21 and the forecast is 20 → "Only 20 available".
+  /// Only called when the user increases an item quantity.
   void _maybeShowStockLeftNotification(ZmallAvailabilityResult? result) {
     if (!mounted || result == null || cart == null) return;
 
@@ -547,7 +553,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         if (product.productId == odooId) {
           final double forecasted = product.forecastedQuantity ?? 0;
           final int cartQty = item.quantity ?? 1;
-          if (forecasted > cartQty) {
+          if (cartQty > forecasted && forecasted >= 0) {
             stockLeftItems.add(
               StockLeftItem(
                 item: item,
@@ -1135,7 +1141,10 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                     }
                                                   });
                                                   calculatePrice();
-                                                  _refreshAvailability();
+                                                  _refreshAvailability(
+                                                    showStockLeftNotification:
+                                                        true,
+                                                  );
                                                 },
                                               ),
                                             ],
