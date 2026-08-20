@@ -29,6 +29,16 @@ import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/image_container.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
 import 'package:zmall/widgets/stock_availability_dialog.dart';
+import 'package:zmall/widgets/stock_left_notification.dart';
+
+/// Pair of the checkout-lock decision and the raw availability result used
+/// by the "You have X left" popup.
+class _CartAvailability {
+  const _CartAvailability(this.available, this.result);
+
+  final bool? available;
+  final ZmallAvailabilityResult? result;
+}
 
 class Body extends StatefulWidget {
   @override
@@ -42,6 +52,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   bool _loading = true;
   bool _checkingAvailability = false;
   bool _checkoutBlocked = false;
+  String _lastStockLeftSignature = '';
   double price = 0;
   var appClose;
   var appOpen;
@@ -423,17 +434,21 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   }
 
   /// Silent availability check that updates [_checkoutBlocked] so the
-  /// Checkout button can be locked while items are out of stock.
+  /// Checkout button can be locked while items are out of stock. Also
+  /// surfaces the "You have X left" popup when Odoo forecasts more stock
+  /// than what is currently in the cart.
   Future<void> _refreshAvailability() async {
     if (!mounted) return;
 
-    final bool? available = await _isCartAvailable();
+    final _CartAvailability availability = await _fetchCartAvailability();
+    final bool? available = availability.available;
     final bool block = available != null && !available;
     if (!mounted) return;
     if (_checkoutBlocked != block) {
       setState(() => _checkoutBlocked = block);
     }
     _debugDumpCart(available);
+    _maybeShowStockLeftNotification(availability.result);
   }
 
   /// Debug-only dump of everything the availability/lock logic depends on.
@@ -462,18 +477,18 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
 
   /// Core availability logic shared by the tap-time and auto checks.
   /// Returns:
-  ///  - `true`   → all items available, checkout allowed
-  ///  - `false`  → checkout must be blocked (out of stock / missing IDs)
-  ///  - `null`   → could not verify (network/server error) — do not hard-block
-  Future<bool?> _isCartAvailable() async {
+  ///  - `available == true`   → all items available, checkout allowed
+  ///  - `available == false`  → checkout must be blocked (out of stock / missing IDs)
+  ///  - `available == null`   → could not verify (network/server error) — do not hard-block
+  Future<_CartAvailability> _fetchCartAvailability() async {
     if (cart == null || cart!.items == null || cart!.items!.isEmpty) {
-      return true;
+      return _CartAvailability(true, null);
     }
 
     final String? branchSlug = zmallBranchSlugForStore(cart!.storeId);
     if (branchSlug == null) {
       // Non-POS store — Odoo availability does not apply.
-      return true;
+      return _CartAvailability(true, null);
     }
 
     final List<Map<String, dynamic>> products = [];
@@ -492,11 +507,11 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     }
 
     if (itemsMissingOdooId.isNotEmpty) {
-      return false;
+      return _CartAvailability(false, null);
     }
 
     if (products.isEmpty) {
-      return true;
+      return _CartAvailability(true, null);
     }
 
     final result = await ZmallAvailabilityService.check(
@@ -507,11 +522,57 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     if (result == null || !result.success) {
       // Could not verify — leave the button unlocked so the tap-time
       // check can surface the connection/server error.
-      return null;
+      return _CartAvailability(null, null);
     }
 
-    return result.canCheckout &&
-        result.products.every((p) => p.isAvailableForRequestedQuantity);
+    return _CartAvailability(
+      result.canCheckout &&
+          result.products.every((p) => p.isAvailableForRequestedQuantity),
+      result,
+    );
+  }
+
+  /// Shows the "You have X left" popup for every cart item whose Odoo
+  /// `forecasted_quantity` is greater than the quantity in the cart, e.g.
+  /// cart has 5 and the forecast is 10 → "You have 5 left".
+  void _maybeShowStockLeftNotification(ZmallAvailabilityResult? result) {
+    if (!mounted || result == null || cart == null) return;
+
+    final List<StockLeftItem> stockLeftItems = [];
+    for (final item in cart!.items!) {
+      final int? odooId = item.odooProductId;
+      if (odooId == null) continue;
+
+      for (final product in result.products) {
+        if (product.productId == odooId) {
+          final double forecasted = product.forecastedQuantity ?? 0;
+          final int cartQty = item.quantity ?? 1;
+          if (forecasted > cartQty) {
+            stockLeftItems.add(
+              StockLeftItem(
+                item: item,
+                forecastedQty: forecasted.toInt(),
+                cartQty: cartQty,
+              ),
+            );
+          }
+          break;
+        }
+      }
+    }
+
+    if (stockLeftItems.isEmpty) return;
+
+    final String signature = stockLeftItems
+        .map((s) => '${s.item.id}:${s.forecastedQty}:${s.cartQty}')
+        .join('|');
+    if (signature == _lastStockLeftSignature) return;
+    _lastStockLeftSignature = signature;
+
+    StockLeftNotification.show(
+      context: context,
+      items: stockLeftItems,
+    );
   }
 
   void _applyStockAdjustment(Item item, int maxAvailable) {

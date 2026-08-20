@@ -41,15 +41,19 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
         'shortCode': shortCode,
         'receiveCode': receiveCode,
       };
-      // debugPrint('Invoking native placeOrder method with arguments:>>>> $arguments\n');
+      debugPrint(
+        "[TELEBIRR-DEBUG] placeOrderIOS args: appId=$appId shortCode=$shortCode receiveCode=$receiveCode",
+      );
 
       final response = await _channel.invokeMethod('placeOrder', arguments);
-      // debugPrint("Native iOS Response:>>>> ${response.toString()}\n");
+      debugPrint(
+        "[TELEBIRR-DEBUG] placeOrderIOS native response: ${response.toString()}",
+      );
 
       // Check if the response is a map and contains status and code
       if (response.isNotEmpty) {
         final int code = int.parse(response['code'].toString());
-        // debugPrint("iOS Code:>>>> $code");
+        debugPrint("[TELEBIRR-DEBUG] placeOrderIOS code: $code");
         Map<String, dynamic> _paymentResult = {
           "code": code,
           "traceNo": widget.traceNo,
@@ -73,6 +77,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
         }
       } else {
         // Unexpected response format
+        debugPrint(
+          "[TELEBIRR-DEBUG] placeOrderIOS EMPTY native response -> code -1",
+        );
         _handlePaymentResponse(code: -1);
         Future.delayed(
           Duration(seconds: 2),
@@ -80,6 +87,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
         );
       }
     } on PlatformException catch (e) {
+      debugPrint(
+        "[TELEBIRR-DEBUG] placeOrderIOS PlatformException: code=${e.code} details=${e.details} message=${e.message}",
+      );
       _handlePaymentResponse(code: e.details["code"]);
       Future.delayed(Duration(seconds: 2), () => Navigator.pop(context, false));
     }
@@ -96,17 +106,22 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
         'shortCode': shortCode,
         'receiveCode': receiveCode,
       };
+      debugPrint(
+        "[TELEBIRR-DEBUG] placeOrder args: appId=$appId shortCode=$shortCode receiveCode=$receiveCode",
+      );
 
       final Map<Object?, Object?> response = await _channel.invokeMethod(
         'placeOrder',
         arguments,
       );
-
-      // debugPrint("***Response From Native (Android/iOS)***: ${response.toString()}");
+      debugPrint(
+        "[TELEBIRR-DEBUG] placeOrder native response: ${response.toString()}",
+      );
 
       // Check if the response is a map and contains status and code
       if (response.isNotEmpty) {
         final int code = int.parse(response['code'].toString());
+        debugPrint("[TELEBIRR-DEBUG] placeOrder code: $code");
         Map<String, dynamic> _paymentResult = {
           "code": code,
           "traceNo": widget.traceNo,
@@ -122,6 +137,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
             () => Navigator.pop(context, _paymentResult),
           );
         } else {
+          debugPrint(
+            "[TELEBIRR-DEBUG] placeOrder non-zero code -> popping with result",
+          );
           Future.delayed(
             Duration(seconds: 2),
             () => Navigator.pop(context, _paymentResult),
@@ -129,6 +147,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
         }
       } else {
         // Unexpected response format
+        debugPrint(
+          "[TELEBIRR-DEBUG] placeOrder EMPTY native response -> code -1",
+        );
         _handlePaymentResponse(code: -1);
         Future.delayed(
           Duration(seconds: 2),
@@ -136,6 +157,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
         );
       }
     } on PlatformException catch (e) {
+      debugPrint(
+        "[TELEBIRR-DEBUG] placeOrder PlatformException: code=${e.code} details=${e.details} message=${e.message}",
+      );
       _handlePaymentResponse(code: e.details["code"]);
       Future.delayed(Duration(seconds: 2), () => Navigator.pop(context, false));
     }
@@ -143,6 +167,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
 
   // Function to handle payment response based on the response code or message
   void _handlePaymentResponse({required int code, String? errorMessage}) {
+    debugPrint(
+      "[TELEBIRR-DEBUG] _handlePaymentResponse code=$code errorMessage=$errorMessage",
+    );
     String message;
     bool isError = false;
     if (errorMessage != null) {
@@ -204,6 +231,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
   @override
   void initState() {
     super.initState();
+    debugPrint(
+      "[TELEBIRR-DEBUG] initState amount=${widget.amount} phone=${widget.phone} traceNo=${widget.traceNo}",
+    );
     getRreceiveCode(
       amount: "${widget.amount}",
       traceNo: widget.traceNo,
@@ -308,6 +338,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
     var responseData;
     final deviceType = Platform.isIOS ? "iOS" : "android";
     var url = "https://pgw.shekla.app/telebirrInapp/create_order";
+    debugPrint(
+      "[TELEBIRR-DEBUG] getRreceiveCode deviceType=$deviceType url=$url",
+    );
 
     Map data = {
       "traceNo": traceNo,
@@ -317,6 +350,7 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
       "isInapp": true,
     };
     var body = json.encode(data);
+    debugPrint("[TELEBIRR-DEBUG] getRreceiveCode request body: $body");
     try {
       http.Response response = await http
           .post(
@@ -333,6 +367,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      debugPrint(
+        "[TELEBIRR-DEBUG] getRreceiveCode HTTP ${response.statusCode} body: ${response.body}",
+      );
 
       setState(() {
         responseData = json.decode(response.body);
@@ -343,6 +380,9 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
                   .toString()
                   .toLowerCase() ==
               'success') {
+        debugPrint(
+          "[TELEBIRR-DEBUG] getRreceiveCode result=success appId=${responseData["appId"]} shortCode=${responseData["shortCode"]} receiveCode=${responseData['createOrderResult']['biz_content']['receiveCode']}",
+        );
         //////check platform and call function based on the device placeOrderAndroid or placeOrderIos
         deviceType == "android"
             ? placeOrder(
@@ -359,15 +399,25 @@ class _TopupPaymentInAppState extends State<TopupPaymentInApp> {
               );
       } else if (responseData != null &&
           responseData['createOrderResult']['errorCode'] != null) {
+        debugPrint(
+          "[TELEBIRR-DEBUG] getRreceiveCode FAILED errorCode=${responseData['createOrderResult']['errorCode']}",
+        );
         Navigator.pop(context, false);
         Service.showMessage(
           error: true,
           context: context,
           title: 'Faild to initiate payment, please try agin!',
         );
+      } else {
+        debugPrint(
+          "[TELEBIRR-DEBUG] getRreceiveCode unexpected response: $responseData",
+        );
       }
       return json.decode(response.body);
     } catch (e) {
+      debugPrint(
+        "[TELEBIRR-DEBUG] getRreceiveCode EXCEPTION: $e\n${StackTrace.current}",
+      );
       return null;
     }
   }
