@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
 /// ChatBotIcon composed of:

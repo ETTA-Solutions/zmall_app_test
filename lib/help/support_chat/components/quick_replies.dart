@@ -6,7 +6,7 @@ import 'package:zmall/utils/size_config.dart';
 class QuickReplies extends StatelessWidget {
   final Function(String) onReplyTap;
 
-  const QuickReplies({Key? key, required this.onReplyTap}) : super(key: key);
+  const QuickReplies({super.key, required this.onReplyTap});
 
   static final List<QuickReply> replies = [
     QuickReply(text: "Where is my order?", icon: HeroiconsOutline.mapPin),
@@ -18,7 +18,6 @@ class QuickReplies extends StatelessWidget {
       text: "What is my order status",
       icon: HeroiconsOutline.clipboardDocumentCheck,
     ),
-
     QuickReply(
       text: "What are today's special offers?",
       icon: HeroiconsOutline.sparkles,
@@ -37,26 +36,44 @@ class QuickReplies extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: kDefaultPadding / 2,
-        vertical: getProportionateScreenHeight(kDefaultPadding),
+        horizontal: getProportionateScreenWidth(kDefaultPadding),
+        vertical: getProportionateScreenHeight(kDefaultPadding / 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
-        spacing: getProportionateScreenHeight(kDefaultPadding / 2),
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            "Quick Replies",
-            style: TextStyle(
-              fontSize: getProportionateScreenWidth(12),
-              fontWeight: FontWeight.bold,
-              color: kBlackColor,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: kSecondaryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  HeroiconsSolid.sparkles,
+                  color: kSecondaryColor,
+                  size: getProportionateScreenWidth(13),
+                ),
+              ),
+              SizedBox(width: getProportionateScreenWidth(6)),
+              Text(
+                "Suggested Questions",
+                style: TextStyle(
+                  fontSize: getProportionateScreenWidth(12),
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF334155),
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
           ),
-
+          SizedBox(height: getProportionateScreenHeight(8)),
           Wrap(
-            spacing: getProportionateScreenWidth(kDefaultPadding / 2),
-            runSpacing: getProportionateScreenHeight(kDefaultPadding / 2),
+            spacing: getProportionateScreenWidth(8),
+            runSpacing: getProportionateScreenHeight(8),
             children: replies
                 .map(
                   (reply) => _QuickReplyChip(
@@ -80,37 +97,59 @@ class _QuickReplyChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: getProportionateScreenWidth(kDefaultPadding / 1.5),
-          vertical: getProportionateScreenHeight(kDefaultPadding / 2),
-        ),
-        decoration: BoxDecoration(
-          color: kWhiteColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: getProportionateScreenWidth(6),
-          children: [
-            Icon(
-              reply.icon,
-              size: getProportionateScreenWidth(14),
-              color: kSecondaryColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: getProportionateScreenWidth(12),
+            vertical: getProportionateScreenHeight(8),
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: kSecondaryColor.withValues(alpha: 0.22),
+              width: 1,
             ),
-
-            Text(
-              reply.text,
-              style: TextStyle(
-                fontSize: getProportionateScreenWidth(12),
-                color: kBlackColor,
-                fontWeight: FontWeight.w500,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1E293B).withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: getProportionateScreenWidth(20),
+                height: getProportionateScreenWidth(20),
+                decoration: BoxDecoration(
+                  color: kSecondaryColor.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  reply.icon,
+                  size: getProportionateScreenWidth(12),
+                  color: kSecondaryColor,
+                ),
+              ),
+              SizedBox(width: getProportionateScreenWidth(6)),
+              Text(
+                reply.text,
+                style: TextStyle(
+                  fontSize: getProportionateScreenWidth(11.5),
+                  color: const Color(0xFF1E293B),
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

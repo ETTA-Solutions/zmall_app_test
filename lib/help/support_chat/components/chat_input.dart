@@ -20,57 +20,50 @@ class ChatInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(kDefaultPadding / 2),
-        vertical: getProportionateScreenHeight(kDefaultPadding / 2),
-      ),
-      decoration: BoxDecoration(
-        color: kPrimaryColor,
-        boxShadow: [
-          BoxShadow(
-            color: kBlackColor.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
+      padding: EdgeInsets.fromLTRB(
+        getProportionateScreenWidth(kDefaultPadding / 1.5),
+        getProportionateScreenHeight(kDefaultPadding / 2),
+        getProportionateScreenWidth(kDefaultPadding / 1.5),
+        getProportionateScreenHeight(kDefaultPadding / 2),
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            // Quick Replies Button
-            if (onQuickRepliesToggle != null)
-              GestureDetector(
-                onTap: onQuickRepliesToggle,
-                child: Container(
-                  width: getProportionateScreenWidth(45),
-                  height: getProportionateScreenWidth(45),
-                  decoration: BoxDecoration(
-                    color: kWhiteColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: kGreyColor.withValues(alpha: 0.2),
-                      width: 1,
+        child: Container(
+          padding: EdgeInsets.all(getProportionateScreenWidth(6)),
+          decoration: BoxDecoration(
+            color: kPrimaryColor,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: kBlackColor.withValues(alpha: 0.06)),
+            boxShadow: [
+              BoxShadow(
+                color: kBlackColor.withValues(alpha: 0.1),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Quick Replies Button
+              if (onQuickRepliesToggle != null)
+                GestureDetector(
+                  onTap: onQuickRepliesToggle,
+                  child: Container(
+                    width: getProportionateScreenWidth(42),
+                    height: getProportionateScreenWidth(42),
+                    decoration: BoxDecoration(
+                      color: kSecondaryColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      HeroiconsOutline.sparkles,
+                      color: kSecondaryColor,
+                      size: getProportionateScreenWidth(19),
                     ),
                   ),
-                  child: Icon(
-                    HeroiconsOutline.sparkles,
-                    color: kSecondaryColor,
-                    size: getProportionateScreenWidth(20),
-                  ),
                 ),
-              ),
-            if (onQuickRepliesToggle != null)
-              SizedBox(width: getProportionateScreenWidth(kDefaultPadding / 2)),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: kWhiteColor,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: kGreyColor.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                ),
+              if (onQuickRepliesToggle != null)
+                SizedBox(width: getProportionateScreenWidth(6)),
+              Expanded(
                 child: TextField(
                   controller: controller,
                   maxLines: null,
@@ -89,11 +82,6 @@ class ChatInput extends StatelessWidget {
                         kDefaultPadding / 1.5,
                       ),
                     ),
-                    prefixIcon: Icon(
-                      HeroiconsOutline.chatBubbleLeftRight,
-                      color: kGreyColor.withValues(alpha: 0.5),
-                      size: getProportionateScreenWidth(20),
-                    ),
                   ),
                   style: TextStyle(
                     fontSize: getProportionateScreenWidth(14),
@@ -101,44 +89,51 @@ class ChatInput extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-            SizedBox(width: getProportionateScreenWidth(kDefaultPadding / 2)),
-            GestureDetector(
-              onTap: isLoading ? null : _handleSend,
-              child: Container(
-                width: getProportionateScreenWidth(45),
-                height: getProportionateScreenWidth(45),
-                decoration: BoxDecoration(
-                  color: kSecondaryColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: kSecondaryColor.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+              SizedBox(width: getProportionateScreenWidth(6)),
+              GestureDetector(
+                onTap: isLoading ? null : _handleSend,
+                child: Container(
+                  width: getProportionateScreenWidth(42),
+                  height: getProportionateScreenWidth(42),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        kSecondaryColor,
+                        kSecondaryColor.withValues(alpha: 0.85),
+                      ],
                     ),
-                  ],
-                ),
-                child: isLoading
-                    ? Padding(
-                        padding: EdgeInsets.all(
-                          getProportionateScreenWidth(kDefaultPadding / 1.5),
-                        ),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            kPrimaryColor,
-                          ),
-                        ),
-                      )
-                    : Icon(
-                        HeroiconsSolid.paperAirplane,
-                        color: kPrimaryColor,
-                        size: getProportionateScreenWidth(22),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: kSecondaryColor.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
                       ),
+                    ],
+                  ),
+                  child: isLoading
+                      ? Padding(
+                          padding: EdgeInsets.all(
+                            getProportionateScreenWidth(kDefaultPadding / 1.5),
+                          ),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              kPrimaryColor,
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          HeroiconsSolid.paperAirplane,
+                          color: kPrimaryColor,
+                          size: getProportionateScreenWidth(20),
+                        ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

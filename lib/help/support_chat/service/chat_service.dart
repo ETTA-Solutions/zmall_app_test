@@ -119,6 +119,75 @@ class ChatService {
       };
     }
   }
+  /// Fetch nearby stores using the real store-listing endpoint.
+  ///
+  /// Calls `/api/user/get_company_list` with the user's city + location.
+  static Future<dynamic> getNearbyStores({
+    required BuildContext context,
+  }) async {
+    final meta = Provider.of<ZMetaData>(context, listen: false);
+    var url = "${meta.baseUrl}/api/user/get_company_list";
+    Map data = {
+      "city_id": meta.cityId,
+      "latitude": meta.latitude,
+      "longitude": meta.longitude,
+    };
+    var body = json.encode(data);
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      return json.decode(response.body);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Fetch the menu (items) for a specific store.
+  ///
+  /// Calls `/api/user/user_get_store_product_item_list` with the store id.
+  static Future<dynamic> getStoreItems({
+    required BuildContext context,
+    required String storeId,
+  }) async {
+    final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    var url = "$baseUrl/api/user/user_get_store_product_item_list";
+    Map data = {"store_id": storeId};
+    var body = json.encode(data);
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () {
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      return json.decode(response.body);
+    } catch (e) {
+      return null;
+    }
+  }
+
   ////////////////////get user order///////////////////
 
   static Future<dynamic> getOrders({

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:zmall/help/support_chat/components/chat_bot_icon.dart';
-import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
 /// Floating circular chatbot button shown on the dashboard (bottom-right).

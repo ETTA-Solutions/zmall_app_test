@@ -27,7 +27,7 @@ const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 
 // Ethiopia test
 //  // const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
-const BASE_URL_TEST =
+const BASE_URL_TEST_OLD =
     "https://testapp.zmall.et"; //Etih new test.  the current test domain
 //  // Blen
 //  // const BASE_URL_TEST = "http://196.189.124.132:8000"; //test (blen)
@@ -38,7 +38,8 @@ const BASE_URL_TEST =
 // const BASE_URL = kDebugMode ? BASE_URL_TEST : BASE_URL_PROD;
 //
 
-// const BASE_URL_TEST ="https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
+const BASE_URL_TEST =
+    "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
 // const BASE_URL = BASE_URL_TEST;
 const BASE_URL = BASE_URL_TEST;
@@ -59,7 +60,7 @@ const String kZmallOdooProductIdField = "odoo_product_id";
 /// Fill these in with the real store ids and their branch slugs.
 const Map<String, String> kZmallBranchSlugs = {
   "6a6b069856bef41124383c9e": "ayat",
-  "5b406b24d2ddf8062d11b787": "mexico",
+  // "5b406b24d2ddf8062d11b787": "mexico",
   "6a6b0c4a56bef41124383ca2": "mexico",
 };
 
@@ -73,6 +74,7 @@ bool isOdooAvailabilityStore(String? storeId) =>
     zmallBranchSlugForStore(storeId) != null;
 
 //
+
 String appName = "ZMall";
 String appUpdatedAt = "";
 String appVersion = "3.2.10";
@@ -112,6 +114,8 @@ String zmallLogo =
         DateTime.now().isAfter(worldCupStart)
     ? "images/zmall_worldcup.jpg"
     : "images/zmall.jpg";
+
+const String zmallAiGif = "images/zmall_ai.gif";
 
 final String deviceKey = 'AIzaSyBzMHLnXLbtLMi9rVFOR0eo5pbouBtxyjg';
 final String iosKey = 'AIzaSyDAgZScAJfUHxahi_n4OpuI8HrTHVlirJk';
