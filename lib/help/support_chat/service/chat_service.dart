@@ -115,7 +115,7 @@ class ChatService {
       return {
         'error': true,
         'message':
-            'Something went wrong. Please check your internet connection.',
+            'You finished your daily token.',
       };
     }
   }
@@ -278,7 +278,7 @@ class ChatService {
       return {
         'error': true,
         'message':
-            'Something went wrong. Please check your internet connection.',
+            'You finished your daily token.',
       };
     }
   }

@@ -218,7 +218,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _messages.add(
         ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          message: message,
+          message: _sanitizeBotMessage(message),
           isUser: false,
           timestamp: DateTime.now(),
           showCartAction: showCartAction,
@@ -227,6 +227,22 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     });
     _scrollToBottom();
     _saveChatHistory(); // Save after adding message
+  }
+
+  /// The backend sometimes returns raw error texts like "Something went
+  /// wrong". Replace those with the friendly daily-token message so users
+  /// never see a raw backend failure in the chat.
+  String _sanitizeBotMessage(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('went wrong') ||
+        lower.contains('something is wrong') ||
+        lower.contains('something wrong') ||
+        lower.contains('error occurred') ||
+        lower.contains('internal server') ||
+        lower.contains('failed to get response')) {
+      return 'You finished your daily token.';
+    }
+    return message;
   }
 
   void _addUserMessage(String message) {
@@ -326,9 +342,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           botMessage,
           showCartAction: _shouldShowCartAction(botMessage),
         );
+      } else if (response != null && response['message'] != null) {
+        setState(() {
+          _isLoading = false;
+        });
+        _addBotMessage(
+          response['message'],
+          showCartAction: false,
+        );
       } else {
-        // Backend unavailable or returned an error — fall back to Gemini,
-        // and to mock data only if Gemini is unreachable too.
+        // Fallback to Gemini if no specific error message
         final fallback = await _fallbackReply(userMessage);
         if (!mounted) return;
         setState(() {
@@ -342,12 +365,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      final fallback = await _fallbackReply(userMessage);
-      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
-      _addBotMessage(fallback, showCartAction: _shouldShowCartAction(fallback));
+      _addBotMessage(
+        'You finished your daily token.',
+        showCartAction: false,
+      );
     }
   }
 
@@ -357,11 +381,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     if (products.isEmpty && messageIndex > 0) {
       products = searchMockProducts(_messages[messageIndex - 1].message);
     }
-    if (products.isEmpty) {
-      products = [mockProducts.first]; // Default to Cheese Burger
-    }
 
-    await addMockProductsToCart(products);
+    // Only add mock products if explicitly matched from local catalog.
+    // Do NOT inject default static burger when responses come from live API / Gemini.
+    if (products.isNotEmpty) {
+      await addMockProductsToCart(products);
+    }
 
     if (mounted) {
       Navigator.pushNamed(context, CartScreen.routeName);
@@ -891,17 +916,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       ),
       body: Stack(
         children: [
-          // Soft gradient background
+          // Solid white background
           const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFCEFF0), Color(0xFFF3F4F8)],
-                ),
-              ),
-            ),
+            child: ColoredBox(color: Colors.white),
           ),
           Column(
             children: [

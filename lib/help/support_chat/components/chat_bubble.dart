@@ -477,7 +477,9 @@ class _ChatBubbleState extends State<ChatBubble> {
 
       // Heading block (e.g. ### Header or ## Header or # Header)
       if (trimmed.startsWith('#')) {
-        final headingText = trimmed.replaceAll(RegExp(r'^#+\s*'), '');
+        final headingText = _stripStrayAsterisks(
+          trimmed.replaceAll(RegExp(r'^#+\s*'), ''),
+        );
         blockWidgets.add(
           Padding(
             padding: EdgeInsets.only(
@@ -689,12 +691,12 @@ class _ChatBubbleState extends State<ChatBubble> {
     final spans = <InlineSpan>[];
 
     // Regex pattern for bold tokens `**...**` and code tokens `` `...` ``
-    final tokenPattern = RegExp(r'(\*\*[^*]+\*\*|`[^`]+`)');
+    final tokenPattern = RegExp(r'(\*\*(.+?)\*\*|`([^`]+)`)', dotAll: true);
     int lastEnd = 0;
 
     for (final match in tokenPattern.allMatches(text)) {
       if (match.start > lastEnd) {
-        final plain = text.substring(lastEnd, match.start);
+        final plain = _stripStrayAsterisks(text.substring(lastEnd, match.start));
         spans.addAll(_parseInlineEntities(plain, baseStyle));
       }
 
@@ -740,11 +742,17 @@ class _ChatBubbleState extends State<ChatBubble> {
     }
 
     if (lastEnd < text.length) {
-      final remaining = text.substring(lastEnd);
+      final remaining = _stripStrayAsterisks(text.substring(lastEnd));
       spans.addAll(_parseInlineEntities(remaining, baseStyle));
     }
 
     return Text.rich(TextSpan(children: spans));
+  }
+
+  /// Removes any leftover markdown asterisks (e.g. unmatched `*` or `**`)
+  /// so they never show up as literal characters in the chat.
+  String _stripStrayAsterisks(String text) {
+    return text.replaceAll('*', '');
   }
 
   /// Parses prices (e.g. ETB 150), phones (e.g. +251 96 757 5757), and links
