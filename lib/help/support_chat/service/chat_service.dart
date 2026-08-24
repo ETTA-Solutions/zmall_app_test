@@ -112,13 +112,10 @@ class ChatService {
       };
     } catch (e) {
       // debugPrint("=====Chat API Error: $e");
-      return {
-        'error': true,
-        'message':
-            'You finished your daily token.',
-      };
+      return {'error': true, 'message': 'You finished your daily token.'};
     }
   }
+
   /// Fetch nearby stores using the real store-listing endpoint.
   ///
   /// Calls `/api/user/get_company_list` with the user's city + location.
@@ -278,7 +275,7 @@ class ChatService {
       return {
         'error': true,
         'message':
-            'You finished your daily token.',
+            'Sorry, I’m temporarily unavailable right now. Please try again later. 🙏 ',
       };
     }
   }

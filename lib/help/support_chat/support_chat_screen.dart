@@ -49,16 +49,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   var userLat;
   var userLng;
 
-  // Real nearby stores fetched via get_company_list so the bot can answer
-  // "stores near me" and "give me item for <store>" with live data.
-  List _nearbyStores = [];
-  bool _nearbyStoresLoaded = false;
-
   ///
   // String userLastOrder = '';
   String?
   userLastOrderId; // Store as String (API returns int, converted to String)
   var userOrderStatus;
+
+  String get userName {
+    if (userData != null && userData['user'] != null) {
+      return userData['user']['name'] ?? 'Customer';
+    }
+    return 'Customer';
+  }
 
   // Chat persistence settings
   static const int _chatExpirationHours = 24; // Auto-delete after 24 hours
@@ -287,91 +289,54 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     });
   }
 
+  List<Map<String, String>> _getConversationHistory() {
+    return _messages.map((msg) => {
+      'role': msg.isUser ? 'user' : 'model',
+      'content': msg.message,
+    }).toList();
+  }
+
   Future<void> _fetchBotResponse(String userMessage) async {
     setState(() {
       _isLoading = true;
     });
 
-    // debugPrint("Message: $userMessage");
-    // debugPrint("Is Order Related: $isOrderRelated");
-    // debugPrint("Sending Order ID: $userLastOrderId");
-
     try {
-      // App-side endpoint integration: answer "stores near me" and
-      // "give me item for <store>" using the real backend endpoints
-      // (get_company_list / user_get_store_product_item_list) instead of
-      // generic or broken replies.
-      final localReply = await _handleLocalStoreIntent(userMessage);
+      // Realistic brief typing delay for natural chat feel (400ms)
+      await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
-      if (localReply != null) {
-        setState(() {
-          _isLoading = false;
-        });
-        _addBotMessage(
-          localReply,
-          showCartAction: _shouldShowCartAction(localReply),
-        );
-        return;
-      }
 
-      final response = await ChatService.sendMessage(
-        message: userMessage,
-        context: context,
-        userId: userId,
-        orderId: userLastOrderId,
-        serverToken: serverToken,
-        userLocation: userLocation,
+      final activeOrderId =
+          (userLastOrderId != null && userLastOrderId!.isNotEmpty)
+              ? userLastOrderId
+              : mockActiveOrder.orderId;
+      final activeOrderStatus = userOrderStatus ?? mockActiveOrder.status;
+
+      // Instant local mock engine response
+      final botMessage = getOfflineMockResponse(
+        userMessage,
+        orderId: activeOrderId,
+        status: activeOrderStatus,
       );
 
       if (!mounted) return;
-
-      if (response != null && response['error'] != true) {
-        // Try different possible response field names from API
-        String botMessage =
-            response['response'] ??
-            response['message'] ??
-            response['reply'] ??
-            response['answer'] ??
-            response['text'] ??
-            'I received your message. How else can I help you?';
-
-        setState(() {
-          _isLoading = false;
-        });
-        _addBotMessage(
-          botMessage,
-          showCartAction: _shouldShowCartAction(botMessage),
-        );
-      } else if (response != null && response['message'] != null) {
-        setState(() {
-          _isLoading = false;
-        });
-        _addBotMessage(
-          response['message'],
-          showCartAction: false,
-        );
-      } else {
-        // Fallback to Gemini if no specific error message
-        final fallback = await _fallbackReply(userMessage);
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-        });
-        _addBotMessage(
-          fallback,
-          showCartAction: _shouldShowCartAction(fallback),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
       _addBotMessage(
-        'You finished your daily token.',
-        showCartAction: false,
+        botMessage,
+        showCartAction: _shouldShowCartAction(botMessage),
       );
+    } catch (e) {
+      debugPrint("Error generating mock response: $e");
+      if (mounted) {
+        _addBotMessage(
+          "I'm here to help with your ZMall orders, menus, and deliveries! 😊",
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -382,8 +347,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       products = searchMockProducts(_messages[messageIndex - 1].message);
     }
 
-    // Only add mock products if explicitly matched from local catalog.
-    // Do NOT inject default static burger when responses come from live API / Gemini.
+    if (products.isEmpty) {
+      // Default to the first product if cart action tapped without explicit item
+      products = [mockProducts.first];
+    }
+
     if (products.isNotEmpty) {
       await addMockProductsToCart(products);
     }
@@ -391,23 +359,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     if (mounted) {
       Navigator.pushNamed(context, CartScreen.routeName);
     }
-  }
-
-  /// Tries Gemini for a real AI reply and only falls back to the offline
-  /// mock data if Gemini is unreachable.
-  Future<String> _fallbackReply(String userMessage) async {
-    if (searchMockProducts(userMessage).isNotEmpty) {
-      return _getMockResponse(userMessage);
-    }
-    try {
-      final geminiReply = await GeminiService.sendMessage(userMessage);
-      if (geminiReply != null) {
-        return geminiReply;
-      }
-    } catch (_) {
-      // Gemini failed — fall through to mock data
-    }
-    return _getMockResponse(userMessage);
   }
 
   /// Returns true when the bot's reply is actually about the cart or the
@@ -421,373 +372,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         lower.contains('basket') ||
         lower.contains('cart') ||
         lower.contains('checkout');
-  }
-
-  /// Handles store-related requests app-side using the real endpoints
-  /// (`get_company_list` for nearby stores, `user_get_store_product_item_list`
-  /// for a store's menu). Returns a reply when it can answer, otherwise null
-  /// so the normal backend/Gemini/mock flow takes over.
-  Future<String?> _handleLocalStoreIntent(String userMessage) async {
-    final lower = userMessage.toLowerCase().trim();
-    if (lower.isEmpty) return null;
-
-    try {
-      // "stores near me" / "nearby stores"
-      if (_isNearbyStoresIntent(lower)) {
-        final stores = await _loadNearbyStores();
-        if (stores != null && stores.isNotEmpty) {
-          return _formatNearbyStores(stores);
-        }
-      }
-
-      // "give me item for <store>" / "menu of <store>"
-      if (_isStoreItemsIntent(lower)) {
-        final storeName = _extractStoreName(lower);
-        if (storeName != null) {
-          final stores = await _loadNearbyStores();
-          final store = _matchStore(storeName, stores ?? const []);
-          if (store != null) {
-            final storeId = store['_id'];
-            if (storeId != null) {
-              final data = await ChatService.getStoreItems(
-                context: context,
-                storeId: storeId,
-              );
-              if (data != null && data['success'] == true) {
-                final products = data['products'] ?? [];
-                final items = <dynamic>[];
-                for (final group in products) {
-                  final list = group?['items'];
-                  if (list is List) items.addAll(list);
-                }
-                if (items.isNotEmpty) {
-                  return _formatStoreItems(
-                    items,
-                    store['name']?.toString() ?? storeName,
-                  );
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (_) {
-      // Fall through to the normal backend flow on any failure.
-    }
-    return null;
-  }
-
-  bool _isNearbyStoresIntent(String lower) {
-    return (lower.contains('near') &&
-            (lower.contains('store') ||
-                lower.contains('restaurant') ||
-                lower.contains('shop') ||
-                lower.contains('food'))) ||
-        lower.contains('nearby') ||
-        lower.contains('stores near me') ||
-        lower.contains('store near me');
-  }
-
-  bool _isStoreItemsIntent(String lower) {
-    final hasItemKeyword =
-        lower.contains('item') ||
-        lower.contains('menu') ||
-        lower.contains('product') ||
-        lower.contains('show') ||
-        lower.contains('list');
-    final hasStorePhrase =
-        lower.contains(' for ') ||
-        lower.contains(' from ') ||
-        lower.contains(' of ') ||
-        lower.contains(' at ');
-    return hasItemKeyword && hasStorePhrase;
-  }
-
-  /// Pulls the store name out of a "give me item for X" style message.
-  String? _extractStoreName(String lower) {
-    var cleaned = lower;
-    for (final phrase in [
-      'give me',
-      'can you',
-      'could you',
-      'please show',
-      'show me',
-      'please',
-      'items',
-      'item',
-      'menu',
-      'products',
-      'product',
-      'list',
-      'need',
-      'want',
-      'for',
-      'from',
-      'of',
-      'at',
-      'in',
-      'the',
-      'a',
-      'an',
-      'and',
-      'store',
-      'restaurant',
-      'shop',
-      'near me',
-      'nearby',
-      'open',
-    ]) {
-      cleaned = cleaned.replaceAll(' $phrase ', ' ');
-      cleaned = cleaned.replaceAll(phrase, ' ');
-    }
-    cleaned = cleaned.replaceAll(RegExp(r'[^a-z0-9 \-&]'), ' ');
-    cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (cleaned.length < 2) return null;
-    return cleaned;
-  }
-
-  dynamic _matchStore(String name, List stores) {
-    final lower = name.toLowerCase().trim();
-    for (final store in stores) {
-      final storeName = (store['name']?.toString() ?? '').toLowerCase().trim();
-      if (storeName.isEmpty) continue;
-      if (storeName.contains(lower) || lower.contains(storeName)) {
-        return store;
-      }
-    }
-    return null;
-  }
-
-  Future<List?> _loadNearbyStores() async {
-    if (_nearbyStoresLoaded) return _nearbyStores;
-    final data = await ChatService.getNearbyStores(context: context);
-    if (data != null && data['success'] == true) {
-      final stores = data['stores'];
-      if (stores is List) {
-        _nearbyStores = stores;
-        _nearbyStoresLoaded = true;
-        return _nearbyStores;
-      }
-    }
-    return null;
-  }
-
-  String _formatNearbyStores(List stores) {
-    final lines = stores
-        .take(6)
-        .toList()
-        .asMap()
-        .entries
-        .map((e) {
-          final index = e.key + 1;
-          final store = e.value;
-          final name = store['name']?.toString() ?? 'Store';
-          var distance = store['distance'];
-          final suffix = (distance is num)
-              ? ' — ${distance.toStringAsFixed(1)} km'
-              : '';
-          return '**$index. $name**$suffix';
-        })
-        .join('\n');
-    return '📍 Here are some great stores near you:\n\n$lines\n\n'
-        'Tell me which one you\'d like and I\'ll pull up its menu. '
-        'Or tap **View Cart** if you\'re ready to order! 🍔';
-  }
-
-  String _formatStoreItems(List items, String storeName) {
-    final lines = items
-        .take(10)
-        .toList()
-        .asMap()
-        .entries
-        .map((e) {
-          final index = e.key + 1;
-          final item = e.value;
-          final name = item['name']?.toString() ?? 'Item';
-          final price = _itemPrice(item);
-          return '**$index. $name** — $price';
-        })
-        .join('\n');
-    return '🍽️ Here\'s a taste of **$storeName**:\n\n$lines\n\n'
-        'Want the full menu, or shall I add one of these to your cart? 🛒';
-  }
-
-  String _itemPrice(dynamic item) {
-    final meta = Provider.of<ZMetaData>(context, listen: false);
-    final raw = item['price'] ?? item['item_price'];
-    if (raw is num && raw > 0) {
-      return '${raw.toStringAsFixed(0)} ${meta.currency}';
-    }
-    final specs = item['specifications'];
-    if (specs is List) {
-      for (final spec in specs) {
-        final list = spec?['list'];
-        if (list is List) {
-          for (final option in list) {
-            if (option?['is_default_selected'] == true &&
-                option?['price'] is num) {
-              return '${(option['price'] as num).toStringAsFixed(0)} ${meta.currency}';
-            }
-          }
-        }
-      }
-      if (specs.isNotEmpty) {
-        final firstList = specs.first?['list'];
-        if (firstList is List && firstList.isNotEmpty) {
-          final price = firstList.first['price'];
-          if (price is num) {
-            return '${price.toStringAsFixed(0)} ${meta.currency}';
-          }
-        }
-      }
-    }
-    return 'price on request';
-  }
-
-  /// Generates a mock bot reply when the backend is unreachable
-  /// (e.g. expired token, network issue) so the chat still works offline.
-  String _getMockResponse(String message) {
-    final lower = message.toLowerCase();
-
-    final products = searchMockProducts(message);
-    if (products.isNotEmpty) {
-      return formatMockProducts(products);
-    }
-
-    if (lower.contains('where') && lower.contains('order') ||
-        lower.contains('track') && lower.contains('order')) {
-      return "📦 Here's how to track your order:\n\n"
-          "1. Open the **Orders** tab\n"
-          "2. Tap on your active order\n"
-          "3. Follow the **live tracking** map\n\n"
-          "Or just send me your order ID and I'll check it for you! ✅";
-    }
-
-    if (lower.contains('last order')) {
-      if (userLastOrderId != null && userLastOrderId!.isNotEmpty) {
-        return "🛍️ Your **last order**:\n\n"
-            "• Order #: **$userLastOrderId**\n"
-            "• Status: **${userOrderStatus ?? 'In progress'}**\n\n"
-            "You can see the full details in the **Orders** tab. Anything else? 😊";
-      }
-      return "I couldn't find any past orders on your account yet.\n\n"
-          "Once you place an order, I'll be the first to show it here! 🛒";
-    }
-
-    if (lower.contains('status')) {
-      if (userLastOrderId != null && userLastOrderId!.isNotEmpty) {
-        return "📈 Your order **#$userLastOrderId** is currently:\n\n"
-            "**${userOrderStatus ?? 'processing'}** 🎉\n\n"
-            "Live updates are available in the **Orders** tab.";
-      }
-      return "I couldn't find an order on your account.\n\n"
-          "Please place an order first, then I can check its status for you. 😊";
-    }
-
-    if (lower.contains('refund')) {
-      return "💸 Refunds are usually processed within **3–5 business days**.\n\n"
-          "Your money goes back to:\n"
-          "• Original payment method\n"
-          "• **ZMall Wallet** (instant)\n\n"
-          "Share your order ID and I'll check the refund status for you!";
-    }
-
-    if (lower.contains('payment') || lower.contains('pay')) {
-      return "💳 We accept these payment methods:\n\n"
-          "• **Telebirr**\n"
-          "• **CBE Birr**\n"
-          "• **Amole**\n"
-          "• **Credit / Debit cards**\n\n"
-          "What payment issue are you facing? I'm happy to help! 😊";
-    }
-
-    if (lower.contains('delivery') || lower.contains('deliver')) {
-      return "🚚 Delivery times depend on your location:\n\n"
-          "• **Standard** — 30–45 mins\n"
-          "• **Express** — 15–30 mins\n\n"
-          "You'll see your exact estimate at checkout. ⏱️";
-    }
-
-    if (lower.contains('cancel')) {
-      return "❌ To cancel an order:\n\n"
-          "1. Go to **Orders**\n"
-          "2. Select the order\n"
-          "3. Tap **Cancel Order**\n\n"
-          "⚠️ You can cancel anytime *before* the store accepts it.";
-    }
-
-    if (lower.contains('special') ||
-        lower.contains('offer') ||
-        lower.contains('discount') ||
-        lower.contains('promo')) {
-      return "🎉 Today's hot offers:\n\n"
-          "• 🚚 **Free delivery** on orders over 500 ETB\n"
-          "• 💥 **20% off** your first order\n"
-          "• ⚡ Weekly flash deals on selected stores\n\n"
-          "Check the **Home** tab to grab them before they're gone!";
-    }
-
-    if (lower.contains('restaurant') || lower.contains('near me')) {
-      return "🍔 Looking for food nearby? Here are some popular spots:\n\n"
-          "1. **ZMall Burgers** 🍔\n"
-          "2. **Pizza Express** 🍕\n"
-          "3. **Coffee Corner** ☕\n"
-          "4. **Asian Wok** 🍜\n\n"
-          "Open any store to browse its menu — or just ask me for items! 😊";
-    }
-
-    if (lower.contains('top selling') || lower.contains('top store')) {
-      return "🔥 This week's **top stores**:\n\n"
-          "1. **ZMall Burgers**\n"
-          "2. **Habesha Mart**\n"
-          "3. **Coffee Corner**\n"
-          "4. **Fresh Basket**\n\n"
-          "Tap any store to start shopping! 🛒";
-    }
-
-    if (lower.contains('cart') || lower.contains('basket')) {
-      return "🛒 You can tap the green **View Cart** button to see your basket.\n\n"
-          "From there you can:\n"
-          "• Adjust quantities\n"
-          "• Remove items\n"
-          "• Proceed to **checkout**";
-    }
-
-    if (lower.contains('hello') ||
-        lower.contains('hi') ||
-        lower.contains('hey') ||
-        lower.contains('salam')) {
-      return "Hello! 👋 Great to see you! I'm **ZMall Support**.\n\n"
-          "I can help you with:\n"
-          "• 🛍️ Finding stores & items\n"
-          "• 📦 Tracking orders\n"
-          "• 💳 Payments & refunds\n\n"
-          "What would you like to do today?";
-    }
-
-    if (lower.contains('thank')) {
-      return "You're very welcome! 😊\n\n"
-          "Is there anything else I can help you with today?";
-    }
-
-    if (lower.contains('agent') ||
-        lower.contains('human') ||
-        lower.contains('talk') ||
-        lower.contains('live')) {
-      return "Sure — let me get a **human agent** for you! 🙋\n\n"
-          "📞 Call: +251 967 575757\n"
-          "📧 Email: info@zmallshop.com\n"
-          "🕗 Hours: 8 AM – 10 PM\n\n"
-          "Our team will assist you shortly.";
-    }
-
-    return "Great question! Here's what I can help you with:\n\n"
-        "• 🛍️ **Find stores & items**\n"
-        "• 📦 **Track your order**\n"
-        "• 💳 **Payments & refunds**\n"
-        "• 🚚 **Delivery info**\n"
-        "• ❌ **Cancellations**\n\n"
-        "Or if you need a **live agent**, just say the word! What would you like to do?";
   }
 
   void _scrollToBottom() {
@@ -1684,7 +1268,6 @@ class _TypingDotsState extends State<_TypingDots>
       builder: (context, child) {
         final double delay = index * 0.22;
         final double progress = (_controller.value + delay) % 1.0;
-        final double sinVal = (progress * 2 * 3.1415926535).abs();
         final double bounce =
             -3.5 * (1 - (progress - 0.5).abs() * 2).clamp(0.0, 1.0);
         final double opacity =

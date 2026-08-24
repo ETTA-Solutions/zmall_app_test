@@ -44,7 +44,7 @@ const BASE_URL_TEST =
 // const BASE_URL = BASE_URL_TEST;
 const BASE_URL = BASE_URL_TEST;
 
-// const ayat = "6a6b069856bef41124383c9e";
+// const ayat = "6a6b069856bef41124383c9e"`;
 // const mexico = "6a6b0c4a56bef41124383ca2";
 
 /// Zmall branch availability check (Odoo).
@@ -91,9 +91,9 @@ const double kDefaultPadding = 15.0;
 final double zmall_latitude = 8.999578803663903;
 final double zmall_longitude = 38.769460522577134;
 
-// Gemini chatbot config (used as fallback when the chat backend is down)
+// Gemini chatbot config
 const String kGeminiApiKey = "AIzaSyDZD94UbvnltvJcALnZ7Ch4cn0No7EaEcI";
-const String kGeminiModel = "gemini-3.6-flash";
+const String kGeminiModel = "gemini-1.5-flash";
 
 final eKey = Encrypt.Key.fromUtf8("T-aie)c(ko,o=>ue1ir^UW&I90jm@@9!");
 final b64key = Encrypt.Key.fromBase64(base64Encode(eKey.bytes));

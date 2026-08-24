@@ -81,7 +81,7 @@ class _ChatBotIconState extends State<ChatBotIcon>
   Widget _buildGraphic(double innerIconSize) {
     final totalHeight = innerIconSize;
     final upperHeight = totalHeight * 0.74;
-    final upperWidth = upperHeight * (600 / 676);
+    final upperWidth = upperHeight * (700 / 732);
     final gapHeight = totalHeight * 0.02;
     final dotsHeight = totalHeight * 0.23;
     final dotsWidth = dotsHeight * (634 / 208);
