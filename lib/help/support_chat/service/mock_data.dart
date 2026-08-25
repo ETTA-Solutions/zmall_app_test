@@ -1,6 +1,13 @@
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/services/service.dart';
 
+// ── Meal image asset paths (mapped by category) ─────────────────────────────
+const String _imgBurger = 'images/meal/burger_with_fires.jpg';
+const String _imgPizza = 'images/meal/pizza.jpg';
+const String _imgPizzaAlt = 'images/meal/pizza_hot.jpg';
+const String _imgSides = 'images/meal/one.jpg';
+const String _imgCoffee = 'images/meal/two.jpg';
+
 /// Demo product model used by the support chat for product recommendations,
 /// mock search results, and direct-to-cart integration.
 class MockProduct {
@@ -12,6 +19,9 @@ class MockProduct {
   final String description;
   final String imageUrl;
 
+  /// Local Flutter asset path to the meal image shown in the chat food card
+  final String localImageAsset;
+
   const MockProduct({
     required this.id,
     required this.storeId,
@@ -20,6 +30,7 @@ class MockProduct {
     required this.category,
     this.description = '',
     this.imageUrl = '',
+    this.localImageAsset = '',
   });
 
   Map<String, dynamic> toJson() => {
@@ -41,8 +52,8 @@ const List<MockProduct> mockProducts = [
     name: 'Cheese Burger',
     price: 250.0,
     category: 'Burger',
-    description:
-        'Juicy grilled beef patty with melted cheddar cheese & house sauce',
+    description: 'Juicy grilled beef patty with melted cheddar cheese & house sauce',
+    localImageAsset: _imgBurger,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fba9c',
@@ -50,8 +61,8 @@ const List<MockProduct> mockProducts = [
     name: 'Double Cheese Burger',
     price: 320.0,
     category: 'Burger',
-    description:
-        'Two beef patties, loaded double cheese, pickles and signature dressing',
+    description: 'Two beef patties, loaded double cheese, pickles and signature dressing',
+    localImageAsset: _imgBurger,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fba9d',
@@ -59,8 +70,8 @@ const List<MockProduct> mockProducts = [
     name: 'Classic ZMall Burger',
     price: 180.0,
     category: 'Burger',
-    description:
-        'Signature grilled beef patty with crisp lettuce and fresh tomatoes',
+    description: 'Signature grilled beef patty with crisp lettuce and fresh tomatoes',
+    localImageAsset: _imgBurger,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fba9e',
@@ -69,6 +80,7 @@ const List<MockProduct> mockProducts = [
     price: 220.0,
     category: 'Burger',
     description: 'Crispy fried chicken breast fillet with garlic herb mayo',
+    localImageAsset: _imgBurger,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fba9f',
@@ -76,8 +88,8 @@ const List<MockProduct> mockProducts = [
     name: 'Zinger Burger',
     price: 210.0,
     category: 'Burger',
-    description:
-        'Spicy crunchy chicken patty with zesty relish and fresh greens',
+    description: 'Spicy crunchy chicken patty with zesty relish and fresh greens',
+    localImageAsset: _imgBurger,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa0',
@@ -85,8 +97,8 @@ const List<MockProduct> mockProducts = [
     name: 'Veggie Burger',
     price: 160.0,
     category: 'Burger',
-    description:
-        'Delicious plant-based patty with avocado sauce and garden veggies',
+    description: 'Delicious plant-based patty with avocado sauce and garden veggies',
+    localImageAsset: _imgBurger,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa1',
@@ -94,8 +106,8 @@ const List<MockProduct> mockProducts = [
     name: 'Pepperoni Pizza (Large)',
     price: 350.0,
     category: 'Pizza',
-    description:
-        'Hand-tossed crust, Italian tomato sauce, mozzarella & beef pepperoni',
+    description: 'Hand-tossed crust, Italian tomato sauce, mozzarella & beef pepperoni',
+    localImageAsset: _imgPizza,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa2',
@@ -103,8 +115,8 @@ const List<MockProduct> mockProducts = [
     name: 'Margherita Pizza (Medium)',
     price: 260.0,
     category: 'Pizza',
-    description:
-        'Fresh mozzarella cheese, tomato passata, virgin olive oil and basil',
+    description: 'Fresh mozzarella cheese, tomato passata, virgin olive oil and basil',
+    localImageAsset: _imgPizzaAlt,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa3',
@@ -113,6 +125,7 @@ const List<MockProduct> mockProducts = [
     price: 80.0,
     category: 'Sides',
     description: 'Golden crispy potato fries lightly sprinkled with sea salt',
+    localImageAsset: _imgSides,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa4',
@@ -120,8 +133,8 @@ const List<MockProduct> mockProducts = [
     name: 'Chicken Wings (8pc)',
     price: 200.0,
     category: 'Sides',
-    description:
-        '8 pieces of crispy juicy chicken wings in smoky barbecue glaze',
+    description: '8 pieces of crispy juicy chicken wings in smoky barbecue glaze',
+    localImageAsset: _imgSides,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa5',
@@ -129,8 +142,8 @@ const List<MockProduct> mockProducts = [
     name: 'Cappuccino',
     price: 60.0,
     category: 'Coffee',
-    description:
-        'Freshly brewed rich espresso topped with smooth velvety milk foam',
+    description: 'Freshly brewed rich espresso topped with smooth velvety milk foam',
+    localImageAsset: _imgCoffee,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa6',
@@ -139,6 +152,7 @@ const List<MockProduct> mockProducts = [
     price: 50.0,
     category: 'Coffee',
     description: 'Fresh single-origin Ethiopian espresso with hot water',
+    localImageAsset: _imgCoffee,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa7',
@@ -147,6 +161,7 @@ const List<MockProduct> mockProducts = [
     price: 40.0,
     category: 'Drinks',
     description: 'Chilled refreshing Coca-Cola bottle (500ml)',
+    localImageAsset: _imgCoffee,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa8',
@@ -155,6 +170,7 @@ const List<MockProduct> mockProducts = [
     price: 240.0,
     category: 'Salad',
     description: 'Crisp romaine, grilled chicken breast, parmesan & caesar dressing',
+    localImageAsset: _imgSides,
   ),
   MockProduct(
     id: '64aba5286d11e42d492fbaa9',
@@ -163,8 +179,10 @@ const List<MockProduct> mockProducts = [
     price: 150.0,
     category: 'Dessert',
     description: 'Warm chocolate fudge cake with molten chocolate core',
+    localImageAsset: _imgSides,
   ),
 ];
+
 
 /// Demo store model used for mock store discovery and recommendations.
 class MockStore {
@@ -185,6 +203,14 @@ class MockStore {
     required this.deliveryTime,
     required this.deliveryFee,
   });
+}
+
+/// Returns the delivery-time label for a mock product's store.
+String getMockStoreDeliveryTime(String storeId) {
+  for (final store in mockStores) {
+    if (store.id == storeId) return store.deliveryTime;
+  }
+  return mockStores.first.deliveryTime;
 }
 
 const List<MockStore> mockStores = [
@@ -370,16 +396,20 @@ List<MockProduct> searchMockProducts(String message) {
   final keywordCategories = {
     'cheeseburger': 'Burger',
     'burger': 'Burger',
+    'burgers': 'Burger',
     'pizza': 'Pizza',
     'coffee': 'Coffee',
     'cappuccino': 'Coffee',
     'americano': 'Coffee',
     'drink': 'Drinks',
+    'drinks': 'Drinks',
     'soda': 'Drinks',
     'coke': 'Drinks',
     'cola': 'Drinks',
     'fries': 'Sides',
     'wings': 'Sides',
+    'sides': 'Sides',
+    'snack': 'Sides',
     'salad': 'Salad',
     'dessert': 'Dessert',
     'cake': 'Dessert',
@@ -424,7 +454,7 @@ String formatMockProducts(List<MockProduct> products) {
       ? '\n\n…and ${products.length - 8} more items!'
       : '';
   return '😋 Here\'s what I found for you:\n\n$lines$extra\n\n'
-      'Tap **View Cart** below to see them in your basket. 🛒';
+      'Swipe through the cards below and tap **+** to add items to your cart. 🛒';
 }
 
 /// Formats a list of demo stores into a chat-friendly reply.

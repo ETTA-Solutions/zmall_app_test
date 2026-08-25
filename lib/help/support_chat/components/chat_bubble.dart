@@ -1,9 +1,12 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:zmall/help/support_chat/components/chat_bot_icon.dart';
+import 'package:zmall/help/support_chat/components/food_recommendation_card.dart';
+import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/store/components/image_container.dart';
 import 'package:zmall/utils/constants.dart';
@@ -14,6 +17,11 @@ class ChatBubble extends StatefulWidget {
   final String? imageUrl;
   final VoidCallback? onLongPress;
   final VoidCallback? onViewCart;
+  final ValueChanged<MockProduct>? onProductTap;
+  final ValueChanged<MockProduct>? onAddToCart;
+
+  /// Matched food products for this message (shown as cards when non-empty)
+  final List<MockProduct> matchedProducts;
 
   const ChatBubble({
     super.key,
@@ -21,6 +29,9 @@ class ChatBubble extends StatefulWidget {
     this.imageUrl,
     this.onLongPress,
     this.onViewCart,
+    this.onProductTap,
+    this.onAddToCart,
+    this.matchedProducts = const [],
   });
 
   @override
@@ -50,18 +61,13 @@ class _ChatBubbleState extends State<ChatBubble> {
             const SizedBox(width: 8),
             const Text(
               "Copied to clipboard",
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ],
         ),
         backgroundColor: const Color(0xFF1F2937),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -119,6 +125,7 @@ class _ChatBubbleState extends State<ChatBubble> {
   @override
   Widget build(BuildContext context) {
     final isUser = widget.message.isUser;
+    final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.82;
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -126,59 +133,66 @@ class _ChatBubbleState extends State<ChatBubble> {
         vertical: getProportionateScreenHeight(kDefaultPadding / 3.5),
       ),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isUser) ...[
-            _buildAvatar(isBot: true),
-            SizedBox(width: getProportionateScreenWidth(8)),
-          ],
           Flexible(
-            child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                if (!isUser) ...[
-                  _buildBotHeader(),
-                  SizedBox(height: getProportionateScreenHeight(5)),
-                ],
-                GestureDetector(
-                  onLongPress: isUser ? widget.onLongPress : null,
-                  child: isUser ? _buildUserBubble() : _buildBotBubble(context),
-                ),
-                if (!isUser && widget.message.showCartAction) ...[
-                  SizedBox(height: getProportionateScreenHeight(8)),
-                  _buildCartActionButton(),
-                ],
-                if (isUser) ...[
-                  SizedBox(height: getProportionateScreenHeight(4)),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: getProportionateScreenWidth(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatTime(widget.message.timestamp),
-                          style: TextStyle(
-                            color: kGreyColor.withValues(alpha: 0.7),
-                            fontSize: getProportionateScreenWidth(10),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(width: getProportionateScreenWidth(4)),
-                        Icon(
-                          HeroiconsSolid.checkCircle,
-                          size: getProportionateScreenWidth(11),
-                          color: kSecondaryColor.withValues(alpha: 0.7),
-                        ),
-                      ],
-                    ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+              child: Column(
+                crossAxisAlignment: isUser
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onLongPress: isUser ? widget.onLongPress : null,
+                    child: isUser
+                        ? _buildUserBubble()
+                        : _buildBotBubble(context),
                   ),
+                  if (!isUser && widget.matchedProducts.isNotEmpty) ...[
+                    SizedBox(height: getProportionateScreenHeight(12)),
+                    FoodRecommendationRow(
+                      products: widget.matchedProducts,
+                      onViewCart: widget.onViewCart,
+                      onProductTap: widget.onProductTap,
+                      onAddToCart: widget.onAddToCart,
+                    ),
+                  ] else if (!isUser && widget.message.showCartAction) ...[
+                    SizedBox(height: getProportionateScreenHeight(12)),
+                    _buildCartActionButton(),
+                  ],
+                  if (isUser) ...[
+                    SizedBox(height: getProportionateScreenHeight(4)),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: getProportionateScreenWidth(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _formatTime(widget.message.timestamp),
+                            style: TextStyle(
+                              color: kGreyColor.withValues(alpha: 0.7),
+                              fontSize: getProportionateScreenWidth(10),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(width: getProportionateScreenWidth(4)),
+                          Icon(
+                            HeroiconsSolid.checkCircle,
+                            size: getProportionateScreenWidth(11),
+                            color: kSecondaryColor.withValues(alpha: 0.7),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           if (isUser) ...[
@@ -190,169 +204,53 @@ class _ChatBubbleState extends State<ChatBubble> {
     );
   }
 
-  Widget _buildBotHeader() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: getProportionateScreenWidth(8),
-            vertical: getProportionateScreenHeight(3),
-          ),
+  Widget _buildBotBubble(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(22),
+        topRight: Radius.circular(22),
+        bottomLeft: Radius.circular(6),
+        bottomRight: Radius.circular(22),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                kSecondaryColor.withValues(alpha: 0.12),
-                kSecondaryColor.withValues(alpha: 0.05),
+            color: Colors.white.withValues(alpha: 0.92),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(22),
+              topRight: Radius.circular(22),
+              bottomLeft: Radius.circular(6),
+              bottomRight: Radius.circular(22),
+            ),
+            border: Border.all(
+              color: kSecondaryColor.withValues(alpha: 0.08),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: kSecondaryColor.withValues(alpha: 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              getProportionateScreenWidth(14),
+              getProportionateScreenHeight(12),
+              getProportionateScreenWidth(14),
+              getProportionateScreenHeight(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildFormattedContent(widget.message.message),
+                SizedBox(height: getProportionateScreenHeight(10)),
+                _buildBotFooter(context),
               ],
             ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: kSecondaryColor.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                HeroiconsSolid.sparkles,
-                color: kSecondaryColor,
-                size: getProportionateScreenWidth(12),
-              ),
-              SizedBox(width: getProportionateScreenWidth(4)),
-              Text(
-                "ZMall AI Assistant",
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(11),
-                  fontWeight: FontWeight.w700,
-                  color: kBlackColor,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: getProportionateScreenWidth(6)),
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: getProportionateScreenWidth(6),
-            vertical: getProportionateScreenHeight(3),
-          ),
-          decoration: BoxDecoration(
-            color: const Color(0xFF22C55E).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: getProportionateScreenWidth(5.5),
-                height: getProportionateScreenWidth(5.5),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF22C55E),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x6622C55E),
-                      blurRadius: 4,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(3.5)),
-              Text(
-                "Online",
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(9),
-                  color: const Color(0xFF16A34A),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBotBubble(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(22),
-          topRight: Radius.circular(22),
-          bottomLeft: Radius.circular(6),
-          bottomRight: Radius.circular(22),
-        ),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E293B).withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-          BoxShadow(
-            color: kSecondaryColor.withValues(alpha: 0.03),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(22),
-          topRight: Radius.circular(22),
-          bottomLeft: Radius.circular(6),
-          bottomRight: Radius.circular(22),
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left glowing accent gradient bar
-              Container(
-                width: getProportionateScreenWidth(4.5),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      kSecondaryColor,
-                      kSecondaryColor.withValues(alpha: 0.5),
-                      const Color(0xFFF97316).withValues(alpha: 0.3),
-                    ],
-                  ),
-                ),
-              ),
-              // Message Body
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    getProportionateScreenWidth(14),
-                    getProportionateScreenHeight(12),
-                    getProportionateScreenWidth(14),
-                    getProportionateScreenHeight(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Rich Formatted Content
-                      _buildFormattedContent(widget.message.message),
-                      SizedBox(height: getProportionateScreenHeight(10)),
-                      // Bottom Toolbar & Metadata
-                      _buildBotFooter(context),
-                    ],
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -362,42 +260,43 @@ class _ChatBubbleState extends State<ChatBubble> {
   Widget _buildBotFooter(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(top: getProportionateScreenHeight(6)),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: Color(0xFFF1F5F9),
+            color: kSecondaryColor.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Timestamp with AI indicator
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                HeroiconsOutline.clock,
-                size: getProportionateScreenWidth(11),
-                color: const Color(0xFF94A3B8),
-              ),
-              SizedBox(width: getProportionateScreenWidth(3.5)),
-              Text(
-                _formatTime(widget.message.timestamp),
-                style: TextStyle(
-                  color: const Color(0xFF94A3B8),
-                  fontSize: getProportionateScreenWidth(10),
-                  fontWeight: FontWeight.w500,
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  HeroiconsOutline.clock,
+                  size: getProportionateScreenWidth(11),
+                  color: kGreyColor.withValues(alpha: 0.7),
                 ),
-              ),
-            ],
+                SizedBox(width: getProportionateScreenWidth(3.5)),
+                Flexible(
+                  child: Text(
+                    _formatTime(widget.message.timestamp),
+                    style: TextStyle(
+                      color: kGreyColor.withValues(alpha: 0.7),
+                      fontSize: getProportionateScreenWidth(10),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
-          // Action Buttons: Copy & Thumbs Feedback
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Copy Button
               InkWell(
                 onTap: () => _copyToClipboard(context),
                 borderRadius: BorderRadius.circular(8),
@@ -408,14 +307,11 @@ class _ChatBubbleState extends State<ChatBubble> {
                         ? HeroiconsSolid.check
                         : HeroiconsOutline.clipboardDocument,
                     size: getProportionateScreenWidth(14),
-                    color: _isCopied
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFF94A3B8),
+                    color: _isCopied ? kGreenColor : kGreyColor,
                   ),
                 ),
               ),
-              SizedBox(width: getProportionateScreenWidth(6)),
-              // Thumbs Up
+              SizedBox(width: getProportionateScreenWidth(4)),
               InkWell(
                 onTap: () => _handleFeedback(1),
                 borderRadius: BorderRadius.circular(8),
@@ -426,14 +322,10 @@ class _ChatBubbleState extends State<ChatBubble> {
                         ? HeroiconsSolid.handThumbUp
                         : HeroiconsOutline.handThumbUp,
                     size: getProportionateScreenWidth(14),
-                    color: _feedbackState == 1
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFF94A3B8),
+                    color: _feedbackState == 1 ? kGreenColor : kGreyColor,
                   ),
                 ),
               ),
-              SizedBox(width: getProportionateScreenWidth(4)),
-              // Thumbs Down
               InkWell(
                 onTap: () => _handleFeedback(-1),
                 borderRadius: BorderRadius.circular(8),
@@ -444,9 +336,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                         ? HeroiconsSolid.handThumbDown
                         : HeroiconsOutline.handThumbDown,
                     size: getProportionateScreenWidth(14),
-                    color: _feedbackState == -1
-                        ? const Color(0xFFEF4444)
-                        : const Color(0xFF94A3B8),
+                    color: _feedbackState == -1 ? kSecondaryColor : kGreyColor,
                   ),
                 ),
               ),
@@ -531,10 +421,7 @@ class _ChatBubbleState extends State<ChatBubble> {
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(10),
               border: Border(
-                left: BorderSide(
-                  color: kSecondaryColor,
-                  width: 3,
-                ),
+                left: BorderSide(color: kSecondaryColor, width: 3),
               ),
             ),
             child: Row(
@@ -546,9 +433,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                   color: kSecondaryColor,
                 ),
                 SizedBox(width: getProportionateScreenWidth(8)),
-                Expanded(
-                  child: _buildRichTextSpan(quoteText, isQuote: true),
-                ),
+                Expanded(child: _buildRichTextSpan(quoteText, isQuote: true)),
               ],
             ),
           ),
@@ -572,9 +457,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                 Container(
                   width: getProportionateScreenWidth(19),
                   height: getProportionateScreenWidth(19),
-                  margin: EdgeInsets.only(
-                    top: getProportionateScreenHeight(1),
-                  ),
+                  margin: EdgeInsets.only(top: getProportionateScreenHeight(1)),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -604,9 +487,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                   ),
                 ),
                 SizedBox(width: getProportionateScreenWidth(8)),
-                Expanded(
-                  child: _buildRichTextSpan(itemText),
-                ),
+                Expanded(child: _buildRichTextSpan(itemText)),
               ],
             ),
           ),
@@ -637,10 +518,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                   height: getProportionateScreenWidth(6),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        kSecondaryColor,
-                        const Color(0xFFF97316),
-                      ],
+                      colors: [kSecondaryColor, const Color(0xFFF97316)],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
@@ -651,9 +529,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                     ],
                   ),
                 ),
-                Expanded(
-                  child: _buildRichTextSpan(itemText),
-                ),
+                Expanded(child: _buildRichTextSpan(itemText)),
               ],
             ),
           ),
@@ -696,7 +572,9 @@ class _ChatBubbleState extends State<ChatBubble> {
 
     for (final match in tokenPattern.allMatches(text)) {
       if (match.start > lastEnd) {
-        final plain = _stripStrayAsterisks(text.substring(lastEnd, match.start));
+        final plain = _stripStrayAsterisks(
+          text.substring(lastEnd, match.start),
+        );
         spans.addAll(_parseInlineEntities(plain, baseStyle));
       }
 
@@ -789,10 +667,7 @@ class _ChatBubbleState extends State<ChatBubble> {
               decoration: BoxDecoration(
                 color: const Color(0xFFDCFCE7),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: const Color(0xFF86EFAC),
-                  width: 0.8,
-                ),
+                border: Border.all(color: const Color(0xFF86EFAC), width: 0.8),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -908,12 +783,7 @@ class _ChatBubbleState extends State<ChatBubble> {
     }
 
     if (lastIndex < text.length) {
-      spans.add(
-        TextSpan(
-          text: text.substring(lastIndex),
-          style: baseStyle,
-        ),
-      );
+      spans.add(TextSpan(text: text.substring(lastIndex), style: baseStyle));
     }
 
     return spans;
@@ -922,8 +792,8 @@ class _ChatBubbleState extends State<ChatBubble> {
   Widget _buildUserBubble() {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(kDefaultPadding / 1.1),
-        vertical: getProportionateScreenHeight(kDefaultPadding / 1.4),
+        horizontal: getProportionateScreenWidth(16),
+        vertical: getProportionateScreenHeight(12),
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -931,31 +801,31 @@ class _ChatBubbleState extends State<ChatBubble> {
           end: Alignment.bottomRight,
           colors: [
             kSecondaryColor,
-            const Color(0xFFD61833),
+            kSecondaryColor.withValues(alpha: 0.88),
           ],
         ),
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(22),
-          topRight: Radius.circular(22),
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(5),
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(6),
         ),
         boxShadow: [
           BoxShadow(
-            color: kSecondaryColor.withValues(alpha: 0.32),
+            color: kSecondaryColor.withValues(alpha: 0.28),
             blurRadius: 14,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Text(
         widget.message.message,
         style: TextStyle(
-          color: Colors.white,
-          fontSize: getProportionateScreenWidth(13),
-          fontWeight: FontWeight.w500,
-          height: 1.45,
-          letterSpacing: 0.15,
+          color: kPrimaryColor,
+          fontSize: getProportionateScreenWidth(13.5),
+          fontWeight: FontWeight.w600,
+          height: 1.4,
+          letterSpacing: -0.2,
         ),
       ),
     );
@@ -974,10 +844,7 @@ class _ChatBubbleState extends State<ChatBubble> {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF22C55E),
-              Color(0xFF16A34A),
-            ],
+            colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
           ),
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
@@ -1026,55 +893,32 @@ class _ChatBubbleState extends State<ChatBubble> {
   }
 
   Widget _buildAvatar({required bool isBot}) {
-    return isBot
-        ? Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  kSecondaryColor,
-                  kSecondaryColor.withValues(alpha: 0.4),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: kSecondaryColor.withValues(alpha: 0.25),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+    return Container(
+      width: getProportionateScreenWidth(32),
+      height: getProportionateScreenWidth(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: kGreyColor.withValues(alpha: 0.2),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
+          ? ClipOval(child: ImageContainer(url: widget.imageUrl))
+          : Icon(
+              Icons.person,
+              color: kGreyColor,
+              size: getProportionateScreenWidth(18),
             ),
-            child: const ChatBotIcon(width: 30, height: 30),
-          )
-        : Container(
-            width: getProportionateScreenWidth(32),
-            height: getProportionateScreenWidth(32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: kGreyColor.withValues(alpha: 0.2),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
-                ? ClipOval(child: ImageContainer(url: widget.imageUrl))
-                : Icon(
-                    Icons.person,
-                    color: kGreyColor,
-                    size: getProportionateScreenWidth(18),
-                  ),
-          );
+    );
   }
 
   String _formatTime(DateTime timestamp) {

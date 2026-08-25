@@ -5,18 +5,20 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zmall/help/support_chat/components/chat_bot_icon.dart';
+import 'package:zmall/help/support_chat/components/glowing_ai_orb.dart';
+import 'package:zmall/help/support_chat/screens/mock_product_screen.dart';
+import 'package:zmall/help/support_chat/screens/mock_store_list_screen.dart';
 import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/profile/components/profile_list_tile.dart';
 import 'package:zmall/help/support_chat/service/chat_service.dart';
-import 'package:zmall/help/support_chat/service/gemini_service.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/cart/cart_screen.dart';
 import 'package:zmall/help/support_chat/components/chat_bubble.dart';
 import 'package:zmall/help/support_chat/components/chat_input.dart';
 import 'package:zmall/help/support_chat/components/quick_replies.dart';
-import 'package:zmall/help/support_chat/components/zmall_loop_gif.dart';
+import 'package:zmall/help/support_chat/components/support_chat_canvas.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
@@ -267,6 +269,19 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
 
+    // Store / restaurant discovery via free text → open the store list
+    final lower = message.toLowerCase();
+    if (lower.contains('store') ||
+        lower.contains('restaurant') ||
+        lower.contains('explore store') ||
+        lower.contains('browse store') ||
+        lower.contains('near me') ||
+        lower.contains('show me store')) {
+      _messageController.clear();
+      _openStoreList();
+      return;
+    }
+
     _addUserMessage(message);
     _messageController.clear();
 
@@ -275,6 +290,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _handleQuickReply(String reply) {
+    // Store / restaurant discovery → open the immersive store list first
+    final lowerReply = reply.toLowerCase();
+    if (lowerReply.contains('store') ||
+        lowerReply.contains('restaurant') ||
+        lowerReply.contains('explore') ||
+        lowerReply.contains('browse') ||
+        lowerReply.contains('near me') ||
+        lowerReply.contains('shop')) {
+      _openStoreList();
+      return;
+    }
+
     _addUserMessage(reply);
     _fetchBotResponse(reply);
     // Hide quick replies after selection
@@ -290,10 +317,14 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   List<Map<String, String>> _getConversationHistory() {
-    return _messages.map((msg) => {
-      'role': msg.isUser ? 'user' : 'model',
-      'content': msg.message,
-    }).toList();
+    return _messages
+        .map(
+          (msg) => {
+            'role': msg.isUser ? 'user' : 'model',
+            'content': msg.message,
+          },
+        )
+        .toList();
   }
 
   Future<void> _fetchBotResponse(String userMessage) async {
@@ -308,8 +339,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
       final activeOrderId =
           (userLastOrderId != null && userLastOrderId!.isNotEmpty)
-              ? userLastOrderId
-              : mockActiveOrder.orderId;
+          ? userLastOrderId
+          : mockActiveOrder.orderId;
       final activeOrderStatus = userOrderStatus ?? mockActiveOrder.status;
 
       // Instant local mock engine response
@@ -337,6 +368,24 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _handleAddProductToCart(MockProduct product) async {
+    await addMockProductsToCart([product]);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} added to cart'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          action: SnackBarAction(
+            label: 'View Cart',
+            onPressed: () =>
+                Navigator.pushNamed(context, CartScreen.routeName),
+          ),
+        ),
+      );
     }
   }
 
@@ -455,61 +504,203 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: kPrimaryColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Row(
-          children: [
-            ChatBotIcon(width: 40, height: 40, iconSize: 20),
-            SizedBox(width: getProportionateScreenWidth(kDefaultPadding / 2)),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "ZMall Support",
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(16),
-                    fontWeight: FontWeight.bold,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        leading: Padding(
+          padding: EdgeInsets.only(left: getProportionateScreenWidth(16)),
+          child: Center(
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: getProportionateScreenWidth(38),
+                height: getProportionateScreenWidth(38),
+                decoration: BoxDecoration(
+                  color: kPrimaryColor.withValues(alpha: 0.95),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: kSecondaryColor.withValues(alpha: 0.12),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: kSecondaryColor.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(
+                    HeroiconsOutline.chevronLeft,
+                    color: kBlackColor,
+                    size: getProportionateScreenWidth(18),
                   ),
                 ),
-                Text(
-                  "Online • Responds quickly",
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(11),
-                    color: kGreenColor,
-                    fontWeight: FontWeight.normal,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ],
+          ),
+        ),
+        title: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: getProportionateScreenWidth(14),
+            vertical: getProportionateScreenHeight(7),
+          ),
+          decoration: BoxDecoration(
+            color: kPrimaryColor.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: kSecondaryColor.withValues(alpha: 0.12),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: kSecondaryColor.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: getProportionateScreenWidth(8),
+                height: getProportionateScreenWidth(8),
+                decoration: BoxDecoration(
+                  color: kGreenColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: kGreenColor.withValues(alpha: 0.5),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: getProportionateScreenWidth(8)),
+              Text(
+                "ZMall AI",
+                style: TextStyle(
+                  fontSize: getProportionateScreenWidth(14),
+                  fontWeight: FontWeight.w800,
+                  color: kBlackColor,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
-          // IconButton(
-          //   icon: Icon(HeroiconsOutline.phone, color: kBlackColor),
-          //   onPressed: () {
-          //     launchUrl(Uri(scheme: 'tel', path: '+251967575757'));
-          //   },
-          // ),
-          IconButton(
-            icon: Icon(HeroiconsOutline.ellipsisVertical, color: kBlackColor),
-            onPressed: () {
-              _showOptionsMenu(context);
-            },
+          Padding(
+            padding: EdgeInsets.only(right: getProportionateScreenWidth(8)),
+            child: Center(
+              child: GestureDetector(
+                onTap: () => Navigator.pushNamed(context, CartScreen.routeName),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: getProportionateScreenWidth(38),
+                      height: getProportionateScreenWidth(38),
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor.withValues(alpha: 0.95),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: kSecondaryColor.withValues(alpha: 0.12),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: kSecondaryColor.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(
+                          HeroiconsOutline.shoppingCart,
+                          color: kBlackColor,
+                          size: getProportionateScreenWidth(18),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          '2',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: getProportionateScreenWidth(9),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: getProportionateScreenWidth(16)),
+            child: Center(
+              child: GestureDetector(
+                onTap: () => _showOptionsMenu(context),
+                child: Container(
+                  width: getProportionateScreenWidth(38),
+                  height: getProportionateScreenWidth(38),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor.withValues(alpha: 0.95),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: kSecondaryColor.withValues(alpha: 0.12),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kSecondaryColor.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      HeroiconsOutline.ellipsisVertical,
+                      color: kBlackColor,
+                      size: getProportionateScreenWidth(18),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Solid white background
-          const Positioned.fill(
-            child: ColoredBox(color: Colors.white),
-          ),
-          Column(
-            children: [
-              Expanded(
-                child: _messages.length <= 1
-                    ? _buildEmptyState()
-                    : ListView.builder(
+      body: SupportChatCanvas(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
+                Expanded(
+                  child: _messages.length <= 1
+                      ? _buildEmptyState()
+                      : ListView.builder(
                         controller: _scrollController,
                         padding: EdgeInsets.only(
                           top: getProportionateScreenHeight(kDefaultPadding),
@@ -530,6 +721,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                             message,
                             previous,
                           );
+                          // Pre-compute matched products from the user's query
+                          final matchedProducts = !message.isUser && index > 0
+                              ? searchMockProducts(_messages[index - 1].message)
+                              : <MockProduct>[];
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -537,6 +732,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                               _AnimatedMessage(
                                 child: ChatBubble(
                                   message: message,
+                                  matchedProducts: matchedProducts,
                                   imageUrl:
                                       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imageUrl",
                                   onLongPress: message.isUser
@@ -547,357 +743,405 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                       : null,
                                   onViewCart: () =>
                                       _handleViewCartForMessage(index),
+                                  onAddToCart: _handleAddProductToCart,
+                                  onProductTap: (product) => _openMockProduct(
+                                    product,
+                                    products: matchedProducts.isNotEmpty
+                                        ? matchedProducts
+                                        : null,
+                                  ),
                                 ),
                               ),
                             ],
                           );
                         },
                       ),
-              ),
-              if (_showQuickReplies && _messages.length <= 1 && !_isTyping)
-                _buildFoodBanner(),
-              if (_showQuickReplies)
-                QuickReplies(onReplyTap: _handleQuickReply),
-              ChatInput(
-                controller: _messageController,
-                onSend: _handleSendMessage,
-                isLoading: _isLoading,
-                onQuickRepliesToggle: _messages.length > 1
-                    ? _toggleQuickReplies
-                    : null,
-              ),
-            ],
-          ),
-          // Scroll to bottom button
-          if (_showScrollToBottom)
-            Positioned(
-              bottom: getProportionateScreenHeight(
-                _showQuickReplies ? 230 : 110,
-              ),
-              right: getProportionateScreenWidth(kDefaultPadding),
-              child: Material(
-                elevation: 4,
-                shape: CircleBorder(),
-                color: kGreyColor.withValues(alpha: 0.6),
-                // kSecondaryColor,
-                child: InkWell(
-                  onTap: () {
-                    _scrollController.animateTo(
-                      _scrollController.position.maxScrollExtent,
-                      duration: Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  },
-                  customBorder: CircleBorder(),
-                  child: Container(
-                    width: getProportionateScreenWidth(38),
-                    height: getProportionateScreenWidth(38),
-                    child: Center(
+                ),
+                if (_showQuickReplies)
+                  QuickReplies(onReplyTap: _handleQuickReply),
+                ChatInput(
+                  controller: _messageController,
+                  onSend: _handleSendMessage,
+                  isLoading: _isLoading,
+                  onQuickRepliesToggle: _messages.length > 1
+                      ? _toggleQuickReplies
+                      : null,
+                ),
+              ],
+            ),
+            // Scroll to bottom button
+            if (_showScrollToBottom)
+              Positioned(
+                bottom: getProportionateScreenHeight(
+                  _showQuickReplies ? 200 : 100,
+                ),
+                right: getProportionateScreenWidth(kDefaultPadding),
+                child: Material(
+                  elevation: 4,
+                  shape: const CircleBorder(),
+                  color: kSecondaryColor,
+                  child: InkWell(
+                    onTap: () {
+                      _scrollController.animateTo(
+                        _scrollController.position.maxScrollExtent,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    },
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: getProportionateScreenWidth(38),
+                      height: getProportionateScreenWidth(38),
+                      alignment: Alignment.center,
                       child: Icon(
                         HeroiconsSolid.chevronDown,
                         color: kPrimaryColor,
-                        size: getProportionateScreenWidth(24),
+                        size: getProportionateScreenWidth(22),
                       ),
                     ),
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Opens the immersive store-list screen (shows all mock stores with a
+  /// "Menu" button on each card that slides into the product viewer).
+  void _openStoreList() {
+    Navigator.push(
+      context,
+      SlideStoreListPageRoute(page: const MockStoreListScreen()),
+    );
+  }
+
+  void _openMockProduct(
+    MockProduct product, {
+    List<MockProduct>? products,
+  }) {
+    final list = (products != null && products.isNotEmpty)
+        ? products
+        : <MockProduct>[product];
+    var index = list.indexWhere((p) => p.id == product.id);
+    if (index < 0) index = 0;
+
+    Navigator.push(
+      context,
+      SlideProductPageRoute(
+        page: MockProductScreen(
+          products: list,
+          initialIndex: index,
+        ),
+      ),
+    );
+  }
+
+  /// Returns a day separator widget when [message] starts a new day
+  /// compared to [previous], otherwise null (no separator needed).
+  Widget? _buildDaySeparator(ChatMessage message, ChatMessage? previous) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(
+      message.timestamp.year,
+      message.timestamp.month,
+      message.timestamp.day,
+    );
+
+    // Skip separator if previous message is on the same day
+    if (previous != null) {
+      final previousDate = DateTime(
+        previous.timestamp.year,
+        previous.timestamp.month,
+        previous.timestamp.day,
+      );
+      if (messageDate == previousDate) return null;
+    }
+
+    final difference = today.difference(messageDate).inDays;
+    String label;
+    if (messageDate == today) {
+      label = 'Today';
+    } else if (difference == 1) {
+      label = 'Yesterday';
+    } else {
+      label = DateFormat('MMM d, yyyy').format(messageDate);
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: getProportionateScreenHeight(kDefaultPadding / 2),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Divider(
+              color: kSecondaryColor.withValues(alpha: 0.12),
+              thickness: 1,
             ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: getProportionateScreenWidth(12),
+            ),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionateScreenWidth(10),
+                vertical: getProportionateScreenHeight(4),
+              ),
+              decoration: BoxDecoration(
+                color: kPrimaryColor.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: kSecondaryColor.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: getProportionateScreenWidth(11),
+                  fontWeight: FontWeight.w600,
+                  color: kGreyColor,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Divider(
+              color: kSecondaryColor.withValues(alpha: 0.12),
+              thickness: 1,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildEmptyState() {
+    final cravings = [
+      {
+        "emoji": "🏪",
+        "label": "Explore nearby stores",
+        "query": "Explore stores near me",
+      },
+      {"emoji": "🍕", "label": "I'm craving pizza", "query": "Show me pizza"},
+      {
+        "emoji": "🍔",
+        "label": "Double cheese burger",
+        "query": "Show me burgers",
+      },
+      {
+        "emoji": "🍗",
+        "label": "Crispy chicken wings",
+        "query": "Show me chicken wings and fries",
+      },
+      {
+        "emoji": "☕",
+        "label": "Hot Ethiopian coffee",
+        "query": "Show me coffee",
+      },
+      {
+        "emoji": "📦",
+        "label": "Where is my order?",
+        "query": "Where is my order?",
+      },
+      {
+        "emoji": "🔥",
+        "label": "Today's special offers",
+        "query": "What are today's special offers?",
+      },
+    ];
+
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.symmetric(
-        vertical: getProportionateScreenHeight(kDefaultPadding),
-        horizontal: getProportionateScreenWidth(kDefaultPadding),
+        vertical: getProportionateScreenHeight(20),
+        horizontal: getProportionateScreenWidth(20),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Hero welcome card
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal: getProportionateScreenWidth(kDefaultPadding * 1.4),
-              vertical: getProportionateScreenHeight(kDefaultPadding * 1.2),
+          SizedBox(
+            width: getProportionateScreenWidth(130),
+            height: getProportionateScreenWidth(130),
+            child: GlowingAiOrb(
+              size: getProportionateScreenWidth(100),
+              compact: true,
             ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  kSecondaryColor,
-                  kSecondaryColor.withValues(alpha: 0.85),
+          ),
+          SizedBox(height: getProportionateScreenHeight(20)),
+
+          // ── Heading ──────────────────────────────────────────────────
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [kBlackColor, kSecondaryColor.withValues(alpha: 0.85)],
+            ).createShader(bounds),
+            child: Text(
+              "Hi, I'm ZMall AI 🤖",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: getProportionateScreenWidth(22),
+                fontWeight: FontWeight.w900,
+                color: kPrimaryColor,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          SizedBox(height: getProportionateScreenHeight(8)),
+          Text(
+            "Tell me what you're craving, and I'll find the\nperfect meal for you.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: getProportionateScreenWidth(13),
+              color: kGreyColor,
+              height: 1.5,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          SizedBox(height: getProportionateScreenHeight(28)),
+
+          // ── Explore Stores hero button ────────────────────────────────
+          GestureDetector(
+            onTap: _openStoreList,
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionateScreenWidth(18),
+                vertical: getProportionateScreenHeight(16),
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [kSecondaryColor, kSecondaryColor.withValues(alpha: 0.80)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: kSecondaryColor.withValues(alpha: 0.30),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: kSecondaryColor.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                ZmallLoopGif(
-                  height: getProportionateScreenHeight(120),
-                  width: getProportionateScreenWidth(180),
-                  fit: BoxFit.contain,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding / 2),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ChatBotIcon(width: 26, height: 26, iconSize: 16),
-                    SizedBox(width: getProportionateScreenWidth(8)),
-                    Text(
-                      "Welcome to ZMall Support",
-                      style: TextStyle(
-                        fontSize: getProportionateScreenWidth(17),
-                        fontWeight: FontWeight.bold,
-                        color: kPrimaryColor,
+              child: Row(
+                children: [
+                  Container(
+                    width: getProportionateScreenWidth(42),
+                    height: getProportionateScreenWidth(42),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '🏪',
+                        style: TextStyle(fontSize: getProportionateScreenWidth(20)),
                       ),
                     ),
-                  ],
-                ),
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding / 2),
-                ),
-                Text(
-                  "I'm here 24/7 to help with orders, deliveries, "
-                  "payments, refunds and finding your favorite food!",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(12.5),
-                    color: kPrimaryColor.withValues(alpha: 0.9),
-                    height: 1.5,
                   ),
-                ),
-              ],
+                  SizedBox(width: getProportionateScreenWidth(12)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Explore Nearby Stores',
+                          style: TextStyle(
+                            fontSize: getProportionateScreenWidth(14),
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        SizedBox(height: getProportionateScreenHeight(3)),
+                        Text(
+                          'Browse menus & add items to cart',
+                          style: TextStyle(
+                            fontSize: getProportionateScreenWidth(11.5),
+                            color: Colors.white.withValues(alpha: 0.82),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    HeroiconsOutline.chevronRight,
+                    color: Colors.white.withValues(alpha: 0.85),
+                    size: getProportionateScreenWidth(18),
+                  ),
+                ],
+              ),
             ),
           ),
-          SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
-          Text(
-            "What can I do for you?",
-            style: TextStyle(
-              fontSize: getProportionateScreenWidth(14),
-              fontWeight: FontWeight.bold,
-              color: kBlackColor,
-            ),
-          ),
-          SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 1.5)),
+          SizedBox(height: getProportionateScreenHeight(20)),
+
+          // ── Quick Craving Pills ──────────────────────────────────────
           Wrap(
-            spacing: getProportionateScreenWidth(kDefaultPadding / 1.5),
-            runSpacing: getProportionateScreenHeight(kDefaultPadding / 1.5),
+            spacing: getProportionateScreenWidth(8),
+            runSpacing: getProportionateScreenHeight(10),
             alignment: WrapAlignment.center,
-            children: [
-              _buildFeatureCard(
-                icon: HeroiconsOutline.shoppingBag,
-                color: kSecondaryColor,
-                title: "Track Order",
-                subtitle: "Where is my order?",
-                onTap: () => _handleQuickReply("Where is my order?"),
-              ),
-              _buildFeatureCard(
-                icon: HeroiconsOutline.buildingStorefront,
-                color: const Color(0xFF2563EB),
-                title: "Find Stores",
-                subtitle: "Stores near me",
-                onTap: () => _handleQuickReply("Show me restaurants near me"),
-              ),
-              _buildFeatureCard(
-                icon: HeroiconsOutline.sparkles,
-                color: const Color(0xFFD97706),
-                title: "Offers",
-                subtitle: "Today's special offers",
-                onTap: () =>
-                    _handleQuickReply("What are today's special offers?"),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: getProportionateScreenWidth(108),
-        padding: EdgeInsets.symmetric(
-          horizontal: getProportionateScreenWidth(kDefaultPadding / 1.5),
-          vertical: getProportionateScreenHeight(kDefaultPadding / 1.2),
-        ),
-        decoration: BoxDecoration(
-          color: kPrimaryColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: kBlackColor.withValues(alpha: 0.05)),
-          boxShadow: [
-            BoxShadow(
-              color: kBlackColor.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: getProportionateScreenWidth(40),
-              height: getProportionateScreenWidth(40),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: getProportionateScreenWidth(20),
-              ),
-            ),
-            SizedBox(height: getProportionateScreenHeight(6)),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: getProportionateScreenWidth(12),
-                fontWeight: FontWeight.w700,
-                color: kBlackColor,
-              ),
-            ),
-            SizedBox(height: getProportionateScreenHeight(2)),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: getProportionateScreenWidth(9.5),
-                color: kGreyColor,
-                height: 1.3,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget? _buildDaySeparator(ChatMessage current, ChatMessage? previous) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final currentDay = DateTime(
-      current.timestamp.year,
-      current.timestamp.month,
-      current.timestamp.day,
-    );
-    final previousDay = previous != null
-        ? DateTime(
-            previous.timestamp.year,
-            previous.timestamp.month,
-            previous.timestamp.day,
-          )
-        : null;
-
-    if (previousDay != null && currentDay == previousDay) {
-      return null;
-    }
-
-    String label;
-    final diff = today.difference(currentDay).inDays;
-    if (diff == 0) {
-      label = 'Today';
-    } else if (diff == 1) {
-      label = 'Yesterday';
-    } else {
-      label = DateFormat('MMM d, y').format(current.timestamp);
-    }
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(kDefaultPadding * 2),
-        vertical: getProportionateScreenHeight(kDefaultPadding / 2),
-      ),
-      child: Center(
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: getProportionateScreenWidth(kDefaultPadding),
-            vertical: getProportionateScreenHeight(3),
-          ),
-          decoration: BoxDecoration(
-            color: kBlackColor.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: getProportionateScreenWidth(10),
-              fontWeight: FontWeight.w600,
-              color: kGreyColor,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFoodBanner() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOut,
-      padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(kDefaultPadding),
-        vertical: getProportionateScreenHeight(6),
-      ),
-      child: Row(
-        children: [
-          ZmallLoopGif(
-            height: getProportionateScreenHeight(52),
-            width: getProportionateScreenWidth(52),
-            fit: BoxFit.contain,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          SizedBox(width: getProportionateScreenWidth(10)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Craving something delicious? 🍔',
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(13),
-                    fontWeight: FontWeight.bold,
-                    color: kBlackColor,
+            children: cravings.map((c) {
+              return GestureDetector(
+                onTap: () => _handleQuickReply(c["query"]!),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: getProportionateScreenWidth(14),
+                    vertical: getProportionateScreenHeight(10),
+                  ),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: kSecondaryColor.withValues(alpha: 0.12),
+                      width: 1.1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kSecondaryColor.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.82,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        c["emoji"]!,
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(14),
+                        ),
+                      ),
+                      SizedBox(width: getProportionateScreenWidth(6)),
+                      Flexible(
+                        child: Text(
+                          c["label"]!,
+                          style: TextStyle(
+                            fontSize: getProportionateScreenWidth(12.5),
+                            fontWeight: FontWeight.w600,
+                            color: kBlackColor,
+                            letterSpacing: -0.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  'Pick a quick reply below or type your question!',
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(11),
-                    color: kGreyColor,
-                  ),
                 ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
+          SizedBox(height: getProportionateScreenHeight(20)),
         ],
       ),
     );
@@ -935,58 +1179,67 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             child: const ChatBotIcon(width: 30, height: 30),
           ),
           SizedBox(width: getProportionateScreenWidth(8)),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: getProportionateScreenWidth(14),
-              vertical: getProportionateScreenHeight(12),
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(22),
-                topRight: Radius.circular(22),
-                bottomLeft: Radius.circular(6),
-                bottomRight: Radius.circular(22),
+          SizedBox(width: getProportionateScreenWidth(8)),
+          Flexible(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionateScreenWidth(14),
+                vertical: getProportionateScreenHeight(12),
               ),
-              border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1E293B).withValues(alpha: 0.05),
-                  blurRadius: 16,
-                  offset: const Offset(0, 5),
+              decoration: BoxDecoration(
+                color: kPrimaryColor.withValues(alpha: 0.95),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(22),
+                  topRight: Radius.circular(22),
+                  bottomLeft: Radius.circular(6),
+                  bottomRight: Radius.circular(22),
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: getProportionateScreenWidth(3.5),
-                  height: getProportionateScreenHeight(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        kSecondaryColor,
-                        kSecondaryColor.withValues(alpha: 0.3),
-                      ],
+                border: Border.all(
+                  color: kSecondaryColor.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: kSecondaryColor.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: getProportionateScreenWidth(3.5),
+                    height: getProportionateScreenHeight(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(2),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          kSecondaryColor,
+                          kSecondaryColor.withValues(alpha: 0.3),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: getProportionateScreenWidth(10)),
-                Text(
-                  "ZMall Assistant is thinking",
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(11.5),
-                    color: const Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
+                  SizedBox(width: getProportionateScreenWidth(10)),
+                  Flexible(
+                    child: Text(
+                      "ZMall Assistant is thinking",
+                      style: TextStyle(
+                        fontSize: getProportionateScreenWidth(11.5),
+                        color: kGreyColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                SizedBox(width: getProportionateScreenWidth(8)),
-                const _TypingDots(),
-              ],
+                  SizedBox(width: getProportionateScreenWidth(8)),
+                  const _TypingDots(),
+                ],
+              ),
             ),
           ),
         ],
