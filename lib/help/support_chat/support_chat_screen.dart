@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
@@ -333,8 +335,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     });
 
     try {
-      // Realistic brief typing delay for natural chat feel (400ms)
-      await Future.delayed(const Duration(milliseconds: 400));
+      // Simulate realistic chatbot thinking delay (2-4 seconds random)
+      final randomDelay = 2000 + math.Random().nextInt(2001); // 2000-4000ms
+      await Future.delayed(Duration(milliseconds: randomDelay));
       if (!mounted) return;
 
       final activeOrderId =
