@@ -4,6 +4,7 @@ import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zmall/help/support_chat/components/food_recommendation_card.dart';
+import 'package:zmall/help/support_chat/components/store_fetching_card.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/store/components/image_container.dart';
@@ -17,7 +18,9 @@ class ChatBubble extends StatefulWidget {
   final VoidCallback? onViewCart;
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
+  final VoidCallback? onOpenStore;
   final List<MockProduct> matchedProducts;
+  final MockStore? matchedStore;
 
   const ChatBubble({
     super.key,
@@ -27,7 +30,9 @@ class ChatBubble extends StatefulWidget {
     this.onViewCart,
     this.onProductTap,
     this.onAddToCart,
+    this.onOpenStore,
     this.matchedProducts = const [],
+    this.matchedStore,
   });
 
   @override
@@ -139,14 +144,21 @@ class _ChatBubbleState extends State<ChatBubble> {
             ],
           ),
 
-          // ── Product cards / cart action ──────────────────────────────
-          if (!isUser && widget.matchedProducts.isNotEmpty) ...[
+          // ── Store Fetching Card / Product Card ───────────────────────
+          if (!isUser && (widget.matchedProducts.isNotEmpty || widget.matchedStore != null)) ...[
             SizedBox(height: getProportionateScreenHeight(8)),
-            FoodRecommendationRow(
-              products: widget.matchedProducts,
-              onViewCart: widget.onViewCart,
+            StoreFetchingCard(
+              store: widget.matchedStore ??
+                  (widget.matchedProducts.isNotEmpty
+                      ? getStoreById(widget.matchedProducts.first.storeId) ?? mockStores.first
+                      : mockStores.first),
+              products: widget.matchedProducts.isNotEmpty
+                  ? widget.matchedProducts
+                  : getStoreProducts(widget.matchedStore?.id ?? mockStores.first.id),
+              onOpenStore: widget.onOpenStore,
               onProductTap: widget.onProductTap,
               onAddToCart: widget.onAddToCart,
+              onViewCart: widget.onViewCart,
             ),
           ] else if (!isUser && widget.message.showCartAction) ...[
             SizedBox(height: getProportionateScreenHeight(8)),

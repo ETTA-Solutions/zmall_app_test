@@ -269,28 +269,27 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
 
-    // Store / restaurant discovery via free text → open the store list
-    final lower = message.toLowerCase();
-    if (lower.contains('store') ||
-        lower.contains('restaurant') ||
-        lower.contains('explore store') ||
-        lower.contains('browse store') ||
-        lower.contains('near me') ||
-        lower.contains('show me store')) {
-      _messageController.clear();
-      _openStoreList();
-      return;
-    }
-
     _addUserMessage(message);
     _messageController.clear();
 
-    // Fetch real bot response from API
+    // If this is a store/restaurant query → reply inline with store card
+    if (isStoreQuery(message)) {
+      _fetchBotStoreResponse(message);
+      return;
+    }
+
+    // Otherwise fetch normal bot response
     _fetchBotResponse(message);
   }
 
   void _handleQuickReply(String reply) {
-    // Store / restaurant discovery → open the immersive store list first
+    _addUserMessage(reply);
+    // Hide quick replies after selection
+    setState(() {
+      _showQuickReplies = false;
+    });
+
+    // If store/restaurant discovery → reply inline with store card
     final lowerReply = reply.toLowerCase();
     if (lowerReply.contains('store') ||
         lowerReply.contains('restaurant') ||
@@ -298,16 +297,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         lowerReply.contains('browse') ||
         lowerReply.contains('near me') ||
         lowerReply.contains('shop')) {
-      _openStoreList();
+      _fetchBotStoreResponse(reply);
       return;
     }
 
-    _addUserMessage(reply);
     _fetchBotResponse(reply);
-    // Hide quick replies after selection
-    setState(() {
-      _showQuickReplies = false;
-    });
   }
 
   void _toggleQuickReplies() {
@@ -370,6 +364,27 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         });
       }
     }
+  }
+
+  /// Responds to a store query by posting a bot message inline with the
+  /// matching store card — no full-screen push needed.
+  Future<void> _fetchBotStoreResponse(String userMessage) async {
+    setState(() => _isLoading = true);
+
+    // Brief delay so the typing indicator is visible
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+
+    final store = searchMockStore(userMessage);
+    final products = getStoreProducts(store.id);
+    final productNames = products.take(3).map((p) => p.name).join(', ');
+    final botText =
+        "Here's **${store.name}** near you! 🏪\n"
+        "Delivering in ${store.deliveryTime.toLowerCase()}. "
+        "Top picks: $productNames and more. Tap a product to add it to your cart! 🛒";
+
+    _addBotMessage(botText);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _handleAddProductToCart(MockProduct product) async {
@@ -633,9 +648,23 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                             previous,
                           );
                           // Pre-compute matched products from the user's query
-                          final matchedProducts = !message.isUser && index > 0
-                              ? searchMockProducts(_messages[index - 1].message)
+                          final prevMsg = index > 0 ? _messages[index - 1] : null;
+                          final matchedProducts = !message.isUser && prevMsg != null
+                              ? searchMockProducts(prevMsg.message)
                               : <MockProduct>[];
+
+                          // Determine if the previous user message was a store query
+                          final isStoreReply = !message.isUser &&
+                              prevMsg != null &&
+                              isStoreQuery(prevMsg.message);
+                          final matchedStore = isStoreReply
+                              ? searchMockStore(prevMsg!.message)
+                              : null;
+                          // When it's a store reply, use the store's products
+                          final storeProducts = isStoreReply && matchedStore != null
+                              ? getStoreProducts(matchedStore.id)
+                              : matchedProducts;
+
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -643,7 +672,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                               _AnimatedMessage(
                                 child: ChatBubble(
                                   message: message,
-                                  matchedProducts: matchedProducts,
+                                  matchedProducts: storeProducts,
+                                  matchedStore: matchedStore,
                                   imageUrl:
                                       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imageUrl",
                                   onLongPress: message.isUser
@@ -652,13 +682,14 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                           message,
                                         )
                                       : null,
+                                  onOpenStore: () => _openStoreList(),
                                   onViewCart: () =>
                                       _handleViewCartForMessage(index),
                                   onAddToCart: _handleAddProductToCart,
                                   onProductTap: (product) => _openMockProduct(
                                     product,
-                                    products: matchedProducts.isNotEmpty
-                                        ? matchedProducts
+                                    products: storeProducts.isNotEmpty
+                                        ? storeProducts
                                         : null,
                                   ),
                                 ),
