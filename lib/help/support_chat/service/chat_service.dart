@@ -207,7 +207,56 @@ class ChatService {
             body: body,
           )
           .timeout(
-            Duration(seconds: 10),
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+
+      var decoded = json.decode(response.body);
+
+      // DEBUG ONLY: compare order_status with get_order_status
+      debugCheckOrderStatusMatch(
+        userId: userId,
+        serverToken: serverToken,
+        ordersResponseData: decoded,
+        context: context,
+      );
+
+      return decoded;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  ////////////////////get order status///////////////////
+
+  static Future<dynamic> getOrderStatus({
+    required String userId,
+    required String serverToken,
+    required String orderId,
+    required BuildContext context,
+  }) async {
+    var url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_order_status";
+    Map data = {
+      "user_id": userId,
+      "server_token": serverToken,
+      "order_id": orderId,
+    };
+    var body = json.encode(data);
+    try {
+      http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            const Duration(seconds: 10),
             onTimeout: () {
               throw TimeoutException("The connection has timed out!");
             },
@@ -215,7 +264,58 @@ class ChatService {
 
       return json.decode(response.body);
     } catch (e) {
+      debugPrint("⚠️ [DEBUG_ORDER] getOrderStatus error: $e");
       return null;
+    }
+  }
+
+  /// DEBUG ONLY: Compare status between get_orders and get_order_status
+  static Future<void> debugCheckOrderStatusMatch({
+    required String userId,
+    required String serverToken,
+    required dynamic ordersResponseData,
+    required BuildContext context,
+  }) async {
+    try {
+      if (ordersResponseData != null &&
+          ordersResponseData['success'] == true &&
+          ordersResponseData['order_list'] != null &&
+          (ordersResponseData['order_list'] as List).isNotEmpty) {
+        var firstOrder = ordersResponseData['order_list'][0];
+        var orderId = firstOrder['_id']?.toString() ?? '';
+        var uniqueId = firstOrder['unique_id']?.toString() ?? '';
+        var statusFromGetOrders = firstOrder['order_status'];
+        var deliveryStatusFromGetOrders = firstOrder['delivery_status'];
+
+        var statusData = await getOrderStatus(
+          userId: userId,
+          serverToken: serverToken,
+          orderId: orderId,
+          context: context,
+        );
+
+        var statusFromGetOrderStatus = statusData != null
+            ? (statusData['order_status'] ??
+                statusData['order']?['order_status'] ??
+                statusData['delivery_status'])
+            : null;
+
+        debugPrint("================== [DEBUG_ORDER COMPARISON] ==================");
+        debugPrint("📌 Order _id: $orderId | unique_id: $uniqueId");
+        debugPrint("📦 get_orders       -> order_status: $statusFromGetOrders | delivery_status: $deliveryStatusFromGetOrders");
+        debugPrint("📊 get_order_status -> order_status: $statusFromGetOrderStatus | full_response: $statusData");
+
+        if (statusFromGetOrders?.toString() == statusFromGetOrderStatus?.toString()) {
+          debugPrint("✅ STATUS MATCH: Both endpoints return order_status '$statusFromGetOrders'");
+        } else {
+          debugPrint("❌ STATUS MISMATCH: get_orders ($statusFromGetOrders) vs get_order_status ($statusFromGetOrderStatus)");
+        }
+        debugPrint("==============================================================");
+      } else {
+        debugPrint("🔍 [DEBUG_ORDER] No orders found in get_orders to compare");
+      }
+    } catch (e) {
+      debugPrint("⚠️ [DEBUG_ORDER] Error comparing order statuses: $e");
     }
   }
 

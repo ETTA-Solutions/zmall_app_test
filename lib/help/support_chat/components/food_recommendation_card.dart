@@ -56,7 +56,7 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
 
   @override
   Widget build(BuildContext context) {
-    final cardWidth = getProportionateScreenWidth(165);
+    final cardWidth = getProportionateScreenWidth(155);
     final imageHeight = getProportionateScreenHeight(115);
     final hasImage = widget.product.localImageAsset.isNotEmpty;
 
@@ -69,18 +69,15 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
         onTap: widget.onProductTap,
         child: Container(
           width: cardWidth,
+          padding: EdgeInsets.all(getProportionateScreenWidth(8)),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.88),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.9),
-              width: 1.1,
-            ),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF9080A8).withValues(alpha: 0.1),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: const Color(0xFF9080A8).withValues(alpha: 0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -88,16 +85,22 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Image with Rating Badge ──────────────────────────────
+              // ── Image Container (Rounded Rectangle with Border) ──────
               Stack(
                 children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(18),
+                  Container(
+                    width: double.infinity,
+                    height: imageHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 1.2,
+                      ),
                     ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: imageHeight,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
                       child: Hero(
                         tag: 'mock_product_image_${widget.product.id}',
                         child: Material(
@@ -118,20 +121,20 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                   ),
                   // Rating Badge (⭐ 4.8)
                   Positioned(
-                    top: getProportionateScreenHeight(8),
-                    left: getProportionateScreenWidth(8),
+                    top: getProportionateScreenHeight(6),
+                    left: getProportionateScreenWidth(6),
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: getProportionateScreenWidth(8),
-                        vertical: getProportionateScreenHeight(4),
+                        horizontal: getProportionateScreenWidth(7),
+                        vertical: getProportionateScreenHeight(3),
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.white.withValues(alpha: 0.94),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
+                            blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -142,13 +145,13 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                           Icon(
                             HeroiconsSolid.star,
                             color: const Color(0xFFF59E0B),
-                            size: getProportionateScreenWidth(11),
+                            size: getProportionateScreenWidth(10),
                           ),
-                          SizedBox(width: getProportionateScreenWidth(3.5)),
+                          SizedBox(width: getProportionateScreenWidth(3)),
                           Text(
                             "4.8",
                             style: TextStyle(
-                              fontSize: getProportionateScreenWidth(10.5),
+                              fontSize: getProportionateScreenWidth(10),
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFF1E293B),
                             ),
@@ -160,25 +163,36 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                 ],
               ),
 
-              // ── Product Details & Add button ────────────────────────
+              // ── Product Details & Full-Width Add Button ─────────────
               Padding(
                 padding: EdgeInsets.fromLTRB(
-                  getProportionateScreenWidth(12),
-                  getProportionateScreenHeight(10),
-                  getProportionateScreenWidth(12),
-                  getProportionateScreenHeight(12),
+                  getProportionateScreenWidth(2),
+                  getProportionateScreenHeight(8),
+                  getProportionateScreenWidth(2),
+                  getProportionateScreenHeight(2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
+                      "${widget.product.price.toStringAsFixed(0)} ETB",
+                      style: TextStyle(
+                        fontSize: getProportionateScreenWidth(14.5),
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF1E1B2E),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: getProportionateScreenHeight(2)),
+                    Text(
                       widget.product.name,
                       style: TextStyle(
-                        fontSize: getProportionateScreenWidth(13),
-                        fontWeight: FontWeight.w800,
+                        fontSize: getProportionateScreenWidth(12),
+                        fontWeight: FontWeight.w700,
                         color: const Color(0xFF1E1B2E),
-                        height: 1.25,
+                        height: 1.2,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -191,49 +205,33 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                         color: const Color(0xFF94A3B8),
                         fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: getProportionateScreenHeight(8)),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
+                    // Full-width pill 'Add' button
+                    GestureDetector(
+                      onTap: widget.onAddToCart,
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          vertical: getProportionateScreenHeight(7),
+                        ),
+                        decoration: BoxDecoration(
+                          color: kSecondaryColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Center(
                           child: Text(
-                            "${widget.product.price.toStringAsFixed(0)} ETB",
+                            "Add",
                             style: TextStyle(
-                              fontSize: getProportionateScreenWidth(14.5),
-                              fontWeight: FontWeight.w900,
-                              color: const Color(0xFF1E1B2E),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        SizedBox(width: getProportionateScreenWidth(6)),
-                        // Sleek Circular '+' Add to Cart Button
-                        GestureDetector(
-                          onTap: widget.onAddToCart,
-                          child: Container(
-                            width: getProportionateScreenWidth(32),
-                            height: getProportionateScreenWidth(32),
-                            decoration: BoxDecoration(
-                              color: kSecondaryColor.withValues(alpha: 0.10),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: kSecondaryColor.withValues(alpha: 0.35),
-                                width: 1.2,
-                              ),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                HeroiconsOutline.plus,
-                                size: getProportionateScreenWidth(16),
-                                color: const Color(0xFF1E1B2E),
-                              ),
+                              fontSize: getProportionateScreenWidth(12),
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -248,12 +246,12 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
   Widget _buildImagePlaceholder(double height) {
     return Container(
       height: height,
-      color: const Color(0xFFF5EEF8),
+      color: const Color(0xFFF8FAFC),
       child: Center(
         child: Icon(
           HeroiconsOutline.shoppingBag,
-          size: getProportionateScreenWidth(32),
-          color: const Color(0xFFC4B5FD),
+          size: getProportionateScreenWidth(30),
+          color: const Color(0xFFCBD5E1),
         ),
       ),
     );
@@ -286,7 +284,7 @@ class FoodRecommendationRow extends StatelessWidget {
       children: [
         SizedBox(height: getProportionateScreenHeight(2)),
         SizedBox(
-          height: getProportionateScreenHeight(228),
+          height: getProportionateScreenHeight(255),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.hardEdge,

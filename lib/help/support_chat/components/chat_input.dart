@@ -1,11 +1,10 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
-import 'package:zmall/help/support_chat/components/glowing_ai_orb.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
+/// Clean input bar — ZMall brand theme.
+/// kWhiteColor border pill, + left, plain field, send circle right.
 class ChatInput extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
@@ -23,148 +22,125 @@ class ChatInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      color: Colors.white,
       padding: EdgeInsets.fromLTRB(
-        getProportionateScreenWidth(16),
-        getProportionateScreenHeight(8),
-        getProportionateScreenWidth(16),
-        getProportionateScreenHeight(14),
+        getProportionateScreenWidth(12),
+        getProportionateScreenHeight(6),
+        getProportionateScreenWidth(12),
+        getProportionateScreenHeight(10),
       ),
       child: SafeArea(
         top: false,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(35),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: EdgeInsets.fromLTRB(
-                getProportionateScreenWidth(6),
-                getProportionateScreenHeight(6),
-                getProportionateScreenWidth(8),
-                getProportionateScreenHeight(6),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.88),
-                borderRadius: BorderRadius.circular(35),
-                border: Border.all(
-                  color: kSecondaryColor.withValues(alpha: 0.12),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: kSecondaryColor.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: getProportionateScreenWidth(34),
-                    height: getProportionateScreenWidth(34),
-                    child: GlowingAiOrb(
-                      size: getProportionateScreenWidth(30),
-                      showFloatingElements: false,
-                      compact: true,
-                    ),
-                  ),
-                  SizedBox(width: getProportionateScreenWidth(4)),
-                  Expanded(
-                    child: ListenableBuilder(
-                      listenable: controller,
-                      builder: (context, _) {
-                        return TextField(
-                          controller: controller,
-                          maxLines: null,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _handleSend(),
-                          decoration: InputDecoration(
-                            hintText: "Ask me anything about food...",
-                            hintStyle: TextStyle(
-                              color: const Color(0xFF94A3B8),
-                              fontSize: getProportionateScreenWidth(13),
-                              fontWeight: FontWeight.w400,
-                            ),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                              vertical: getProportionateScreenHeight(10),
-                            ),
-                          ),
-                          style: TextStyle(
-                            fontSize: getProportionateScreenWidth(14),
-                            color: const Color(0xFF1E1B2E),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  ListenableBuilder(
-                    listenable: controller,
-                    builder: (context, _) {
-                      final hasText = controller.text.trim().isNotEmpty;
-                      return GestureDetector(
-                        onTap: isLoading ? null : _handleSend,
-                        child: Container(
-                          width: getProportionateScreenWidth(38),
-                          height: getProportionateScreenWidth(38),
-                          decoration: BoxDecoration(
-                            gradient: hasText
-                                ? LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      kSecondaryColor,
-                                      kSecondaryColor.withValues(alpha: 0.85),
-                                    ],
-                                  )
-                                : null,
-                            color: hasText
-                                ? null
-                                : kSecondaryColor.withValues(alpha: 0.08),
-                            shape: BoxShape.circle,
-                            boxShadow: hasText
-                                ? [
-                                    BoxShadow(
-                                      color: kSecondaryColor.withValues(
-                                        alpha: 0.35,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: isLoading
-                                ? SizedBox(
-                                    width: getProportionateScreenWidth(16),
-                                    height: getProportionateScreenWidth(16),
-                                    child: const CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                : Icon(
-                                    hasText
-                                        ? HeroiconsSolid.paperAirplane
-                                        : HeroiconsOutline.camera,
-                                    color: hasText
-                                        ? kPrimaryColor
-                                        : kSecondaryColor.withValues(alpha: 0.6),
-                                    size: getProportionateScreenWidth(18),
-                                  ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: kWhiteColor,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: kGreyColor.withValues(alpha: 0.2),
+              width: 1.2,
             ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // ── + button ──────────────────────────────────────────────
+              GestureDetector(
+                onTap: onQuickRepliesToggle,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    getProportionateScreenWidth(14),
+                    0,
+                    getProportionateScreenWidth(4),
+                    getProportionateScreenHeight(11),
+                  ),
+                  child: Icon(
+                    HeroiconsOutline.plusCircle,
+                    size: getProportionateScreenWidth(22),
+                    color: kSecondaryColor,
+                  ),
+                ),
+              ),
+
+              // ── text field ────────────────────────────────────────────
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  maxLines: 5,
+                  minLines: 1,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _handleSend(),
+                  decoration: InputDecoration(
+                    hintText: 'Ask anything',
+                    hintStyle: TextStyle(
+                      color: kGreyColor.withValues(alpha: 0.6),
+                      fontSize: getProportionateScreenWidth(14),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: getProportionateScreenHeight(11),
+                    ),
+                  ),
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(14),
+                    color: kBlackColor,
+                  ),
+                ),
+              ),
+
+              // ── send / mic button ─────────────────────────────────────
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  getProportionateScreenWidth(4),
+                  0,
+                  getProportionateScreenWidth(8),
+                  getProportionateScreenHeight(8),
+                ),
+                child: ListenableBuilder(
+                  listenable: controller,
+                  builder: (context, _) {
+                    final hasText = controller.text.trim().isNotEmpty;
+                    return GestureDetector(
+                      onTap: isLoading ? null : _handleSend,
+                      child: Container(
+                        width: getProportionateScreenWidth(36),
+                        height: getProportionateScreenWidth(36),
+                        decoration: BoxDecoration(
+                          color: hasText ? kSecondaryColor : kWhiteColor,
+                          shape: BoxShape.circle,
+                          border: hasText
+                              ? null
+                              : Border.all(
+                                  color: kGreyColor.withValues(alpha: 0.25),
+                                  width: 1,
+                                ),
+                        ),
+                        child: Center(
+                          child: isLoading
+                              ? SizedBox(
+                                  width: getProportionateScreenWidth(16),
+                                  height: getProportionateScreenWidth(16),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.8,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      hasText ? Colors.white : kGreyColor,
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  hasText
+                                      ? HeroiconsSolid.paperAirplane
+                                      : HeroiconsOutline.microphone,
+                                  color: hasText ? Colors.white : kGreyColor,
+                                  size: getProportionateScreenWidth(16),
+                                ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),

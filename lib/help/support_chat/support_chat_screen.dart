@@ -6,8 +6,6 @@ import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:zmall/help/support_chat/components/chat_bot_icon.dart';
-import 'package:zmall/help/support_chat/components/glowing_ai_orb.dart';
 import 'package:zmall/help/support_chat/screens/mock_product_screen.dart';
 import 'package:zmall/help/support_chat/screens/mock_store_list_screen.dart';
 import 'package:zmall/models/chat_message.dart';
@@ -507,190 +505,101 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPrimaryColor,
-      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: true,
-        leading: Padding(
-          padding: EdgeInsets.only(left: getProportionateScreenWidth(16)),
-          child: Center(
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                width: getProportionateScreenWidth(38),
-                height: getProportionateScreenWidth(38),
-                decoration: BoxDecoration(
-                  color: kPrimaryColor.withValues(alpha: 0.95),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: kSecondaryColor.withValues(alpha: 0.12),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: kSecondaryColor.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(
-                    HeroiconsOutline.chevronLeft,
-                    color: kBlackColor,
-                    size: getProportionateScreenWidth(18),
-                  ),
-                ),
-              ),
-            ),
+        centerTitle: false,
+        leading: IconButton(
+          icon: Icon(
+            HeroiconsOutline.chevronLeft,
+            color: kBlackColor,
+            size: getProportionateScreenWidth(22),
           ),
+          onPressed: () => Navigator.pop(context),
         ),
-        title: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: getProportionateScreenWidth(14),
-            vertical: getProportionateScreenHeight(7),
-          ),
-          decoration: BoxDecoration(
-            color: kPrimaryColor.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(
-              color: kSecondaryColor.withValues(alpha: 0.12),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: kSecondaryColor.withValues(alpha: 0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: getProportionateScreenWidth(34),
+              height: getProportionateScreenWidth(34),
+              decoration: BoxDecoration(
+                color: kSecondaryColor,
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: getProportionateScreenWidth(8),
-                height: getProportionateScreenWidth(8),
-                decoration: BoxDecoration(
-                  color: kGreenColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: kGreenColor.withValues(alpha: 0.5),
-                      blurRadius: 6,
+              child: Center(
+                child: Text(
+                  'Z',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: getProportionateScreenWidth(15),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: getProportionateScreenWidth(10)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ZMall AI',
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(15),
+                    fontWeight: FontWeight.w700,
+                    color: kBlackColor,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      width: getProportionateScreenWidth(7),
+                      height: getProportionateScreenWidth(7),
+                      decoration: const BoxDecoration(
+                        color: kGreenColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: getProportionateScreenWidth(5)),
+                    Text(
+                      'Online',
+                      style: TextStyle(
+                        fontSize: getProportionateScreenWidth(11),
+                        color: kGreyColor,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(8)),
-              Text(
-                "ZMall AI",
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(14),
-                  fontWeight: FontWeight.w800,
-                  color: kBlackColor,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
+              ],
+            ),
+          ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(
+            height: 1,
+            color: kGreyColor.withValues(alpha: 0.15),
           ),
         ),
         actions: [
-          Padding(
-            padding: EdgeInsets.only(right: getProportionateScreenWidth(8)),
-            child: Center(
-              child: GestureDetector(
-                onTap: () => Navigator.pushNamed(context, CartScreen.routeName),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: getProportionateScreenWidth(38),
-                      height: getProportionateScreenWidth(38),
-                      decoration: BoxDecoration(
-                        color: kPrimaryColor.withValues(alpha: 0.95),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: kSecondaryColor.withValues(alpha: 0.12),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: kSecondaryColor.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Icon(
-                          HeroiconsOutline.shoppingCart,
-                          color: kBlackColor,
-                          size: getProportionateScreenWidth(18),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEF4444),
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Text(
-                          '2',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: getProportionateScreenWidth(9),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          IconButton(
+            icon: Icon(
+              HeroiconsOutline.shoppingCart,
+              color: kBlackColor,
+              size: getProportionateScreenWidth(22),
             ),
+            onPressed: () => Navigator.pushNamed(context, CartScreen.routeName),
           ),
-          Padding(
-            padding: EdgeInsets.only(right: getProportionateScreenWidth(16)),
-            child: Center(
-              child: GestureDetector(
-                onTap: () => _showOptionsMenu(context),
-                child: Container(
-                  width: getProportionateScreenWidth(38),
-                  height: getProportionateScreenWidth(38),
-                  decoration: BoxDecoration(
-                    color: kPrimaryColor.withValues(alpha: 0.95),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: kSecondaryColor.withValues(alpha: 0.12),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: kSecondaryColor.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Icon(
-                      HeroiconsOutline.ellipsisVertical,
-                      color: kBlackColor,
-                      size: getProportionateScreenWidth(18),
-                    ),
-                  ),
-                ),
-              ),
+          IconButton(
+            icon: Icon(
+              HeroiconsOutline.ellipsisVertical,
+              color: kBlackColor,
+              size: getProportionateScreenWidth(22),
             ),
+            onPressed: () => _showOptionsMenu(context),
           ),
         ],
       ),
@@ -699,7 +608,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           children: [
             Column(
               children: [
-                SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
                 Expanded(
                   child: _messages.length <= 1
                       ? _buildEmptyState()
@@ -875,47 +783,26 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     return Padding(
       padding: EdgeInsets.symmetric(
         vertical: getProportionateScreenHeight(kDefaultPadding / 2),
+        horizontal: getProportionateScreenWidth(16),
       ),
       child: Row(
         children: [
           Expanded(
-            child: Divider(
-              color: kSecondaryColor.withValues(alpha: 0.12),
-              thickness: 1,
-            ),
+            child: Divider(height: 1, color: kGreyColor.withValues(alpha: 0.15)),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: getProportionateScreenWidth(12),
-            ),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: getProportionateScreenWidth(10),
-                vertical: getProportionateScreenHeight(4),
-              ),
-              decoration: BoxDecoration(
-                color: kPrimaryColor.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: kSecondaryColor.withValues(alpha: 0.1),
-                ),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(11),
-                  fontWeight: FontWeight.w600,
-                  color: kGreyColor,
-                  letterSpacing: -0.2,
-                ),
+            padding: EdgeInsets.symmetric(horizontal: getProportionateScreenWidth(12)),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: getProportionateScreenWidth(11),
+                color: kGreyColor,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
           Expanded(
-            child: Divider(
-              color: kSecondaryColor.withValues(alpha: 0.12),
-              thickness: 1,
-            ),
+            child: Divider(height: 1, color: kGreyColor.withValues(alpha: 0.15)),
           ),
         ],
       ),
@@ -923,129 +810,107 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Widget _buildEmptyState() {
-    final cravings = [
-      {
-        "emoji": "🏪",
-        "label": "Explore nearby stores",
-        "query": "Explore stores near me",
-      },
-      {"emoji": "🍕", "label": "I'm craving pizza", "query": "Show me pizza"},
-      {
-        "emoji": "🍔",
-        "label": "Double cheese burger",
-        "query": "Show me burgers",
-      },
-      {
-        "emoji": "🍗",
-        "label": "Crispy chicken wings",
-        "query": "Show me chicken wings and fries",
-      },
-      {
-        "emoji": "☕",
-        "label": "Hot Ethiopian coffee",
-        "query": "Show me coffee",
-      },
-      {
-        "emoji": "📦",
-        "label": "Where is my order?",
-        "query": "Where is my order?",
-      },
-      {
-        "emoji": "🔥",
-        "label": "Today's special offers",
-        "query": "What are today's special offers?",
-      },
+    final suggestions = [
+      {'emoji': '🏪', 'label': 'Stores near me',     'query': 'Stores near me'},
+      {'emoji': '🍕', 'label': 'Show me pizza',       'query': 'Show me pizza'},
+      {'emoji': '🍔', 'label': 'Show me burgers',     'query': 'Show me burgers'},
+      {'emoji': '☕', 'label': 'Show me coffee',      'query': 'Show me coffee'},
+      {'emoji': '📦', 'label': 'Track my order',      'query': 'Where is my order?'},
+      {'emoji': '🔥', 'label': "Today's offers",      'query': "What are today's special offers?"},
     ];
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.symmetric(
-        vertical: getProportionateScreenHeight(20),
         horizontal: getProportionateScreenWidth(20),
+        vertical: getProportionateScreenHeight(28),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: getProportionateScreenWidth(130),
-            height: getProportionateScreenWidth(130),
-            child: GlowingAiOrb(
-              size: getProportionateScreenWidth(100),
-              compact: true,
-            ),
+          // ── ZMall AI identity ──────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                width: getProportionateScreenWidth(44),
+                height: getProportionateScreenWidth(44),
+                decoration: BoxDecoration(
+                  color: kSecondaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    'Z',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: getProportionateScreenWidth(20),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: getProportionateScreenWidth(12)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ZMall AI',
+                    style: TextStyle(
+                      fontSize: getProportionateScreenWidth(15),
+                      fontWeight: FontWeight.w700,
+                      color: kBlackColor,
+                    ),
+                  ),
+                  Text(
+                    'Your food & order assistant',
+                    style: TextStyle(
+                      fontSize: getProportionateScreenWidth(11.5),
+                      color: kGreyColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          SizedBox(height: getProportionateScreenHeight(20)),
+          SizedBox(height: getProportionateScreenHeight(28)),
 
           // ── Heading ──────────────────────────────────────────────────
-          ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [kBlackColor, kSecondaryColor.withValues(alpha: 0.85)],
-            ).createShader(bounds),
-            child: Text(
-              "Hi, I'm ZMall AI 🤖",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: getProportionateScreenWidth(22),
-                fontWeight: FontWeight.w900,
-                color: kPrimaryColor,
-                letterSpacing: -0.5,
-              ),
+          Text(
+            'How can I help\nyou today?',
+            style: TextStyle(
+              fontSize: getProportionateScreenWidth(26),
+              fontWeight: FontWeight.w800,
+              color: kBlackColor,
+              height: 1.2,
             ),
           ),
           SizedBox(height: getProportionateScreenHeight(8)),
           Text(
-            "Tell me what you're craving, and I'll find the\nperfect meal for you.",
-            textAlign: TextAlign.center,
+            'Ask me about food, orders, delivery, or payments.',
             style: TextStyle(
-              fontSize: getProportionateScreenWidth(13),
+              fontSize: getProportionateScreenWidth(13.5),
               color: kGreyColor,
-              height: 1.5,
-              fontWeight: FontWeight.w400,
+              height: 1.4,
             ),
           ),
           SizedBox(height: getProportionateScreenHeight(28)),
 
-          // ── Explore Stores hero button ────────────────────────────────
+          // ── Explore Stores button — kSecondaryColor filled ────────────
           GestureDetector(
             onTap: _openStoreList,
             child: Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(
                 horizontal: getProportionateScreenWidth(18),
-                vertical: getProportionateScreenHeight(16),
+                vertical: getProportionateScreenHeight(15),
               ),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [kSecondaryColor, kSecondaryColor.withValues(alpha: 0.80)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: kSecondaryColor.withValues(alpha: 0.30),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+                color: kSecondaryColor,
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: getProportionateScreenWidth(42),
-                    height: getProportionateScreenWidth(42),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '🏪',
-                        style: TextStyle(fontSize: getProportionateScreenWidth(20)),
-                      ),
-                    ),
-                  ),
+                  Text('🏪', style: TextStyle(fontSize: getProportionateScreenWidth(22))),
                   SizedBox(width: getProportionateScreenWidth(12)),
                   Expanded(
                     child: Column(
@@ -1055,18 +920,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                           'Explore Nearby Stores',
                           style: TextStyle(
                             fontSize: getProportionateScreenWidth(14),
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
-                            letterSpacing: -0.2,
                           ),
                         ),
-                        SizedBox(height: getProportionateScreenHeight(3)),
+                        SizedBox(height: getProportionateScreenHeight(2)),
                         Text(
-                          'Browse menus & add items to cart',
+                          'Browse live menus & add to cart',
                           style: TextStyle(
                             fontSize: getProportionateScreenWidth(11.5),
-                            color: Colors.white.withValues(alpha: 0.82),
-                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.80),
                           ),
                         ),
                       ],
@@ -1081,65 +944,56 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               ),
             ),
           ),
-          SizedBox(height: getProportionateScreenHeight(20)),
+          SizedBox(height: getProportionateScreenHeight(28)),
 
-          // ── Quick Craving Pills ──────────────────────────────────────
+          // ── Section label ─────────────────────────────────────────────
+          Text(
+            'Suggestions',
+            style: TextStyle(
+              fontSize: getProportionateScreenWidth(11.5),
+              fontWeight: FontWeight.w600,
+              color: kGreyColor,
+              letterSpacing: 0.3,
+            ),
+          ),
+          SizedBox(height: getProportionateScreenHeight(12)),
+
+          // ── Suggestion chips ──────────────────────────────────────────
           Wrap(
             spacing: getProportionateScreenWidth(8),
             runSpacing: getProportionateScreenHeight(10),
-            alignment: WrapAlignment.center,
-            children: cravings.map((c) {
+            children: suggestions.map((s) {
               return GestureDetector(
-                onTap: () => _handleQuickReply(c["query"]!),
+                onTap: () => _handleQuickReply(s['query']!),
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: getProportionateScreenWidth(14),
-                    vertical: getProportionateScreenHeight(10),
+                    vertical: getProportionateScreenHeight(9),
                   ),
                   decoration: BoxDecoration(
-                    color: kPrimaryColor,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(
-                      color: kSecondaryColor.withValues(alpha: 0.12),
-                      width: 1.1,
+                      color: kGreyColor.withValues(alpha: 0.25),
+                      width: 1,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: kSecondaryColor.withValues(alpha: 0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width * 0.82,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        c["emoji"]!,
-                        style: TextStyle(
-                          fontSize: getProportionateScreenWidth(14),
-                        ),
-                      ),
+                      Text(s['emoji']!,
+                          style: TextStyle(fontSize: getProportionateScreenWidth(14))),
                       SizedBox(width: getProportionateScreenWidth(6)),
-                      Flexible(
-                        child: Text(
-                          c["label"]!,
-                          style: TextStyle(
-                            fontSize: getProportionateScreenWidth(12.5),
-                            fontWeight: FontWeight.w600,
-                            color: kBlackColor,
-                            letterSpacing: -0.2,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        s['label']!,
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(13),
+                          fontWeight: FontWeight.w500,
+                          color: kBlackColor,
                         ),
                       ),
                     ],
                   ),
-                ),
                 ),
               );
             }).toList(),
@@ -1153,97 +1007,64 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   Widget _buildTypingIndicator() {
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(kDefaultPadding),
-        vertical: getProportionateScreenHeight(kDefaultPadding / 3.5),
+        horizontal: getProportionateScreenWidth(16),
+        vertical: getProportionateScreenHeight(5),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  kSecondaryColor,
-                  kSecondaryColor.withValues(alpha: 0.4),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: kSecondaryColor.withValues(alpha: 0.25),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: getProportionateScreenWidth(18),
+                height: getProportionateScreenWidth(18),
+                decoration: BoxDecoration(
+                  color: kSecondaryColor,
+                  shape: BoxShape.circle,
                 ),
-              ],
-            ),
-            child: const ChatBotIcon(width: 30, height: 30),
+                child: Center(
+                  child: Text(
+                    'Z',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: getProportionateScreenWidth(9),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: getProportionateScreenWidth(6)),
+              Text(
+                'ZMall AI',
+                style: TextStyle(
+                  fontSize: getProportionateScreenWidth(11.5),
+                  fontWeight: FontWeight.w600,
+                  color: kGreyColor,
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: getProportionateScreenWidth(8)),
-          SizedBox(width: getProportionateScreenWidth(8)),
-          Flexible(
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: getProportionateScreenWidth(14),
-                vertical: getProportionateScreenHeight(12),
+          SizedBox(height: getProportionateScreenHeight(5)),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: getProportionateScreenWidth(16),
+              vertical: getProportionateScreenHeight(13),
+            ),
+            decoration: BoxDecoration(
+              color: kWhiteColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(18),
               ),
-              decoration: BoxDecoration(
-                color: kPrimaryColor.withValues(alpha: 0.95),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(22),
-                  topRight: Radius.circular(22),
-                  bottomLeft: Radius.circular(6),
-                  bottomRight: Radius.circular(22),
-                ),
-                border: Border.all(
-                  color: kSecondaryColor.withValues(alpha: 0.1),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: kSecondaryColor.withValues(alpha: 0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: getProportionateScreenWidth(3.5),
-                    height: getProportionateScreenHeight(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(2),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          kSecondaryColor,
-                          kSecondaryColor.withValues(alpha: 0.3),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: getProportionateScreenWidth(10)),
-                  Flexible(
-                    child: Text(
-                      "ZMall Assistant is thinking",
-                      style: TextStyle(
-                        fontSize: getProportionateScreenWidth(11.5),
-                        color: kGreyColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  SizedBox(width: getProportionateScreenWidth(8)),
-                  const _TypingDots(),
-                ],
+              border: Border.all(
+                color: kGreyColor.withValues(alpha: 0.12),
+                width: 1,
               ),
             ),
+            child: const _TypingDots(),
           ),
         ],
       ),
@@ -1527,27 +1348,18 @@ class _TypingDotsState extends State<_TypingDots>
         final double bounce =
             -3.5 * (1 - (progress - 0.5).abs() * 2).clamp(0.0, 1.0);
         final double opacity =
-            0.4 + 0.6 * (1 - (progress - 0.5).abs() * 2).clamp(0.0, 1.0);
+            0.35 + 0.65 * (1 - (progress - 0.5).abs() * 2).clamp(0.0, 1.0);
 
         return Transform.translate(
           offset: Offset(0, bounce),
           child: Opacity(
             opacity: opacity,
             child: Container(
-              width: 6,
-              height: 6,
+              width: 7,
+              height: 7,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [kSecondaryColor, const Color(0xFFF97316)],
-                ),
+                color: kSecondaryColor.withValues(alpha: opacity.clamp(0.25, 0.75)),
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: kSecondaryColor.withValues(alpha: 0.35),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
               ),
             ),
           ),

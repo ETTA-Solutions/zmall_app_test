@@ -243,13 +243,15 @@ class _BodyState extends State<Body> {
                                 //                                          1
                                 //                                      ?
                                 Text(
-                                  responseData['order_list'][index]['order_status'] ==
-                                          7
-                                      ? responseData['order_list'][index]['delivery_status'] !=
-                                                null
-                                            ? "${order_status['${responseData['order_list'][index]['delivery_status']}']}"
-                                            : "Waiting to accept order"
-                                      : "${order_status['${responseData['order_list'][index]['order_status']}']}",
+                                  isOdooStoreByName(responseData['order_list'][index]['store_name'])
+                                      ? "${order_status['${responseData['order_list'][index]['order_status']}']}"
+                                      : responseData['order_list'][index]['order_status'] ==
+                                              7
+                                          ? responseData['order_list'][index]['delivery_status'] !=
+                                                    null
+                                                ? "${order_status['${responseData['order_list'][index]['delivery_status']}']}"
+                                                : "Waiting to accept order"
+                                          : "${order_status['${responseData['order_list'][index]['order_status']}']}",
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color:

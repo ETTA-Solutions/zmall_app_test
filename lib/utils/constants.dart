@@ -42,7 +42,7 @@ const BASE_URL_TEST =
     "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
 // const BASE_URL = BASE_URL_TEST;
-const BASE_URL = BASE_URL_TEST;
+const BASE_URL = BASE_URL_TEST_OLD;
 
 // const ayat = "6a6b069856bef41124383c9e"`;
 // const mexico = "6a6b0c4a56bef41124383ca2";
@@ -68,6 +68,14 @@ const Map<String, String> kZmallBranchSlugs = {
 String? zmallBranchSlugForStore(String? storeId) {
   if (storeId == null || storeId.isEmpty) return null;
   return kZmallBranchSlugs[storeId.trim()];
+}
+
+/// Returns true if the store name matches any known Odoo/POS branch slug.
+/// Used when only store_name is available (e.g. get_orders response).
+bool isOdooStoreByName(String? storeName) {
+  if (storeName == null || storeName.isEmpty) return false;
+  final name = storeName.toLowerCase();
+  return kZmallBranchSlugs.values.any((slug) => name.contains(slug));
 }
 
 bool isOdooAvailabilityStore(String? storeId) =>

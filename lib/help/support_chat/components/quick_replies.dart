@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
@@ -8,167 +7,89 @@ class QuickReplies extends StatelessWidget {
 
   const QuickReplies({super.key, required this.onReplyTap});
 
-  static final List<QuickReply> replies = [
-    QuickReply(text: "Show me pizza", icon: HeroiconsOutline.fire),
-    QuickReply(text: "Show me burgers", icon: HeroiconsOutline.fire),
-    QuickReply(text: "Show me coffee", icon: HeroiconsOutline.cake),
-    QuickReply(text: "Where is my order?", icon: HeroiconsOutline.mapPin),
-    QuickReply(
-      text: "Show me my last order",
-      icon: HeroiconsOutline.shoppingBag,
-    ),
-    QuickReply(
-      text: "What is my order status",
-      icon: HeroiconsOutline.clipboardDocumentCheck,
-    ),
-    QuickReply(
-      text: "What are today's special offers?",
-      icon: HeroiconsOutline.sparkles,
-    ),
-    QuickReply(
-      text: "Show me restaurants near me",
-      icon: HeroiconsOutline.buildingStorefront,
-    ),
-    QuickReply(
-      text: "Show me top selling stores this week",
-      icon: HeroiconsOutline.fire,
-    ),
+  static final List<String> _replies = [
+    '🏪 Stores near me',
+    '🍕 Show me pizza',
+    '🍔 Show me burgers',
+    '☕ Show me coffee',
+    '📦 Where is my order?',
+    '🛵 Track my delivery',
+    '💳 Payment methods',
+    '🔥 Special offers',
+    '🍗 Chicken wings',
+    '💸 Refund policy',
+    '📞 Talk to support',
   ];
+
+  static String _queryFrom(String chip) =>
+      chip.replaceAll(RegExp(r'^[\p{Emoji}\s]+', unicode: true), '').trim();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(
-        left: getProportionateScreenWidth(kDefaultPadding),
-        right: getProportionateScreenWidth(kDefaultPadding),
-        top: getProportionateScreenHeight(kDefaultPadding / 3),
-        bottom: getProportionateScreenHeight(kDefaultPadding / 3),
-      ),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      kSecondaryColor.withValues(alpha: 0.15),
-                      kSecondaryColor.withValues(alpha: 0.08),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  HeroiconsSolid.sparkles,
-                  color: kSecondaryColor,
-                  size: getProportionateScreenWidth(13),
-                ),
+          Divider(height: 1, color: kGreyColor.withValues(alpha: 0.15)),
+          SizedBox(height: getProportionateScreenHeight(8)),
+          Padding(
+            padding: EdgeInsets.only(left: getProportionateScreenWidth(16)),
+            child: Text(
+              'Suggested',
+              style: TextStyle(
+                fontSize: getProportionateScreenWidth(11),
+                fontWeight: FontWeight.w600,
+                color: kGreyColor,
+                letterSpacing: 0.3,
               ),
-              SizedBox(width: getProportionateScreenWidth(6)),
-              Text(
-                "Suggested Questions",
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(12),
-                  fontWeight: FontWeight.w700,
-                  color: kBlackColor.withValues(alpha: 0.75),
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ],
+            ),
           ),
           SizedBox(height: getProportionateScreenHeight(8)),
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: getProportionateScreenHeight(110),
-            ),
-            child: SingleChildScrollView(
+          SizedBox(
+            height: getProportionateScreenHeight(36),
+            child: ListView.separated(
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionateScreenWidth(16),
+              ),
+              scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              child: Wrap(
-                spacing: getProportionateScreenWidth(8),
-                runSpacing: getProportionateScreenHeight(8),
-                children: replies
-                    .map(
-                      (reply) => _QuickReplyChip(
-                        reply: reply,
-                        onTap: () => onReplyTap(reply.text),
+              itemCount: _replies.length,
+              separatorBuilder: (_, __) =>
+                  SizedBox(width: getProportionateScreenWidth(8)),
+              itemBuilder: (context, i) {
+                final chip = _replies[i];
+                return GestureDetector(
+                  onTap: () => onReplyTap(_queryFrom(chip)),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: getProportionateScreenWidth(14),
+                      vertical: getProportionateScreenHeight(7),
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: kGreyColor.withValues(alpha: 0.25),
+                        width: 1,
                       ),
-                    )
-                    .toList(),
-              ),
+                    ),
+                    child: Text(
+                      chip,
+                      style: TextStyle(
+                        fontSize: getProportionateScreenWidth(12.5),
+                        fontWeight: FontWeight.w500,
+                        color: kBlackColor,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
+          SizedBox(height: getProportionateScreenHeight(8)),
         ],
-      ),
-    );
-  }
-}
-
-class _QuickReplyChip extends StatelessWidget {
-  final QuickReply reply;
-  final VoidCallback onTap;
-
-  const _QuickReplyChip({required this.reply, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: getProportionateScreenWidth(12),
-            vertical: getProportionateScreenHeight(8),
-          ),
-          decoration: BoxDecoration(
-            color: kPrimaryColor,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: kSecondaryColor.withValues(alpha: 0.18),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: kSecondaryColor.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: getProportionateScreenWidth(20),
-                height: getProportionateScreenWidth(20),
-                decoration: BoxDecoration(
-                  color: kSecondaryColor.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  reply.icon,
-                  size: getProportionateScreenWidth(12),
-                  color: kSecondaryColor,
-                ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(6)),
-              Text(
-                reply.text,
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(11.5),
-                  color: const Color(0xFF1E293B),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -177,6 +98,5 @@ class _QuickReplyChip extends StatelessWidget {
 class QuickReply {
   final String text;
   final IconData icon;
-
-  QuickReply({required this.text, required this.icon});
+  const QuickReply({required this.text, required this.icon});
 }
