@@ -664,7 +664,8 @@ List<MockProduct> searchMockProducts(String message) {
 /// Checks if query is looking for store discovery or nearby stores.
 bool isStoreQuery(String message) {
   final lower = message.toLowerCase().trim();
-  return lower.contains('store') ||
+  // Store / place discovery
+  if (lower.contains('store') ||
       lower.contains('restaurant') ||
       lower.contains('grocery') ||
       lower.contains('groceries') ||
@@ -673,18 +674,92 @@ bool isStoreQuery(String message) {
       lower.contains('shop') ||
       lower.contains('near me') ||
       lower.contains('places') ||
-      lower.contains('browse');
+      lower.contains('browse')) {
+    return true;
+  }
+  // Food / item keywords — show the matching store's card
+  if (lower.contains('burger') ||
+      lower.contains('pizza') ||
+      lower.contains('coffee') ||
+      lower.contains('cappuccino') ||
+      lower.contains('americano') ||
+      lower.contains('fries') ||
+      lower.contains('wings') ||
+      lower.contains('chicken') ||
+      lower.contains('salad') ||
+      lower.contains('dessert') ||
+      lower.contains('cake') ||
+      lower.contains('drink') ||
+      lower.contains('coke') ||
+      lower.contains('food') ||
+      lower.contains('eat') ||
+      lower.contains('hungry') ||
+      lower.contains('menu') ||
+      lower.contains('order') ||
+      lower.contains('item') ||
+      lower.contains('want') ||
+      lower.contains('craving') ||
+      lower.contains('show me')) {
+    return true;
+  }
+  return false;
 }
 
-/// Returns the matching store or defaults to Fresh Grocery / first store.
+/// Returns the best matching store for the user's message.
 MockStore searchMockStore(String message) {
   final lower = message.toLowerCase().trim();
+
+  // Direct store name or category match
   for (final store in mockStores) {
     if (lower.contains(store.name.toLowerCase()) ||
         lower.contains(store.category.toLowerCase())) {
       return store;
     }
   }
+
+  // Burger / fast food → ZMall Burger & Grill (or equivalent)
+  if (lower.contains('burger') ||
+      lower.contains('wings') ||
+      lower.contains('fries') ||
+      lower.contains('chicken') ||
+      lower.contains('fast food') ||
+      lower.contains('grill')) {
+    return mockStores.firstWhere(
+      (s) => s.id == '64aba2706d11e42d492fba67',
+      orElse: () => mockStores.first,
+    );
+  }
+
+  // Pizza / Italian
+  if (lower.contains('pizza') || lower.contains('italian')) {
+    return mockStores.firstWhere(
+      (s) => s.id == '64aba2706d11e42d492fba68',
+      orElse: () => mockStores.first,
+    );
+  }
+
+  // Coffee / cafe / dessert / cake
+  if (lower.contains('coffee') ||
+      lower.contains('cappuccino') ||
+      lower.contains('americano') ||
+      lower.contains('cafe') ||
+      lower.contains('dessert') ||
+      lower.contains('cake')) {
+    return mockStores.firstWhere(
+      (s) => s.id == '64aba2706d11e42d492fba69',
+      orElse: () => mockStores.first,
+    );
+  }
+
+  // Salad / healthy
+  if (lower.contains('salad') || lower.contains('healthy') || lower.contains('bowl')) {
+    return mockStores.firstWhere(
+      (s) => s.id == '64aba2706d11e42d492fba70',
+      orElse: () => mockStores.first,
+    );
+  }
+
+  // Grocery / produce / dairy / pantry
   if (lower.contains('grocery') ||
       lower.contains('groceries') ||
       lower.contains('sugar') ||
@@ -694,21 +769,13 @@ MockStore searchMockStore(String message) {
       lower.contains('egg') ||
       lower.contains('fresh') ||
       lower.contains('market')) {
-    return mockStores.firstWhere((s) => s.id == '64aba2706d11e42d492fba71',
-        orElse: () => mockStores.first);
+    return mockStores.firstWhere(
+      (s) => s.id == '64aba2706d11e42d492fba71',
+      orElse: () => mockStores.first,
+    );
   }
-  if (lower.contains('pizza') || lower.contains('italian')) {
-    return mockStores.firstWhere((s) => s.id == '64aba2706d11e42d492fba68',
-        orElse: () => mockStores.first);
-  }
-  if (lower.contains('coffee') || lower.contains('cafe')) {
-    return mockStores.firstWhere((s) => s.id == '64aba2706d11e42d492fba69',
-        orElse: () => mockStores.first);
-  }
-  if (lower.contains('salad') || lower.contains('healthy')) {
-    return mockStores.firstWhere((s) => s.id == '64aba2706d11e42d492fba70',
-        orElse: () => mockStores.first);
-  }
+
+  // Generic food / eat / hungry / menu → default to first store
   return mockStores.first;
 }
 

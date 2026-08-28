@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zmall/help/support_chat/screens/mock_product_screen.dart';
-import 'package:zmall/help/support_chat/screens/mock_store_list_screen.dart';
 import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/profile/components/profile_list_tile.dart';
@@ -394,11 +393,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         SnackBar(
           content: Text('${product.name} added to cart'),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           action: SnackBarAction(
             label: 'View Cart',
-            onPressed: () =>
-                Navigator.pushNamed(context, CartScreen.routeName),
+            onPressed: () => Navigator.pushNamed(context, CartScreen.routeName),
           ),
         ),
       );
@@ -594,10 +594,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(
-            height: 1,
-            color: kGreyColor.withValues(alpha: 0.15),
-          ),
+          child: Divider(height: 1, color: kGreyColor.withValues(alpha: 0.15)),
         ),
         actions: [
           IconButton(
@@ -627,77 +624,89 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                   child: _messages.length <= 1
                       ? _buildEmptyState()
                       : ListView.builder(
-                        controller: _scrollController,
-                        padding: EdgeInsets.only(
-                          top: getProportionateScreenHeight(kDefaultPadding),
-                          bottom: getProportionateScreenHeight(kDefaultPadding),
-                        ),
-                        itemCount: _messages.length + (_isLoading ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == _messages.length && _isLoading) {
-                            return _AnimatedMessage(
-                              child: _buildTypingIndicator(),
+                          controller: _scrollController,
+                          padding: EdgeInsets.only(
+                            top: getProportionateScreenHeight(kDefaultPadding),
+                            bottom: getProportionateScreenHeight(
+                              kDefaultPadding,
+                            ),
+                          ),
+                          itemCount: _messages.length + (_isLoading ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _messages.length && _isLoading) {
+                              return _AnimatedMessage(
+                                child: _buildTypingIndicator(),
+                              );
+                            }
+                            final message = _messages[index];
+                            final previous = index > 0
+                                ? _messages[index - 1]
+                                : null;
+                            final dayHeader = _buildDaySeparator(
+                              message,
+                              previous,
                             );
-                          }
-                          final message = _messages[index];
-                          final previous = index > 0
-                              ? _messages[index - 1]
-                              : null;
-                          final dayHeader = _buildDaySeparator(
-                            message,
-                            previous,
-                          );
-                          // Pre-compute matched products from the user's query
-                          final prevMsg = index > 0 ? _messages[index - 1] : null;
-                          final matchedProducts = !message.isUser && prevMsg != null
-                              ? searchMockProducts(prevMsg.message)
-                              : <MockProduct>[];
+                            // Pre-compute matched products from the user's query
+                            final prevMsg = index > 0
+                                ? _messages[index - 1]
+                                : null;
+                            final matchedProducts =
+                                !message.isUser && prevMsg != null
+                                ? searchMockProducts(prevMsg.message)
+                                : <MockProduct>[];
 
-                          // Determine if the previous user message was a store query
-                          final isStoreReply = !message.isUser &&
-                              prevMsg != null &&
-                              isStoreQuery(prevMsg.message);
-                          final matchedStore = isStoreReply
-                              ? searchMockStore(prevMsg!.message)
-                              : null;
-                          // When it's a store reply, use the store's products
-                          final storeProducts = isStoreReply && matchedStore != null
-                              ? getStoreProducts(matchedStore.id)
-                              : matchedProducts;
+                            // Determine if the previous user message was a store query
+                            final isStoreReply =
+                                !message.isUser &&
+                                prevMsg != null &&
+                                isStoreQuery(prevMsg.message);
+                            final matchedStore = isStoreReply
+                                ? searchMockStore(prevMsg.message)
+                                : null;
+                            // Use matched products (filtered by keyword) when available;
+                            // fall back to full store catalog so the card always has items.
+                            final storeProducts =
+                                isStoreReply && matchedStore != null
+                                ? (matchedProducts.isNotEmpty
+                                      ? matchedProducts
+                                      : getStoreProducts(matchedStore.id))
+                                : matchedProducts;
+                            final showProducts =
+                                !isStoreReply || matchedProducts.isNotEmpty;
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (dayHeader != null) dayHeader,
-                              _AnimatedMessage(
-                                child: ChatBubble(
-                                  message: message,
-                                  matchedProducts: storeProducts,
-                                  matchedStore: matchedStore,
-                                  imageUrl:
-                                      "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imageUrl",
-                                  onLongPress: message.isUser
-                                      ? () => _showMessageOptions(
-                                          context,
-                                          message,
-                                        )
-                                      : null,
-                                  onOpenStore: () => _openStoreList(),
-                                  onViewCart: () =>
-                                      _handleViewCartForMessage(index),
-                                  onAddToCart: _handleAddProductToCart,
-                                  onProductTap: (product) => _openMockProduct(
-                                    product,
-                                    products: storeProducts.isNotEmpty
-                                        ? storeProducts
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (dayHeader != null) dayHeader,
+                                _AnimatedMessage(
+                                  child: ChatBubble(
+                                    message: message,
+                                    matchedProducts: storeProducts,
+                                    matchedStore: matchedStore,
+                                    imageUrl:
+                                        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imageUrl",
+                                    onLongPress: message.isUser
+                                        ? () => _showMessageOptions(
+                                            context,
+                                            message,
+                                          )
                                         : null,
+                                    onViewCart: () =>
+                                        _handleViewCartForMessage(index),
+                                    onAddToCart: _handleAddProductToCart,
+                                    onProductTap: (product) => _openMockProduct(
+                                      product,
+                                      products: storeProducts.isNotEmpty
+                                          ? storeProducts
+                                          : null,
+                                    ),
+                                    showProducts: showProducts,
                                   ),
                                 ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
+                              ],
+                            );
+                          },
+                        ),
                 ),
                 if (_showQuickReplies)
                   QuickReplies(onReplyTap: _handleQuickReply),
@@ -750,19 +759,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     );
   }
 
-  /// Opens the immersive store-list screen (shows all mock stores with a
-  /// "Menu" button on each card that slides into the product viewer).
-  void _openStoreList() {
-    Navigator.push(
-      context,
-      SlideStoreListPageRoute(page: const MockStoreListScreen()),
-    );
-  }
-
-  void _openMockProduct(
-    MockProduct product, {
-    List<MockProduct>? products,
-  }) {
+  /// Opens the immersive product viewer (all mock products of a store).
+  void _openMockProduct(MockProduct product, {List<MockProduct>? products}) {
     final list = (products != null && products.isNotEmpty)
         ? products
         : <MockProduct>[product];
@@ -772,10 +770,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     Navigator.push(
       context,
       SlideProductPageRoute(
-        page: MockProductScreen(
-          products: list,
-          initialIndex: index,
-        ),
+        page: MockProductScreen(products: list, initialIndex: index),
       ),
     );
   }
@@ -819,10 +814,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       child: Row(
         children: [
           Expanded(
-            child: Divider(height: 1, color: kGreyColor.withValues(alpha: 0.15)),
+            child: Divider(
+              height: 1,
+              color: kGreyColor.withValues(alpha: 0.15),
+            ),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: getProportionateScreenWidth(12)),
+            padding: EdgeInsets.symmetric(
+              horizontal: getProportionateScreenWidth(12),
+            ),
             child: Text(
               label,
               style: TextStyle(
@@ -833,7 +833,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             ),
           ),
           Expanded(
-            child: Divider(height: 1, color: kGreyColor.withValues(alpha: 0.15)),
+            child: Divider(
+              height: 1,
+              color: kGreyColor.withValues(alpha: 0.15),
+            ),
           ),
         ],
       ),
@@ -842,12 +845,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   Widget _buildEmptyState() {
     final suggestions = [
-      {'emoji': '🏪', 'label': 'Stores near me',     'query': 'Stores near me'},
-      {'emoji': '🍕', 'label': 'Show me pizza',       'query': 'Show me pizza'},
-      {'emoji': '🍔', 'label': 'Show me burgers',     'query': 'Show me burgers'},
-      {'emoji': '☕', 'label': 'Show me coffee',      'query': 'Show me coffee'},
-      {'emoji': '📦', 'label': 'Track my order',      'query': 'Where is my order?'},
-      {'emoji': '🔥', 'label': "Today's offers",      'query': "What are today's special offers?"},
+      {'emoji': '🏪', 'label': 'Stores near me', 'query': 'Stores near me'},
+      {'emoji': '🍕', 'label': 'Show me pizza', 'query': 'Show me pizza'},
+      {'emoji': '🍔', 'label': 'Show me burgers', 'query': 'Show me burgers'},
+      {'emoji': '☕', 'label': 'Show me coffee', 'query': 'Show me coffee'},
+      {'emoji': '📦', 'label': 'Track my order', 'query': 'Where is my order?'},
+      {
+        'emoji': '🔥',
+        'label': "Today's offers",
+        'query': "What are today's special offers?",
+      },
     ];
 
     return SingleChildScrollView(
@@ -926,57 +933,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           ),
           SizedBox(height: getProportionateScreenHeight(28)),
 
-          // ── Explore Stores button — kSecondaryColor filled ────────────
-          GestureDetector(
-            onTap: _openStoreList,
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: getProportionateScreenWidth(18),
-                vertical: getProportionateScreenHeight(15),
-              ),
-              decoration: BoxDecoration(
-                color: kSecondaryColor,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Text('🏪', style: TextStyle(fontSize: getProportionateScreenWidth(22))),
-                  SizedBox(width: getProportionateScreenWidth(12)),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Explore Nearby Stores',
-                          style: TextStyle(
-                            fontSize: getProportionateScreenWidth(14),
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: getProportionateScreenHeight(2)),
-                        Text(
-                          'Browse live menus & add to cart',
-                          style: TextStyle(
-                            fontSize: getProportionateScreenWidth(11.5),
-                            color: Colors.white.withValues(alpha: 0.80),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    HeroiconsOutline.chevronRight,
-                    color: Colors.white.withValues(alpha: 0.85),
-                    size: getProportionateScreenWidth(18),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: getProportionateScreenHeight(28)),
-
           // ── Section label ─────────────────────────────────────────────
           Text(
             'Suggestions',
@@ -1012,8 +968,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(s['emoji']!,
-                          style: TextStyle(fontSize: getProportionateScreenWidth(14))),
+                      Text(
+                        s['emoji']!,
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(14),
+                        ),
+                      ),
                       SizedBox(width: getProportionateScreenWidth(6)),
                       Text(
                         s['label']!,
@@ -1389,7 +1349,9 @@ class _TypingDotsState extends State<_TypingDots>
               width: 7,
               height: 7,
               decoration: BoxDecoration(
-                color: kSecondaryColor.withValues(alpha: opacity.clamp(0.25, 0.75)),
+                color: kSecondaryColor.withValues(
+                  alpha: opacity.clamp(0.25, 0.75),
+                ),
                 shape: BoxShape.circle,
               ),
             ),

@@ -72,9 +72,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
         } else {
           if (!(data['error_code'] == 556)) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("${errorCodes['${data['error_code']}']}"),
-              ),
+              SnackBar(content: Text("${errorCodes['${data['error_code']}']}")),
             );
           }
         }
@@ -98,9 +96,6 @@ class FavoritesScreenState extends State<FavoritesScreen> {
 
   void storeOpen(List stores) {
     isOpen.clear();
-    // BYPASS store closed-time check: mark every favorite store as open.
-    isOpen.addAll(List<bool>.filled(stores.length, true));
-    if (isOpen.isNotEmpty) return;
     stores.forEach((store) {
       bool isStoreOpen = false;
       if (store['store_time'] != null && store['store_time'].length != 0) {
@@ -117,19 +112,38 @@ class FavoritesScreenState extends State<FavoritesScreen> {
           if (store['store_time'][i]['day'] == weekday) {
             if (store['store_time'][i]['day_time'].length != 0 &&
                 store['store_time'][i]['is_store_open']) {
-              for (var j = 0;
-                  j < store['store_time'][i]['day_time'].length;
-                  j++) {
+              for (
+                var j = 0;
+                j < store['store_time'][i]['day_time'].length;
+                j++
+              ) {
                 DateTime open = dateFormat.parse(
-                    store['store_time'][i]['day_time'][j]['store_open_time']);
+                  store['store_time'][i]['day_time'][j]['store_open_time'],
+                );
                 open = new DateTime(
-                    now.year, now.month, now.day, open.hour, open.minute);
+                  now.year,
+                  now.month,
+                  now.day,
+                  open.hour,
+                  open.minute,
+                );
                 DateTime close = dateFormat.parse(
-                    store['store_time'][i]['day_time'][j]['store_close_time']);
+                  store['store_time'][i]['day_time'][j]['store_close_time'],
+                );
                 close = new DateTime(
-                    now.year, now.month, now.day, close.hour, close.minute);
+                  now.year,
+                  now.month,
+                  now.day,
+                  close.hour,
+                  close.minute,
+                );
                 now = DateTime(
-                    now.year, now.month, now.day, now.hour, now.minute);
+                  now.year,
+                  now.month,
+                  now.day,
+                  now.hour,
+                  now.minute,
+                );
                 if (now.isAfter(open) &&
                     now.isBefore(close) &&
                     store['store_time'][i]['is_store_open']) {
@@ -149,7 +163,12 @@ class FavoritesScreenState extends State<FavoritesScreen> {
         DateTime zmallClose = dateFormat.parse("21:00");
         DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
         zmallClose = DateTime(
-            now.year, now.month, now.day, zmallClose.hour, zmallClose.minute);
+          now.year,
+          now.month,
+          now.day,
+          zmallClose.hour,
+          zmallClose.minute,
+        );
         now = DateTime(now.year, now.month, now.day, now.hour, now.minute);
 
         now.isAfter(zmallClose) ? isStoreOpen = false : isStoreOpen = true;
@@ -192,8 +211,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                             // BorderSide(color: kGreyColor.withValues(alpha: 0.2)),
                           ),
                         ),
-                        width:
-                            getProportionateScreenWidth(kDefaultPadding * 10),
+                        width: getProportionateScreenWidth(
+                          kDefaultPadding * 10,
+                        ),
                         child: FavoriteCustomListTile(
                           press: () {
                             // debugPrint("FAVORITE STORE CLICKED >>>>");
@@ -227,12 +247,10 @@ class FavoritesScreenState extends State<FavoritesScreen> {
               ),
             )
           : !isLoading
-              ? Container(
-                  child: Center(
-                    child: Text("Favourite store list not found."),
-                  ),
-                )
-              : Container(),
+          ? Container(
+              child: Center(child: Text("Favourite store list not found.")),
+            )
+          : Container(),
     );
   }
 
@@ -247,27 +265,27 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          Service.showMessage(
-            context: context,
-            title: "Network error",
-            error: true,
+            Duration(seconds: 10),
+            onTimeout: () {
+              Service.showMessage(
+                context: context,
+                title: "Network error",
+                error: true,
+              );
+              setState(() {
+                isLoading = false;
+              });
+              throw TimeoutException("The connection has timed out!");
+            },
           );
-          setState(() {
-            isLoading = false;
-          });
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
       var val = json.decode(response.body);
       if (val['success']) {
         await Service.save("user_favorite_stores", val);

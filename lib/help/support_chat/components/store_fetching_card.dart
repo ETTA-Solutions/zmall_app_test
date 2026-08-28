@@ -17,19 +17,19 @@ import 'package:zmall/utils/size_config.dart';
 class StoreFetchingCard extends StatefulWidget {
   final MockStore store;
   final List<MockProduct> products;
-  final VoidCallback? onOpenStore;
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
   final VoidCallback? onViewCart;
+  final bool initiallyShowProducts;
 
   const StoreFetchingCard({
     super.key,
     required this.store,
     required this.products,
-    this.onOpenStore,
     this.onProductTap,
     this.onAddToCart,
     this.onViewCart,
+    this.initiallyShowProducts = true,
   });
 
   @override
@@ -38,12 +38,13 @@ class StoreFetchingCard extends StatefulWidget {
 
 class _StoreFetchingCardState extends State<StoreFetchingCard>
     with SingleTickerProviderStateMixin {
-  bool _isExpanded = false;
+  late bool _isExpanded;
   late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _isExpanded = widget.initiallyShowProducts;
     _scrollController = ScrollController();
   }
 
@@ -105,30 +106,32 @@ class _StoreFetchingCardState extends State<StoreFetchingCard>
 
           SizedBox(height: getProportionateScreenHeight(14)),
 
-          // ── 2. Vertical Items List (Scrollable / Expandable) ────────
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: getProportionateScreenHeight(260),
-            ),
-            child: Scrollbar(
-              controller: _scrollController,
-              thumbVisibility: true,
-              radius: const Radius.circular(8),
-              thickness: 3.5,
-              child: ListView.separated(
-                controller: _scrollController,
-                shrinkWrap: false,
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: _isExpanded ? products.length : visibleCount,
-                separatorBuilder: (_, __) =>
-                    SizedBox(height: getProportionateScreenHeight(10)),
-                itemBuilder: (context, index) {
-                  return _buildProductRow(products[index]);
-                },
+          if (_isExpanded)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: getProportionateScreenHeight(260),
               ),
-            ),
-          ),
+              child: Scrollbar(
+                controller: _scrollController,
+                thumbVisibility: true,
+                radius: const Radius.circular(8),
+                thickness: 3.5,
+                child: ListView.separated(
+                  controller: _scrollController,
+                  shrinkWrap: false,
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  itemCount: _isExpanded ? products.length : visibleCount,
+                  separatorBuilder: (_, __) =>
+                      SizedBox(height: getProportionateScreenHeight(10)),
+                  itemBuilder: (context, index) {
+                    return _buildProductRow(products[index]);
+                  },
+                ),
+              ),
+            )
+          else
+            _buildViewProductsButton(),
 
           // ── 3. Expand / "+X more items" Row ─────────────────────────
           if (hasMore) ...[
@@ -139,6 +142,37 @@ class _StoreFetchingCardState extends State<StoreFetchingCard>
           // ── 4. Footer: Checkout card ───────────────────────────────
           _buildCheckoutFooter(products),
         ],
+      ),
+    );
+  }
+
+  Widget _buildViewProductsButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          HapticFeedback.selectionClick();
+          setState(() => _isExpanded = true);
+        },
+        icon: Icon(
+          HeroiconsOutline.shoppingBag,
+          size: getProportionateScreenWidth(16),
+        ),
+        label: const Text('View products'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF1E293B),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+          padding: EdgeInsets.symmetric(
+            vertical: getProportionateScreenHeight(11),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          textStyle: TextStyle(
+            fontSize: getProportionateScreenWidth(13),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -571,71 +605,6 @@ class _StoreFetchingCardState extends State<StoreFetchingCard>
           ],
         ),
 
-        SizedBox(height: getProportionateScreenHeight(14)),
-
-        // ── Payment method row ─────────────────────────────────────
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: getProportionateScreenWidth(12),
-            vertical: getProportionateScreenHeight(10),
-          ),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-          ),
-          child: Row(
-            children: [
-              // Card icon
-              Container(
-                width: getProportionateScreenWidth(36),
-                height: getProportionateScreenHeight(24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  HeroiconsOutline.creditCard,
-                  color: Colors.white,
-                  size: getProportionateScreenWidth(15),
-                ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(10)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Telebirr',
-                      style: TextStyle(
-                        fontSize: getProportionateScreenWidth(13.5),
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    Text(
-                      '···· ···· ···· 5757',
-                      style: TextStyle(
-                        fontSize: getProportionateScreenWidth(11.5),
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF94A3B8),
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                HeroiconsOutline.chevronRight,
-                size: getProportionateScreenWidth(16),
-                color: const Color(0xFF94A3B8),
-              ),
-            ],
-          ),
-        ),
-
         SizedBox(height: getProportionateScreenHeight(16)),
 
         // ── Total row ──────────────────────────────────────────────
@@ -679,7 +648,7 @@ class _StoreFetchingCardState extends State<StoreFetchingCard>
                 vertical: getProportionateScreenHeight(15),
               ),
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
+                color: kSecondaryColor,
                 borderRadius: BorderRadius.circular(50),
               ),
               alignment: Alignment.center,

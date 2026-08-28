@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:zmall/help/support_chat/components/food_recommendation_card.dart';
 import 'package:zmall/help/support_chat/components/store_fetching_card.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/models/chat_message.dart';
@@ -18,9 +17,9 @@ class ChatBubble extends StatefulWidget {
   final VoidCallback? onViewCart;
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
-  final VoidCallback? onOpenStore;
   final List<MockProduct> matchedProducts;
   final MockStore? matchedStore;
+  final bool showProducts;
 
   const ChatBubble({
     super.key,
@@ -30,9 +29,9 @@ class ChatBubble extends StatefulWidget {
     this.onViewCart,
     this.onProductTap,
     this.onAddToCart,
-    this.onOpenStore,
     this.matchedProducts = const [],
     this.matchedStore,
+    this.showProducts = true,
   });
 
   @override
@@ -47,13 +46,17 @@ class _ChatBubbleState extends State<ChatBubble> {
     setState(() => _isCopied = true);
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        content: const Text('Copied to clipboard'),
-        backgroundColor: kBlackColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 2),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Copied to clipboard'),
+          backgroundColor: kBlackColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _isCopied = false);
     });
@@ -61,7 +64,9 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   Future<void> _handlePhoneCall(String phone) async {
     final uri = Uri(
-        scheme: 'tel', path: phone.replaceAll(RegExp(r'[\s\-\(\)]'), ''));
+      scheme: 'tel',
+      path: phone.replaceAll(RegExp(r'[\s\-\(\)]'), ''),
+    );
     if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
@@ -83,8 +88,9 @@ class _ChatBubbleState extends State<ChatBubble> {
         vertical: getProportionateScreenHeight(5),
       ),
       child: Column(
-        crossAxisAlignment:
-            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           // ── Bot identity chip (above bubble, bot only) ──────────────
           if (!isUser)
@@ -126,8 +132,9 @@ class _ChatBubbleState extends State<ChatBubble> {
 
           // ── Bubble ──────────────────────────────────────────────────
           Row(
-            mainAxisAlignment:
-                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               ConstrainedBox(
@@ -145,20 +152,26 @@ class _ChatBubbleState extends State<ChatBubble> {
           ),
 
           // ── Store Fetching Card / Product Card ───────────────────────
-          if (!isUser && (widget.matchedProducts.isNotEmpty || widget.matchedStore != null)) ...[
+          if (!isUser &&
+              (widget.matchedProducts.isNotEmpty ||
+                  widget.matchedStore != null)) ...[
             SizedBox(height: getProportionateScreenHeight(8)),
             StoreFetchingCard(
-              store: widget.matchedStore ??
+              store:
+                  widget.matchedStore ??
                   (widget.matchedProducts.isNotEmpty
-                      ? getStoreById(widget.matchedProducts.first.storeId) ?? mockStores.first
+                      ? getStoreById(widget.matchedProducts.first.storeId) ??
+                            mockStores.first
                       : mockStores.first),
               products: widget.matchedProducts.isNotEmpty
                   ? widget.matchedProducts
-                  : getStoreProducts(widget.matchedStore?.id ?? mockStores.first.id),
-              onOpenStore: widget.onOpenStore,
+                  : getStoreProducts(
+                      widget.matchedStore?.id ?? mockStores.first.id,
+                    ),
               onProductTap: widget.onProductTap,
               onAddToCart: widget.onAddToCart,
               onViewCart: widget.onViewCart,
+              initiallyShowProducts: widget.showProducts,
             ),
           ] else if (!isUser && widget.message.showCartAction) ...[
             SizedBox(height: getProportionateScreenHeight(8)),
@@ -187,7 +200,9 @@ class _ChatBubbleState extends State<ChatBubble> {
                           ? HeroiconsSolid.check
                           : HeroiconsOutline.clipboardDocument,
                       size: getProportionateScreenWidth(13),
-                      color: _isCopied ? kGreenColor : kGreyColor.withValues(alpha: 0.4),
+                      color: _isCopied
+                          ? kGreenColor
+                          : kGreyColor.withValues(alpha: 0.4),
                     ),
                   ),
                 ],
@@ -229,10 +244,7 @@ class _ChatBubbleState extends State<ChatBubble> {
           bottomLeft: Radius.circular(4),
           bottomRight: Radius.circular(18),
         ),
-        border: Border.all(
-          color: kGreyColor.withValues(alpha: 0.12),
-          width: 1,
-        ),
+        border: Border.all(color: kGreyColor.withValues(alpha: 0.12), width: 1),
       ),
       child: _buildFormattedContent(widget.message.message),
     );
@@ -306,13 +318,14 @@ class _ChatBubbleState extends State<ChatBubble> {
     return Container(
       width: getProportionateScreenWidth(28),
       height: getProportionateScreenWidth(28),
-      decoration: BoxDecoration(
-        color: kWhiteColor,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: kWhiteColor, shape: BoxShape.circle),
       child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
           ? ClipOval(child: ImageContainer(url: widget.imageUrl))
-          : Icon(Icons.person, color: kGreyColor, size: getProportionateScreenWidth(16)),
+          : Icon(
+              Icons.person,
+              color: kGreyColor,
+              size: getProportionateScreenWidth(16),
+            ),
     );
   }
 
@@ -334,117 +347,143 @@ class _ChatBubbleState extends State<ChatBubble> {
 
       // Heading
       if (t.startsWith('#')) {
-        blocks.add(Padding(
-          padding: EdgeInsets.only(
-            top: getProportionateScreenHeight(4),
-            bottom: getProportionateScreenHeight(2),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 3,
-                height: getProportionateScreenHeight(14),
-                decoration: BoxDecoration(
-                  color: kSecondaryColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(7)),
-              Expanded(
-                child: Text(
-                  _strip(t.replaceAll(RegExp(r'^#+\s*'), '')),
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(13.5),
-                    fontWeight: FontWeight.w700,
-                    color: kBlackColor,
+        blocks.add(
+          Padding(
+            padding: EdgeInsets.only(
+              top: getProportionateScreenHeight(4),
+              bottom: getProportionateScreenHeight(2),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: getProportionateScreenHeight(14),
+                  decoration: BoxDecoration(
+                    color: kSecondaryColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-            ],
+                SizedBox(width: getProportionateScreenWidth(7)),
+                Expanded(
+                  child: Text(
+                    _strip(t.replaceAll(RegExp(r'^#+\s*'), '')),
+                    style: TextStyle(
+                      fontSize: getProportionateScreenWidth(13.5),
+                      fontWeight: FontWeight.w700,
+                      color: kBlackColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ));
+        );
         continue;
       }
 
       // Quote
       if (t.startsWith('>')) {
-        blocks.add(Container(
-          margin: EdgeInsets.symmetric(vertical: getProportionateScreenHeight(3)),
-          padding: EdgeInsets.symmetric(
-            horizontal: getProportionateScreenWidth(10),
-            vertical: getProportionateScreenHeight(7),
+        blocks.add(
+          Container(
+            margin: EdgeInsets.symmetric(
+              vertical: getProportionateScreenHeight(3),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: getProportionateScreenWidth(10),
+              vertical: getProportionateScreenHeight(7),
+            ),
+            decoration: BoxDecoration(
+              color: kSecondaryColor.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border(
+                left: BorderSide(color: kSecondaryColor, width: 3),
+              ),
+            ),
+            child: _buildRichSpan(t.replaceFirst(RegExp(r'^>\s*'), '')),
           ),
-          decoration: BoxDecoration(
-            color: kSecondaryColor.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border(left: BorderSide(color: kSecondaryColor, width: 3)),
-          ),
-          child: _buildRichSpan(t.replaceFirst(RegExp(r'^>\s*'), '')),
-        ));
+        );
         continue;
       }
 
       // Numbered list
       final numMatch = RegExp(r'^(\d+)[\.\)]\s+(.*)$').firstMatch(t);
       if (numMatch != null) {
-        blocks.add(Padding(
-          padding: EdgeInsets.symmetric(vertical: getProportionateScreenHeight(2)),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: getProportionateScreenWidth(18),
-                height: getProportionateScreenWidth(18),
-                margin: EdgeInsets.only(top: getProportionateScreenHeight(1)),
-                decoration: BoxDecoration(color: kSecondaryColor, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: Text(
-                  numMatch.group(1)!,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: getProportionateScreenWidth(9.5),
-                    fontWeight: FontWeight.bold,
+        blocks.add(
+          Padding(
+            padding: EdgeInsets.symmetric(
+              vertical: getProportionateScreenHeight(2),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: getProportionateScreenWidth(18),
+                  height: getProportionateScreenWidth(18),
+                  margin: EdgeInsets.only(top: getProportionateScreenHeight(1)),
+                  decoration: BoxDecoration(
+                    color: kSecondaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    numMatch.group(1)!,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: getProportionateScreenWidth(9.5),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(8)),
-              Expanded(child: _buildRichSpan(numMatch.group(2)!)),
-            ],
+                SizedBox(width: getProportionateScreenWidth(8)),
+                Expanded(child: _buildRichSpan(numMatch.group(2)!)),
+              ],
+            ),
           ),
-        ));
+        );
         continue;
       }
 
       // Bullet list
       if (t.startsWith('* ') || t.startsWith('- ') || t.startsWith('• ')) {
         final item = t.replaceFirst(RegExp(r'^[\*\-\•]\s*'), '');
-        blocks.add(Padding(
-          padding: EdgeInsets.symmetric(vertical: getProportionateScreenHeight(2)),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                margin: EdgeInsets.only(
-                  top: getProportionateScreenHeight(6),
-                  left: getProportionateScreenWidth(3),
-                  right: getProportionateScreenWidth(8),
+        blocks.add(
+          Padding(
+            padding: EdgeInsets.symmetric(
+              vertical: getProportionateScreenHeight(2),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  margin: EdgeInsets.only(
+                    top: getProportionateScreenHeight(6),
+                    left: getProportionateScreenWidth(3),
+                    right: getProportionateScreenWidth(8),
+                  ),
+                  width: getProportionateScreenWidth(5),
+                  height: getProportionateScreenWidth(5),
+                  decoration: BoxDecoration(
+                    color: kSecondaryColor,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                width: getProportionateScreenWidth(5),
-                height: getProportionateScreenWidth(5),
-                decoration: BoxDecoration(color: kSecondaryColor, shape: BoxShape.circle),
-              ),
-              Expanded(child: _buildRichSpan(item)),
-            ],
+                Expanded(child: _buildRichSpan(item)),
+              ],
+            ),
           ),
-        ));
+        );
         continue;
       }
 
       // Normal paragraph
-      blocks.add(Padding(
-        padding: EdgeInsets.symmetric(vertical: getProportionateScreenHeight(1)),
-        child: _buildRichSpan(t),
-      ));
+      blocks.add(
+        Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: getProportionateScreenHeight(1),
+          ),
+          child: _buildRichSpan(t),
+        ),
+      );
     }
 
     return Column(
@@ -466,35 +505,48 @@ class _ChatBubbleState extends State<ChatBubble> {
 
     for (final m in tokenRe.allMatches(text)) {
       if (m.start > last) {
-        spans.addAll(_inlineEntities(_strip(text.substring(last, m.start)), base));
+        spans.addAll(
+          _inlineEntities(_strip(text.substring(last, m.start)), base),
+        );
       }
       final raw = m.group(0)!;
       if (raw.startsWith('**')) {
-        spans.add(TextSpan(
-          text: raw.substring(2, raw.length - 2),
-          style: base.copyWith(fontWeight: FontWeight.w700, color: kBlackColor),
-        ));
+        spans.add(
+          TextSpan(
+            text: raw.substring(2, raw.length - 2),
+            style: base.copyWith(
+              fontWeight: FontWeight.w700,
+              color: kBlackColor,
+            ),
+          ),
+        );
       } else {
         final code = raw.substring(1, raw.length - 1);
-        spans.add(WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              color: kSecondaryColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: kSecondaryColor.withValues(alpha: 0.2)),
-            ),
-            child: Text(code,
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: kSecondaryColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: kSecondaryColor.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Text(
+                code,
                 style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: getProportionateScreenWidth(11),
                   fontWeight: FontWeight.w600,
                   color: kSecondaryColor,
-                )),
+                ),
+              ),
+            ),
           ),
-        ));
+        );
       }
       last = m.end;
     }
@@ -537,80 +589,113 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   // Price tag — green tint (kept neutral, matches real-world price context)
   InlineSpan _priceSpan(String text, TextStyle base) => WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: kGreenColor.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(color: kGreenColor.withValues(alpha: 0.3), width: 0.8),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(HeroiconsSolid.tag,
-                size: getProportionateScreenWidth(10), color: kGreenColor),
-            const SizedBox(width: 3),
-            Text(text,
-                style: base.copyWith(
-                    fontSize: getProportionateScreenWidth(11),
-                    fontWeight: FontWeight.w700,
-                    color: kGreenColor)),
-          ]),
+    alignment: PlaceholderAlignment.middle,
+    child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: kGreenColor.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: kGreenColor.withValues(alpha: 0.3),
+          width: 0.8,
         ),
-      );
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            HeroiconsSolid.tag,
+            size: getProportionateScreenWidth(10),
+            color: kGreenColor,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: base.copyWith(
+              fontSize: getProportionateScreenWidth(11),
+              fontWeight: FontWeight.w700,
+              color: kGreenColor,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   InlineSpan _phoneSpan(String text, TextStyle base) => WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: GestureDetector(
-          onTap: () => _handlePhoneCall(text),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: kSecondaryColor.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: kSecondaryColor.withValues(alpha: 0.25), width: 0.8),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(HeroiconsSolid.phone,
-                  size: getProportionateScreenWidth(10), color: kSecondaryColor),
-              const SizedBox(width: 3),
-              Text(text,
-                  style: base.copyWith(
-                      fontSize: getProportionateScreenWidth(11),
-                      fontWeight: FontWeight.w700,
-                      color: kSecondaryColor,
-                      decoration: TextDecoration.underline)),
-            ]),
+    alignment: PlaceholderAlignment.middle,
+    child: GestureDetector(
+      onTap: () => _handlePhoneCall(text),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: kSecondaryColor.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(
+            color: kSecondaryColor.withValues(alpha: 0.25),
+            width: 0.8,
           ),
         ),
-      );
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              HeroiconsSolid.phone,
+              size: getProportionateScreenWidth(10),
+              color: kSecondaryColor,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              text,
+              style: base.copyWith(
+                fontSize: getProportionateScreenWidth(11),
+                fontWeight: FontWeight.w700,
+                color: kSecondaryColor,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   InlineSpan _urlSpan(String text, TextStyle base) => WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: GestureDetector(
-          onTap: () => _handleUrl(text),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: kWhiteColor,
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: kGreyColor.withValues(alpha: 0.25)),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(HeroiconsOutline.arrowTopRightOnSquare,
-                  size: getProportionateScreenWidth(11), color: kSecondaryColor),
-              const SizedBox(width: 3),
-              Text('Open Link',
-                  style: base.copyWith(
-                      fontSize: getProportionateScreenWidth(11),
-                      fontWeight: FontWeight.w600,
-                      color: kSecondaryColor)),
-            ]),
-          ),
+    alignment: PlaceholderAlignment.middle,
+    child: GestureDetector(
+      onTap: () => _handleUrl(text),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: kWhiteColor,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: kGreyColor.withValues(alpha: 0.25)),
         ),
-      );
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              HeroiconsOutline.arrowTopRightOnSquare,
+              size: getProportionateScreenWidth(11),
+              color: kSecondaryColor,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              'Open Link',
+              style: base.copyWith(
+                fontSize: getProportionateScreenWidth(11),
+                fontWeight: FontWeight.w600,
+                color: kSecondaryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   String _formatTime(DateTime ts) {
     final diff = DateTime.now().difference(ts);

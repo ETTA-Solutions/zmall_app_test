@@ -62,8 +62,13 @@ class _BodyState extends State<Body> {
   }
 
   _getStoreListByCompany() async {
-    await getStoreListByCompany(widget.cityId, widget.storeDeliveryId,
-        widget.latitude, widget.longitude, widget.companyId!);
+    await getStoreListByCompany(
+      widget.cityId,
+      widget.storeDeliveryId,
+      widget.latitude,
+      widget.longitude,
+      widget.companyId!,
+    );
 
     if (responseData != null && responseData['success']) {
       stores = responseData['stores'];
@@ -78,8 +83,12 @@ class _BodyState extends State<Body> {
   }
 
   void _getCompanyList() async {
-    await getCompanyList(widget.cityId, widget.storeDeliveryId, widget.latitude,
-        widget.longitude);
+    await getCompanyList(
+      widget.cityId,
+      widget.storeDeliveryId,
+      widget.latitude,
+      widget.longitude,
+    );
     if (responseData != null && responseData['success']) {
       stores = responseData['stores'];
       storeOpen(stores);
@@ -99,9 +108,6 @@ class _BodyState extends State<Body> {
 
   void storeOpen(List stores) async {
     isOpen.clear();
-    // BYPASS store closed-time check: mark every store as open.
-    isOpen.addAll(List<bool>.filled(stores.length, true));
-    if (isOpen.isNotEmpty) return;
     DateFormat dateFormat = new DateFormat.Hm();
     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
     if (appOpen == null || appClose == null) {
@@ -126,19 +132,38 @@ class _BodyState extends State<Body> {
           if (store['store_time'][i]['day'] == weekday) {
             if (store['store_time'][i]['day_time'].length != 0 &&
                 store['store_time'][i]['is_store_open']) {
-              for (var j = 0;
-                  j < store['store_time'][i]['day_time'].length;
-                  j++) {
+              for (
+                var j = 0;
+                j < store['store_time'][i]['day_time'].length;
+                j++
+              ) {
                 DateTime open = dateFormat.parse(
-                    store['store_time'][i]['day_time'][j]['store_open_time']);
+                  store['store_time'][i]['day_time'][j]['store_open_time'],
+                );
                 open = new DateTime(
-                    now.year, now.month, now.day, open.hour, open.minute);
+                  now.year,
+                  now.month,
+                  now.day,
+                  open.hour,
+                  open.minute,
+                );
                 DateTime close = dateFormat.parse(
-                    store['store_time'][i]['day_time'][j]['store_close_time']);
+                  store['store_time'][i]['day_time'][j]['store_close_time'],
+                );
                 close = new DateTime(
-                    now.year, now.month, now.day, close.hour, close.minute);
+                  now.year,
+                  now.month,
+                  now.day,
+                  close.hour,
+                  close.minute,
+                );
                 now = DateTime(
-                    now.year, now.month, now.day, now.hour, now.minute);
+                  now.year,
+                  now.month,
+                  now.day,
+                  now.hour,
+                  now.minute,
+                );
                 if (now.isAfter(open) &&
                     now.isBefore(close) &&
                     store['store_time'][i]['is_store_open']) {
@@ -161,7 +186,12 @@ class _BodyState extends State<Body> {
         DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
 
         zmallClose = DateTime(
-            now.year, now.month, now.day, zmallClose.hour, zmallClose.minute);
+          now.year,
+          now.month,
+          now.day,
+          zmallClose.hour,
+          zmallClose.minute,
+        );
         now = DateTime(now.year, now.month, now.day, now.hour, now.minute);
 
         now.isAfter(zmallClose) || now.isBefore(zmallOpen)
@@ -218,7 +248,8 @@ class _BodyState extends State<Body> {
                           setState(() {
                             storeOpen(stores);
                           });
-                        })
+                        },
+                      )
                     // ? Container(
                     //     color: kPrimaryColor,
                     //     child: Card(
@@ -255,13 +286,15 @@ class _BodyState extends State<Body> {
                           itemCount: _searchResult.length,
                           padding: EdgeInsets.symmetric(
                             horizontal: getProportionateScreenWidth(
-                                kDefaultPadding / 2),
+                              kDefaultPadding / 2,
+                            ),
                           ),
                           separatorBuilder: (BuildContext context, int index) =>
                               SizedBox(
-                            height: getProportionateScreenHeight(
-                                kDefaultPadding / 2),
-                          ),
+                                height: getProportionateScreenHeight(
+                                  kDefaultPadding / 2,
+                                ),
+                              ),
                           itemBuilder: (BuildContext context, int index) {
                             return Container(
                               child: CustomListTile(
@@ -281,8 +314,8 @@ class _BodyState extends State<Body> {
                                               latitude: widget.latitude,
                                               longitude: widget.longitude,
                                               isStore: true,
-                                              companyId: _searchResult[index]
-                                                  ['company_id'],
+                                              companyId:
+                                                  _searchResult[index]['company_id'],
                                             );
                                           },
                                         ),
@@ -298,8 +331,8 @@ class _BodyState extends State<Body> {
                                               latitude: widget.latitude,
                                               longitude: widget.longitude,
                                               store: _searchResult[index],
-                                              location: _searchResult[index]
-                                                  ["location"],
+                                              location:
+                                                  _searchResult[index]["location"],
                                               isOpen: isOpen[index],
                                             );
                                           },
@@ -317,8 +350,8 @@ class _BodyState extends State<Body> {
                                             latitude: widget.latitude,
                                             longitude: widget.longitude,
                                             store: _searchResult[index],
-                                            location: _searchResult[index]
-                                                ["location"],
+                                            location:
+                                                _searchResult[index]["location"],
                                             isOpen: true,
                                           );
                                         },
@@ -337,13 +370,15 @@ class _BodyState extends State<Body> {
                           itemCount: stores.length,
                           padding: EdgeInsets.symmetric(
                             horizontal: getProportionateScreenWidth(
-                                kDefaultPadding / 2),
+                              kDefaultPadding / 2,
+                            ),
                           ),
                           separatorBuilder: (BuildContext context, int index) =>
                               SizedBox(
-                            height: getProportionateScreenHeight(
-                                kDefaultPadding / 2),
-                          ),
+                                height: getProportionateScreenHeight(
+                                  kDefaultPadding / 2,
+                                ),
+                              ),
                           itemBuilder: (BuildContext context, int index) {
                             return Container(
                               child: CustomListTile(
@@ -362,8 +397,8 @@ class _BodyState extends State<Body> {
                                               latitude: widget.latitude,
                                               longitude: widget.longitude,
                                               isStore: true,
-                                              companyId: stores[index]
-                                                  ['company_id'],
+                                              companyId:
+                                                  stores[index]['company_id'],
                                             );
                                           },
                                         ),
@@ -379,8 +414,8 @@ class _BodyState extends State<Body> {
                                               latitude: widget.latitude,
                                               longitude: widget.longitude,
                                               store: stores[index],
-                                              location: stores[index]
-                                                  ["location"],
+                                              location:
+                                                  stores[index]["location"],
                                               isOpen: isOpen[index],
                                             );
                                           },
@@ -413,31 +448,30 @@ class _BodyState extends State<Body> {
                             );
                           },
                         ),
-                )
+                ),
               ],
             )
           : !_loading
-              ? Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal:
-                        getProportionateScreenWidth(kDefaultPadding * 4),
+          ? Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionateScreenWidth(kDefaultPadding * 4),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CustomButton(
+                    title: "Retry",
+                    press: () {
+                      widget.isStore
+                          ? _getStoreListByCompany()
+                          : _getCompanyList();
+                    },
+                    color: kSecondaryColor,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CustomButton(
-                        title: "Retry",
-                        press: () {
-                          widget.isStore
-                              ? _getStoreListByCompany()
-                              : _getCompanyList();
-                        },
-                        color: kSecondaryColor,
-                      ),
-                    ],
-                  ),
-                )
-              : Container(),
+                ],
+              ),
+            )
+          : Container(),
     );
   }
 
@@ -461,8 +495,13 @@ class _BodyState extends State<Body> {
     });
   }
 
-  Future<dynamic> getStoreListByCompany(String cityId, String storeDeliveryId,
-      double latitude, double longitude, int companyId) async {
+  Future<dynamic> getStoreListByCompany(
+    String cityId,
+    String storeDeliveryId,
+    double latitude,
+    double longitude,
+    int companyId,
+  ) async {
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_store_list_by_company";
     Map data = {
@@ -471,7 +510,7 @@ class _BodyState extends State<Body> {
       "store_delivery_id": storeDeliveryId,
       "latitude": latitude,
       "longitude": longitude,
-      "company_id": companyId
+      "company_id": companyId,
     };
     var body = json.encode(data);
     // debugPrint(body);
@@ -479,28 +518,28 @@ class _BodyState extends State<Body> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Something went wrong!"),
-              backgroundColor: kSecondaryColor,
-            ),
+            Duration(seconds: 10),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Something went wrong!"),
+                  backgroundColor: kSecondaryColor,
+                ),
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
           );
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
       setState(() {
         this.responseData = json.decode(response.body);
         this._loading = false;
@@ -521,8 +560,12 @@ class _BodyState extends State<Body> {
     }
   }
 
-  Future<dynamic> getCompanyList(String cityId, String storeDeliveryId,
-      double latitude, double longitude) async {
+  Future<dynamic> getCompanyList(
+    String cityId,
+    String storeDeliveryId,
+    double latitude,
+    double longitude,
+  ) async {
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_company_list";
     Map data = {
@@ -536,28 +579,28 @@ class _BodyState extends State<Body> {
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Something went wrong!"),
-              backgroundColor: kSecondaryColor,
-            ),
+            Duration(seconds: 10),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Something went wrong!"),
+                  backgroundColor: kSecondaryColor,
+                ),
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
           );
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
 
       setState(() {
         this.responseData = json.decode(response.body);
@@ -591,7 +634,7 @@ class _BodyState extends State<Body> {
       "longitude": widget.longitude,
       "last_opened": now,
       // DateTime.now().toUtc().add(Duration(hours: 3)).toString(),
-      "is_promotional": false
+      "is_promotional": false,
     };
     var body = json.encode(data);
     try {
@@ -599,7 +642,7 @@ class _BodyState extends State<Body> {
         Uri.parse(url),
         headers: <String, String>{
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          "Accept": "application/json",
         },
         body: body,
       );

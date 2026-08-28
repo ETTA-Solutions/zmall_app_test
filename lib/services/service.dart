@@ -19,8 +19,8 @@ class Service {
   // Secure storage instance for sensitive data
   static const _secureStorage = FlutterSecureStorage(
     // aOptions: AndroidOptions(
-      // encryptedSharedPreferences: true
-      // ),
+    // encryptedSharedPreferences: true
+    // ),
   );
 
   // Keys for biometric authentication
@@ -595,8 +595,7 @@ class Service {
   /// ```
   static Future<bool> isStoreOpen(var store) async {
     List<bool> result = await storeOpen([store]);
-    return true;
-    // return result.isNotEmpty ? result[0] : false;
+    return result.isNotEmpty ? result[0] : false;
   }
 
   /// Determine which stores are currently open based on their schedules (Pattern 2)
@@ -619,10 +618,6 @@ class Service {
   /// }
   /// ```
   static Future<List<bool>> storeOpen(List stores) async {
-    // BYPASS store closed-time check: treat every store as open so badges,
-    // list filtering, and ProductScreen add-to-cart never block on time.
-    return List<bool>.filled(stores.length, true);
-    // ignore: dead_code
     List<bool> isOpen = [];
     DateFormat dateFormat = DateFormat.Hm();
     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));

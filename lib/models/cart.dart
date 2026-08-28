@@ -38,38 +38,38 @@ class Cart {
   bool isLaundryService;
 
   factory Cart.fromJson(Map<String, dynamic> json) => Cart(
-        userId: json["user_id"],
-        items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
-        serverToken: json["server_token"],
-        destinationAddress:
-            DestinationAddress.fromJson(json["destination_address"]),
-        storeId: json["store_id"],
-        storeLocation: StoreLocation.fromJson(json["store_location"]),
-        isSchedule: json["is_schedule"],
-        scheduleStart: json["schedule_start"] == null
-            ? null
-            : DateTime.parse(json["schedule_start"]),
-        isForOthers: json["delivery_for_other"],
-        userName: json["username"],
-        phone: json["phone"],
-        isLaundryService: json["is_laundry_service"],
-      );
+    userId: json["user_id"],
+    items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
+    serverToken: json["server_token"],
+    destinationAddress: DestinationAddress.fromJson(
+      json["destination_address"],
+    ),
+    storeId: json["store_id"],
+    storeLocation: StoreLocation.fromJson(json["store_location"]),
+    isSchedule: json["is_schedule"],
+    scheduleStart: json["schedule_start"] == null
+        ? null
+        : DateTime.parse(json["schedule_start"]),
+    isForOthers: json["delivery_for_other"],
+    userName: json["username"],
+    phone: json["phone"],
+    isLaundryService: json["is_laundry_service"],
+  );
 
   Map<String, dynamic> toJson() => {
-        "user_id": userId,
-        "items": List<dynamic>.from(items!.map((x) => x.toJson())),
-        "server_token": serverToken,
-        "destination_address": destinationAddress!.toJson(),
-        "store_id": storeId,
-        "store_location": storeLocation,
-        "is_schedule": isSchedule,
-        "schedule_start":
-            scheduleStart == null ? null : scheduleStart.toString(),
-        "delivery_for_other": isForOthers,
-        "username": userName,
-        "phone": phone,
-        "is_laundry_service": isLaundryService,
-      };
+    "user_id": userId,
+    "items": List<dynamic>.from(items!.map((x) => x.toJson())),
+    "server_token": serverToken,
+    "destination_address": destinationAddress!.toJson(),
+    "store_id": storeId,
+    "store_location": storeLocation,
+    "is_schedule": isSchedule,
+    "schedule_start": scheduleStart == null ? null : scheduleStart.toString(),
+    "delivery_for_other": isForOthers,
+    "username": userName,
+    "phone": phone,
+    "is_laundry_service": isLaundryService,
+  };
 }
 
 class AbroadCart {
@@ -106,79 +106,67 @@ class AbroadCart {
   bool isAbroad;
 
   factory AbroadCart.fromJson(Map<String, dynamic> json) => AbroadCart(
-        userId: json["user_id"],
-        items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
-        serverToken: json["server_token"],
-        destinationAddress:
-            DestinationAddress.fromJson(json["destination_address"]),
-        storeId: json["store_id"],
-        storeLocation: StoreLocation.fromJson(json["store_location"]),
-        isSchedule: json["is_schedule"],
-        scheduleStart: json["schedule_start"] == null
-            ? null
-            : DateTime.parse(json["schedule_start"]),
-        isForOthers: json["delivery_for_other"],
-        isOpen: true, // BYPASS store closed flag — was: json['is_open']
-        isAbroad: json["is_abroad"],
-        userName: json["username"],
-        phone: json['phone'],
-        abroadData: json["abroad_data"] == null
-            ? null
-            : AbroadData.fromJson(json["abroad_data"]),
-      );
+    userId: json["user_id"],
+    items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
+    serverToken: json["server_token"],
+    destinationAddress: DestinationAddress.fromJson(
+      json["destination_address"],
+    ),
+    storeId: json["store_id"],
+    storeLocation: StoreLocation.fromJson(json["store_location"]),
+    isSchedule: json["is_schedule"],
+    scheduleStart: json["schedule_start"] == null
+        ? null
+        : DateTime.parse(json["schedule_start"]),
+    isForOthers: json["delivery_for_other"],
+    isOpen: json['is_open'],
+    isAbroad: json["is_abroad"],
+    userName: json["username"],
+    phone: json['phone'],
+    abroadData: json["abroad_data"] == null
+        ? null
+        : AbroadData.fromJson(json["abroad_data"]),
+  );
 
   Map<String, dynamic> toJson() => {
-        "items": List<dynamic>.from(items!.map((x) => x.toJson())),
-        "server_token": serverToken,
-        "destination_address": destinationAddress!.toJson(),
-        "store_id": storeId,
-        "store_location": storeLocation,
-        "is_schedule": isSchedule,
-        "schedule_start":
-            scheduleStart == null ? null : scheduleStart.toString(),
-        "delivery_for_other": isForOthers,
-        "is_open": isOpen,
-        "is_abroad": isAbroad,
-        "username": userName,
-        "phone": phone,
-        "abroad_data": abroadData == null ? null : abroadData!.toJson(),
-        "user_id": userId,
-      };
+    "items": List<dynamic>.from(items!.map((x) => x.toJson())),
+    "server_token": serverToken,
+    "destination_address": destinationAddress!.toJson(),
+    "store_id": storeId,
+    "store_location": storeLocation,
+    "is_schedule": isSchedule,
+    "schedule_start": scheduleStart == null ? null : scheduleStart.toString(),
+    "delivery_for_other": isForOthers,
+    "is_open": isOpen,
+    "is_abroad": isAbroad,
+    "username": userName,
+    "phone": phone,
+    "abroad_data": abroadData == null ? null : abroadData!.toJson(),
+    "user_id": userId,
+  };
 }
 
 class AbroadData {
-  AbroadData({
-    this.abroadName,
-    this.abroadEmail,
-    this.abroadPhone,
-  });
+  AbroadData({this.abroadName, this.abroadEmail, this.abroadPhone});
   String? abroadName, abroadEmail, abroadPhone;
   factory AbroadData.fromJson(Map<String, dynamic> json) => AbroadData(
-        abroadName: json["abroad_name"],
-        abroadEmail: json["abroad_email"],
-        abroadPhone: json["abroad_phone"],
-      );
+    abroadName: json["abroad_name"],
+    abroadEmail: json["abroad_email"],
+    abroadPhone: json["abroad_phone"],
+  );
   Map<String, dynamic> toJson() => {
-        "abroad_name": abroadName,
-        "abroad_email": abroadEmail,
-        "abroad_phone": abroadPhone,
-      };
+    "abroad_name": abroadName,
+    "abroad_email": abroadEmail,
+    "abroad_phone": abroadPhone,
+  };
 }
 
 class StoreLocation {
-  StoreLocation({
-    this.lat,
-    this.long,
-  });
+  StoreLocation({this.lat, this.long});
   double? lat, long;
-  factory StoreLocation.fromJson(Map<String, dynamic> json) => StoreLocation(
-        lat: json["lat"].toDouble(),
-        long: json["long"].toDouble(),
-      );
-  Map<String, dynamic> toJson() => {
-        "lat": lat,
-        "long": long,
-      };
+  factory StoreLocation.fromJson(Map<String, dynamic> json) =>
+      StoreLocation(lat: json["lat"].toDouble(), long: json["long"].toDouble());
+  Map<String, dynamic> toJson() => {"lat": lat, "long": long};
 }
 
 class DestinationAddress {
@@ -203,11 +191,11 @@ class DestinationAddress {
       );
 
   Map<String, dynamic> toJson() => {
-        "name": name,
-        "long": long,
-        "lat": lat,
-        "note": note,
-      };
+    "name": name,
+    "long": long,
+    "lat": lat,
+    "note": note,
+  };
 }
 
 class Item {
@@ -232,31 +220,32 @@ class Item {
   int? odooProductId;
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
-        id: json["_id"],
-        quantity: json["quantity"],
-        specification: List<Specification>.from(
-            json["specification"].map((x) => Specification.fromJson(x))),
-        noteForItem: json["note_for_item"],
-        price: json["price"],
-        itemName: json["item_name"],
-        imageURL: json["image_url"],
-        odooProductId: parseOdooProductId(json['odoo_product_id']) ??
-            parseOdooProductId(json['pos_id']) ??
-            extractOdooProductId(json),
-      );
+    id: json["_id"],
+    quantity: json["quantity"],
+    specification: List<Specification>.from(
+      json["specification"].map((x) => Specification.fromJson(x)),
+    ),
+    noteForItem: json["note_for_item"],
+    price: json["price"],
+    itemName: json["item_name"],
+    imageURL: json["image_url"],
+    odooProductId:
+        parseOdooProductId(json['odoo_product_id']) ??
+        parseOdooProductId(json['pos_id']) ??
+        extractOdooProductId(json),
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "quantity": quantity,
-        "specification":
-            List<dynamic>.from(specification!.map((x) => x.toJson())),
-        "note_for_item": noteForItem,
-        "price": price,
-        "item_name": itemName,
-        "image_url": imageURL,
-        "odoo_product_id": odooProductId,
-        "pos_id": odooProductId,
-      };
+    "_id": id,
+    "quantity": quantity,
+    "specification": List<dynamic>.from(specification!.map((x) => x.toJson())),
+    "note_for_item": noteForItem,
+    "price": price,
+    "item_name": itemName,
+    "image_url": imageURL,
+    "odoo_product_id": odooProductId,
+    "pos_id": odooProductId,
+  };
 }
 
 int? parseOdooProductId(dynamic raw) {
@@ -285,24 +274,22 @@ int? extractOdooProductId(Map<String, dynamic>? map) {
 }
 
 class Specification {
-  Specification({
-    this.uniqueId,
-    this.list,
-  });
+  Specification({this.uniqueId, this.list});
 
   int? uniqueId;
   List<ListElement>? list;
 
   factory Specification.fromJson(Map<String, dynamic> json) => Specification(
-        uniqueId: json["unique_id"],
-        list: List<ListElement>.from(
-            json["list"].map((x) => ListElement.fromJson(x))),
-      );
+    uniqueId: json["unique_id"],
+    list: List<ListElement>.from(
+      json["list"].map((x) => ListElement.fromJson(x)),
+    ),
+  );
 
   Map<String, dynamic> toJson() => {
-        "unique_id": uniqueId,
-        "list": List<dynamic>.from(list!.map((x) => x.toJson())),
-      };
+    "unique_id": uniqueId,
+    "list": List<dynamic>.from(list!.map((x) => x.toJson())),
+  };
 }
 
 class ListElement {
@@ -311,15 +298,10 @@ class ListElement {
   int? uniqueId;
   double? price;
 
-  factory ListElement.fromJson(Map<String, dynamic> json) => ListElement(
-        uniqueId: json["unique_id"],
-        price: json["price"],
-      );
+  factory ListElement.fromJson(Map<String, dynamic> json) =>
+      ListElement(uniqueId: json["unique_id"], price: json["price"]);
 
-  Map<String, dynamic> toJson() => {
-        "unique_id": uniqueId,
-        "price": price,
-      };
+  Map<String, dynamic> toJson() => {"unique_id": uniqueId, "price": price};
 }
 
 class DeliveryLocation {
@@ -330,11 +312,12 @@ class DeliveryLocation {
   factory DeliveryLocation.fromJson(Map<String, dynamic> json) =>
       DeliveryLocation(
         list: List<DestinationAddress>.from(
-            json["list"].map((x) => DestinationAddress.fromJson(x))),
+          json["list"].map((x) => DestinationAddress.fromJson(x)),
+        ),
       );
   Map<String, dynamic> toJson() => {
-        "list": List<dynamic>.from(list!.map((e) => e.toJson())),
-      };
+    "list": List<dynamic>.from(list!.map((e) => e.toJson())),
+  };
 }
 
 class Contact {
@@ -343,15 +326,10 @@ class Contact {
   String? name;
   String? phone;
 
-  factory Contact.fromJson(Map<String, dynamic> json) => Contact(
-        name: json["name"],
-        phone: json["phone"],
-      );
+  factory Contact.fromJson(Map<String, dynamic> json) =>
+      Contact(name: json["name"], phone: json["phone"]);
 
-  Map<String, dynamic> toJson() => {
-        "name": name,
-        "phone": phone,
-      };
+  Map<String, dynamic> toJson() => {"name": name, "phone": phone};
 }
 
 class HomeContact {
@@ -359,45 +337,36 @@ class HomeContact {
   List<Contact>? list;
 
   factory HomeContact.fromJson(Map<String, dynamic> json) => HomeContact(
-        list: List<Contact>.from(json["list"].map((x) => Contact.fromJson(x))),
-      );
+    list: List<Contact>.from(json["list"].map((x) => Contact.fromJson(x))),
+  );
   Map<String, dynamic> toJson() => {
-        "list": List<dynamic>.from(list!.map((e) => e.toJson())),
-      };
+    "list": List<dynamic>.from(list!.map((e) => e.toJson())),
+  };
 }
 
 ///////aliexpress cart model
 class AliExpressCart {
-  AliExpressCart({
-    required this.cart,
-    this.itemIds,
-    this.productIds,
-  });
+  AliExpressCart({required this.cart, this.itemIds, this.productIds});
 
   Cart cart;
   List<String>? itemIds;
   List<int>? productIds;
 
   factory AliExpressCart.fromJson(Map<String, dynamic> json) => AliExpressCart(
-        cart: Cart.fromJson(json["cart"]),
-        itemIds: List<String>.from(json["item_ids"] ?? []),
-        productIds: List<int>.from(json["product_ids"] ?? []),
-      );
+    cart: Cart.fromJson(json["cart"]),
+    itemIds: List<String>.from(json["item_ids"] ?? []),
+    productIds: List<int>.from(json["product_ids"] ?? []),
+  );
 
   Map<String, dynamic> toJson() => {
-        "cart": cart.toJson(),
-        "item_ids": itemIds != null ? List<dynamic>.from(itemIds!) : [],
-        "product_ids":
-            productIds != null ? List<dynamic>.from(productIds!) : [],
-      };
+    "cart": cart.toJson(),
+    "item_ids": itemIds != null ? List<dynamic>.from(itemIds!) : [],
+    "product_ids": productIds != null ? List<dynamic>.from(productIds!) : [],
+  };
 }
 
 class AbroadAliExpressCart {
-  AbroadAliExpressCart({
-    required this.cart,
-    this.itemIds,
-    this.productIds,
-  });
+  AbroadAliExpressCart({required this.cart, this.itemIds, this.productIds});
 
   AbroadCart cart;
   List<String>? itemIds;
@@ -411,9 +380,8 @@ class AbroadAliExpressCart {
       );
 
   Map<String, dynamic> toJson() => {
-        "cart": cart.toJson(),
-        "item_ids": itemIds != null ? List<dynamic>.from(itemIds!) : [],
-        "product_ids":
-            productIds != null ? List<dynamic>.from(productIds!) : [],
-      };
+    "cart": cart.toJson(),
+    "item_ids": itemIds != null ? List<dynamic>.from(itemIds!) : [],
+    "product_ids": productIds != null ? List<dynamic>.from(productIds!) : [],
+  };
 }

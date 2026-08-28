@@ -461,9 +461,13 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   void _debugDumpCart(bool? available) {
     if (!kDebugMode) return;
     final StringBuffer sb = StringBuffer('\n===== CART DEBUG =====\n');
-    sb.writeln('storeId: ${cart?.storeId ?? 'null'} (trimmed: "${cart?.storeId?.trim() ?? ''}")');
+    sb.writeln(
+      'storeId: ${cart?.storeId ?? 'null'} (trimmed: "${cart?.storeId?.trim() ?? ''}")',
+    );
     final String? slug = zmallBranchSlugForStore(cart?.storeId);
-    sb.writeln('branchSlug: ${slug ?? 'null  <-- NOT MAPPED: availability check is SKIPPED, checkout stays open'}');
+    sb.writeln(
+      'branchSlug: ${slug ?? 'null  <-- NOT MAPPED: availability check is SKIPPED, checkout stays open'}',
+    );
     if (cart?.items != null && cart!.items!.isNotEmpty) {
       sb.writeln('items:');
       for (final item in cart!.items!) {
@@ -474,7 +478,13 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     } else {
       sb.writeln('items: (empty)');
     }
-    sb.writeln('availability: ${available == null ? 'UNKNOWN (network/server error -> not blocking)' : available ? 'available -> checkout UNLOCKED' : 'NOT available -> checkout LOCKED'}');
+    sb.writeln(
+      'availability: ${available == null
+          ? 'UNKNOWN (network/server error -> not blocking)'
+          : available
+          ? 'available -> checkout UNLOCKED'
+          : 'NOT available -> checkout LOCKED'}',
+    );
     sb.writeln('_checkoutBlocked: $_checkoutBlocked');
     sb.writeln('===== /CART DEBUG =====');
     debugPrintSynchronously(sb.toString());
@@ -575,10 +585,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     if (signature == _lastStockLeftSignature) return;
     _lastStockLeftSignature = signature;
 
-    StockLeftNotification.show(
-      context: context,
-      items: stockLeftItems,
-    );
+    StockLeftNotification.show(context: context, items: stockLeftItems);
   }
 
   void _applyStockAdjustment(Item item, int maxAvailable) {
@@ -705,101 +712,106 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                               title: _checkoutBlocked
                                   ? "Out of stock"
                                   : _checkingAvailability
-                                      ? "Checking stock..."
-                                      : Provider.of<ZLanguage>(
-                                          context,
-                                        ).checkout,
+                                  ? "Checking stock..."
+                                  : Provider.of<ZLanguage>(context).checkout,
                               enabled: !_checkoutBlocked,
                               press: (_checkingAvailability || _checkoutBlocked)
                                   ? () {}
                                   : () async {
-                                //   if (isDonation && !isCheckout) {
-                                //   setState(() {
-                                //     isCheckout = !isCheckout;
-                                //   });
-                                // } else {
+                                      //   if (isDonation && !isCheckout) {
+                                      //   setState(() {
+                                      //     isCheckout = !isCheckout;
+                                      //   });
+                                      // } else {
 
-                                if (!isLocationServicesEnabled) {
-                                  Service.showMessage(
-                                    context: context,
-                                    title:
-                                        "Location services are turned off. Please enable them in your device settings.",
-                                    error: true,
-                                  );
-                                  _doLocationTask();
-                                } else {
-                                  setState(() => _checkingAvailability = true);
-                                  try {
-                                    if (!await _checkAvailability()) {
-                                      return;
-                                    }
-                                  } finally {
-                                    if (mounted) {
-                                      setState(() => _checkingAvailability = false);
-                                    }
-                                  }
-                                  DateFormat dateFormat = new DateFormat.Hm();
-                                  DateTime now = DateTime.now().toUtc().add(
-                                    Duration(hours: 3),
-                                  );
-                                  var appClose = await Service.read(
-                                    'app_close',
-                                  );
-                                  var appOpen = await Service.read('app_open');
-                                  DateTime zmallClose = dateFormat.parse(
-                                    appClose,
-                                  );
-                                  DateTime zmallOpen = dateFormat.parse(
-                                    appOpen,
-                                  );
+                                      if (!isLocationServicesEnabled) {
+                                        Service.showMessage(
+                                          context: context,
+                                          title:
+                                              "Location services are turned off. Please enable them in your device settings.",
+                                          error: true,
+                                        );
+                                        _doLocationTask();
+                                      } else {
+                                        setState(
+                                          () => _checkingAvailability = true,
+                                        );
+                                        try {
+                                          if (!await _checkAvailability()) {
+                                            return;
+                                          }
+                                        } finally {
+                                          if (mounted) {
+                                            setState(
+                                              () =>
+                                                  _checkingAvailability = false,
+                                            );
+                                          }
+                                        }
+                                        DateFormat dateFormat =
+                                            new DateFormat.Hm();
+                                        DateTime now = DateTime.now()
+                                            .toUtc()
+                                            .add(Duration(hours: 3));
+                                        var appClose = await Service.read(
+                                          'app_close',
+                                        );
+                                        var appOpen = await Service.read(
+                                          'app_open',
+                                        );
+                                        DateTime zmallClose = dateFormat.parse(
+                                          appClose,
+                                        );
+                                        DateTime zmallOpen = dateFormat.parse(
+                                          appOpen,
+                                        );
 
-                                  now = DateTime(
-                                    now.year,
-                                    now.month,
-                                    now.day,
-                                    now.hour,
-                                    now.minute,
-                                  );
-                                  zmallOpen = new DateTime(
-                                    now.year,
-                                    now.month,
-                                    now.day,
-                                    zmallOpen.hour,
-                                    zmallOpen.minute,
-                                  );
-                                  zmallClose = new DateTime(
-                                    now.year,
-                                    now.month,
-                                    now.day,
-                                    zmallClose.hour,
-                                    zmallClose.minute,
-                                  );
+                                        now = DateTime(
+                                          now.year,
+                                          now.month,
+                                          now.day,
+                                          now.hour,
+                                          now.minute,
+                                        );
+                                        zmallOpen = new DateTime(
+                                          now.year,
+                                          now.month,
+                                          now.day,
+                                          zmallOpen.hour,
+                                          zmallOpen.minute,
+                                        );
+                                        zmallClose = new DateTime(
+                                          now.year,
+                                          now.month,
+                                          now.day,
+                                          zmallClose.hour,
+                                          zmallClose.minute,
+                                        );
 
-                                  // if (now.isAfter(zmallOpen) &&
-                                  //     now.isBefore(zmallClose)) {
-                                  if (true) {
-                                    Navigator.pushNamed(
-                                      context,
-                                      DeliveryScreen.routeName,
-                                    );
-                                    //   if (isDonation) {
-                                    //   debugPrint('***This is Donation***');
-                                    //   //showDonation();
-                                    // } else {
-                                    //   Navigator.pushNamed(
-                                    //       context, DeliveryScreen.routeName);
-                                    // }
-                                  } else {
-                                    Service.showMessage(
-                                      context: context,
-                                      title:
-                                          "Sorry, we are currently closed. Please comeback soon.",
-                                      error: false,
-                                      duration: 3,
-                                    );
-                                  }
-                                }
-                              },
+                                        if (now.isAfter(zmallOpen) &&
+                                            now.isBefore(zmallClose)) {
+                                          Navigator.pushNamed(
+                                            context,
+                                            DeliveryScreen.routeName,
+                                          );
+                                          //   if (isDonation) {
+                                          //   debugPrint('***This is Donation***');
+                                          //   //showDonation();
+                                          // } else {
+                                          //   Navigator.pushNamed(
+                                          //       context, DeliveryScreen.routeName);
+                                          // }
+                                        } else {
+                                          Service.showMessage(
+                                            context: context,
+                                            title:
+                                                "Sorry, we are currently closed. Please comeback soon.",
+                                            error: false,
+                                            duration: 3,
+                                          );
+                                        }
+                                      }
+                                    },
                               // },
                               color: kSecondaryColor,
                             ),
@@ -1116,7 +1128,10 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                     item.price =
                                                         unitPrice *
                                                         (currQty + 1);
-                                                    Service.save('cart', cart!.toJson());
+                                                    Service.save(
+                                                      'cart',
+                                                      cart!.toJson(),
+                                                    );
                                                     if (aliexpressCart !=
                                                             null &&
                                                         aliexpressCart!
@@ -1153,7 +1168,10 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                             onTap: () {
                                               setState(() {
                                                 cart?.items?.removeAt(index);
-                                                Service.save('cart', cart!.toJson());
+                                                Service.save(
+                                                  'cart',
+                                                  cart!.toJson(),
+                                                );
                                                 if (aliexpressCart != null &&
                                                     aliexpressCart!
                                                             .cart
@@ -1756,8 +1774,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                             0
                                         ? "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${extraItems[index]['image_url']}"
                                         : "https://ibb.co/vkhzjd6",
-                                    odooProductId:
-                                        extractOdooProductId(extraItems[index]),
+                                    odooProductId: extractOdooProductId(
+                                      extraItems[index],
+                                    ),
                                   );
                                   // debugPrint('item... $item');
                                   StoreLocation storeLocation = StoreLocation(

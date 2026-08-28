@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:zmall/help/support_chat/components/store_fetching_card.dart';
-import 'package:zmall/help/support_chat/screens/mock_store_list_screen.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
@@ -40,10 +39,7 @@ class _AllStoresSheetState extends State<AllStoresSheet>
       duration: const Duration(milliseconds: 500),
     )..forward();
 
-    _headerFade = CurvedAnimation(
-      parent: _headerAnim,
-      curve: Curves.easeOut,
-    );
+    _headerFade = CurvedAnimation(parent: _headerAnim, curve: Curves.easeOut);
 
     _headerSlide = Tween<Offset>(
       begin: const Offset(0, -0.25),
@@ -60,8 +56,9 @@ class _AllStoresSheetState extends State<AllStoresSheet>
   /// Put highlighted store first, then the rest.
   List<MockStore> get _orderedStores {
     if (widget.highlightedStore == null) return mockStores;
-    final others =
-        mockStores.where((s) => s.id != widget.highlightedStore!.id).toList();
+    final others = mockStores
+        .where((s) => s.id != widget.highlightedStore!.id)
+        .toList();
     return [widget.highlightedStore!, ...others];
   }
 
@@ -105,54 +102,12 @@ class _AllStoresSheetState extends State<AllStoresSheet>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // "Currently showing" badge for highlighted store
-                          if (isHighlighted) ...[
-                            Container(
-                              margin: EdgeInsets.only(
-                                bottom: getProportionateScreenHeight(6),
-                                left: getProportionateScreenWidth(2),
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: getProportionateScreenWidth(10),
-                                vertical: getProportionateScreenHeight(4),
-                              ),
-                              decoration: BoxDecoration(
-                                color: kSecondaryColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: kSecondaryColor.withValues(alpha: 0.25),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: getProportionateScreenWidth(7),
-                                    height: getProportionateScreenWidth(7),
-                                    decoration: BoxDecoration(
-                                      color: kSecondaryColor,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  SizedBox(width: getProportionateScreenWidth(6)),
-                                  Text(
-                                    'Currently showing',
-                                    style: TextStyle(
-                                      fontSize: getProportionateScreenWidth(11.5),
-                                      fontWeight: FontWeight.w600,
-                                      color: kSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                           StoreFetchingCard(
                             store: store,
                             products: products,
-                            onOpenStore: null, // no expand in expanded view
                             onProductTap: widget.onProductTap,
                             onAddToCart: widget.onAddToCart,
+                            initiallyShowProducts: !isHighlighted,
                           ),
                         ],
                       ),
@@ -182,10 +137,7 @@ class _AllStoresSheetState extends State<AllStoresSheet>
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border(
-              bottom: BorderSide(
-                color: const Color(0xFFF1F5F9),
-                width: 1,
-              ),
+              bottom: BorderSide(color: const Color(0xFFF1F5F9), width: 1),
             ),
           ),
           child: Row(
@@ -288,29 +240,30 @@ class _AllStoresSheetState extends State<AllStoresSheet>
 /// Route that slides up from the bottom (same feel as product screen).
 class SlideAllStoresPageRoute<T> extends PageRouteBuilder<T> {
   SlideAllStoresPageRoute({required Widget page})
-      : super(
-          pageBuilder: (_, __, ___) => page,
-          transitionDuration: const Duration(milliseconds: 420),
-          reverseTransitionDuration: const Duration(milliseconds: 320),
-          transitionsBuilder: (_, animation, __, child) {
-            final slide = Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-                reverseCurve: Curves.easeInCubic,
-              ),
-            );
-            final fade = CurvedAnimation(
-              parent: animation,
-              curve: const Interval(0.1, 1, curve: Curves.easeOut),
-            );
-            return SlideTransition(
-              position: slide,
-              child: FadeTransition(opacity: fade, child: child),
-            );
-          },
-        );
+    : super(
+        pageBuilder: (_, __, ___) => page,
+        transitionDuration: const Duration(milliseconds: 420),
+        reverseTransitionDuration: const Duration(milliseconds: 320),
+        transitionsBuilder: (_, animation, __, child) {
+          final slide =
+              Tween<Offset>(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                  reverseCurve: Curves.easeInCubic,
+                ),
+              );
+          final fade = CurvedAnimation(
+            parent: animation,
+            curve: const Interval(0.1, 1, curve: Curves.easeOut),
+          );
+          return SlideTransition(
+            position: slide,
+            child: FadeTransition(opacity: fade, child: child),
+          );
+        },
+      );
 }
