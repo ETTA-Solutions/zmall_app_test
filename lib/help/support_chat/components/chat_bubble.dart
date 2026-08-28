@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:zmall/help/support_chat/components/store_fetching_card.dart';
+import 'package:zmall/help/support_chat/components/food_recommendation_card.dart';
+import 'package:zmall/help/support_chat/components/store_carousel.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/store/components/image_container.dart';
@@ -20,6 +21,9 @@ class ChatBubble extends StatefulWidget {
   final List<MockProduct> matchedProducts;
   final MockStore? matchedStore;
   final bool showProducts;
+  /// When true the store-list vertical card is shown.
+  /// When false (food/item query) the horizontal product swipe cards are shown.
+  final bool isStoreOnly;
 
   const ChatBubble({
     super.key,
@@ -32,6 +36,7 @@ class ChatBubble extends StatefulWidget {
     this.matchedProducts = const [],
     this.matchedStore,
     this.showProducts = true,
+    this.isStoreOnly = false,
   });
 
   @override
@@ -151,28 +156,25 @@ class _ChatBubbleState extends State<ChatBubble> {
             ],
           ),
 
-          // ── Store Fetching Card / Product Card ───────────────────────
+          // ── Store card OR horizontal product cards ───────────────
           if (!isUser &&
               (widget.matchedProducts.isNotEmpty ||
                   widget.matchedStore != null)) ...[
-            SizedBox(height: getProportionateScreenHeight(8)),
-            StoreFetchingCard(
-              store:
-                  widget.matchedStore ??
-                  (widget.matchedProducts.isNotEmpty
-                      ? getStoreById(widget.matchedProducts.first.storeId) ??
-                            mockStores.first
-                      : mockStores.first),
-              products: widget.matchedProducts.isNotEmpty
-                  ? widget.matchedProducts
-                  : getStoreProducts(
-                      widget.matchedStore?.id ?? mockStores.first.id,
-                    ),
-              onProductTap: widget.onProductTap,
-              onAddToCart: widget.onAddToCart,
-              onViewCart: widget.onViewCart,
-              initiallyShowProducts: widget.showProducts,
-            ),
+            SizedBox(height: getProportionateScreenHeight(6)),
+            if (widget.isStoreOnly)
+              // Store query → vertical scrollable list of all stores inline
+              const StoreCarousel()
+            else
+              // Food/item query → horizontal swipe cards
+              FoodRecommendationRow(
+                products: widget.matchedProducts.isNotEmpty
+                    ? widget.matchedProducts
+                    : getStoreProducts(
+                        widget.matchedStore?.id ?? mockStores.first.id),
+                onViewCart: widget.onViewCart,
+                onProductTap: widget.onProductTap,
+                onAddToCart: widget.onAddToCart,
+              ),
           ] else if (!isUser && widget.message.showCartAction) ...[
             SizedBox(height: getProportionateScreenHeight(8)),
             _buildCartActionButton(),

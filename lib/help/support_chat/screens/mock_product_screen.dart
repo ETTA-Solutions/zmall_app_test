@@ -113,6 +113,7 @@ class _MockProductScreenState extends State<MockProductScreen>
       _quantities[product.id] = qty.clamp(1, 9);
     });
   }
+   
 
   Future<void> _addToCart() async {
     if (_isAdding) return;
@@ -556,11 +557,6 @@ class _ProductSlidePage extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    top: getProportionateScreenHeight(14),
-                    left: getProportionateScreenWidth(14),
-                    child: _RatingBadge(),
-                  ),
-                  Positioned(
                     bottom: getProportionateScreenHeight(14),
                     left: getProportionateScreenWidth(14),
                     right: getProportionateScreenWidth(14),
@@ -819,54 +815,13 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _RatingBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(10),
-        vertical: getProportionateScreenHeight(5),
-      ),
-      decoration: BoxDecoration(
-        color: kPrimaryColor.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            HeroiconsSolid.star,
-            color: const Color(0xFFF59E0B),
-            size: getProportionateScreenWidth(13),
-          ),
-          SizedBox(width: getProportionateScreenWidth(4)),
-          Text(
-            '4.8',
-            style: TextStyle(
-              fontSize: getProportionateScreenWidth(12),
-              fontWeight: FontWeight.w800,
-              color: kBlackColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CircleIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
   const _CircleIconButton({required this.icon, required this.onTap});
 
+  @override
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

@@ -375,12 +375,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     if (!mounted) return;
 
     final store = searchMockStore(userMessage);
-    final products = getStoreProducts(store.id);
-    final productNames = products.take(3).map((p) => p.name).join(', ');
     final botText =
         "Here's **${store.name}** near you! 🏪\n"
-        "Delivering in ${store.deliveryTime.toLowerCase()}. "
-        "Top picks: $productNames and more. Tap a product to add it to your cart! 🛒";
+        "${store.category} · ${store.deliveryTime}. "
+        "Tap the expand icon to see all stores near you.";
 
     _addBotMessage(botText);
     if (mounted) setState(() => _isLoading = false);
@@ -663,14 +661,19 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                             final matchedStore = isStoreReply
                                 ? searchMockStore(prevMsg.message)
                                 : null;
-                            // Use matched products (filtered by keyword) when available;
-                            // fall back to full store catalog so the card always has items.
-                            final storeProducts =
-                                isStoreReply && matchedStore != null
-                                ? (matchedProducts.isNotEmpty
+                            // isStoreOnly: pure store discovery (no food keywords) →
+                            // show store card with name/description only, NO products.
+                            // Food/item keywords matched → horizontal product cards.
+                            final isStoreOnly =
+                                isStoreReply && matchedProducts.isEmpty;
+
+                            // Never pass products for a pure store query — the card
+                            // must show only store info (name, category, rating, etc.).
+                            final storeProducts = isStoreOnly
+                                ? <MockProduct>[]
+                                : (isStoreReply && matchedStore != null
                                       ? matchedProducts
-                                      : getStoreProducts(matchedStore.id))
-                                : matchedProducts;
+                                      : matchedProducts);
                             final showProducts =
                                 !isStoreReply || matchedProducts.isNotEmpty;
 
@@ -701,6 +704,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                           : null,
                                     ),
                                     showProducts: showProducts,
+                                    isStoreOnly: isStoreOnly,
                                   ),
                                 ),
                               ],

@@ -92,24 +92,16 @@ class _AllStoresSheetState extends State<AllStoresSheet>
                   itemCount: stores.length,
                   itemBuilder: (context, index) {
                     final store = stores[index];
-                    final products = getStoreProducts(store.id);
-                    final isHighlighted =
-                        widget.highlightedStore?.id == store.id;
                     return Padding(
                       padding: EdgeInsets.only(
                         bottom: getProportionateScreenHeight(14),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          StoreFetchingCard(
-                            store: store,
-                            products: products,
-                            onProductTap: widget.onProductTap,
-                            onAddToCart: widget.onAddToCart,
-                            initiallyShowProducts: !isHighlighted,
-                          ),
-                        ],
+                      child: StoreFetchingCard(
+                        store: store,
+                        products: const [],
+                        onProductTap: widget.onProductTap,
+                        onAddToCart: widget.onAddToCart,
+                        storeOnly: true,
                       ),
                     );
                   },

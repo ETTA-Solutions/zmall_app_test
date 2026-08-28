@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
-import 'package:zmall/help/support_chat/screens/all_stores_sheet.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
@@ -14,6 +13,8 @@ import 'package:zmall/utils/size_config.dart';
 /// - Expandable "+X more items" preview with stacked miniature thumbnails
 /// - Smooth vertical scrollable view
 /// - Footer with "Item subtotal" and formatted total amount
+///
+///
 class StoreFetchingCard extends StatefulWidget {
   final MockStore store;
   final List<MockProduct> products;
@@ -21,6 +22,10 @@ class StoreFetchingCard extends StatefulWidget {
   final ValueChanged<MockProduct>? onAddToCart;
   final VoidCallback? onViewCart;
   final bool initiallyShowProducts;
+
+  /// When true only the store header (name + delivery time + expand icon)
+  /// is shown — no products, no fees, no checkout button.
+  final bool storeOnly;
 
   const StoreFetchingCard({
     super.key,
@@ -30,6 +35,7 @@ class StoreFetchingCard extends StatefulWidget {
     this.onAddToCart,
     this.onViewCart,
     this.initiallyShowProducts = true,
+    this.storeOnly = false,
   });
 
   @override
@@ -101,46 +107,47 @@ class _StoreFetchingCardState extends State<StoreFetchingCard>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── 1. Store Header ─────────────────────────────────────────
+          // ── Store header is always shown ─────────────────────────
           _buildStoreHeader(store),
 
-          SizedBox(height: getProportionateScreenHeight(14)),
+          // ── Everything below is hidden in storeOnly mode ─────────
+          if (!widget.storeOnly) ...[
+            SizedBox(height: getProportionateScreenHeight(14)),
 
-          if (_isExpanded)
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: getProportionateScreenHeight(260),
-              ),
-              child: Scrollbar(
-                controller: _scrollController,
-                thumbVisibility: true,
-                radius: const Radius.circular(8),
-                thickness: 3.5,
-                child: ListView.separated(
-                  controller: _scrollController,
-                  shrinkWrap: false,
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  itemCount: _isExpanded ? products.length : visibleCount,
-                  separatorBuilder: (_, __) =>
-                      SizedBox(height: getProportionateScreenHeight(10)),
-                  itemBuilder: (context, index) {
-                    return _buildProductRow(products[index]);
-                  },
+            if (_isExpanded)
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: getProportionateScreenHeight(260),
                 ),
-              ),
-            )
-          else
-            _buildViewProductsButton(),
+                child: Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  radius: const Radius.circular(8),
+                  thickness: 3.5,
+                  child: ListView.separated(
+                    controller: _scrollController,
+                    shrinkWrap: false,
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    itemCount: _isExpanded ? products.length : visibleCount,
+                    separatorBuilder: (_, __) =>
+                        SizedBox(height: getProportionateScreenHeight(10)),
+                    itemBuilder: (context, index) {
+                      return _buildProductRow(products[index]);
+                    },
+                  ),
+                ),
+              )
+            else
+              _buildViewProductsButton(),
 
-          // ── 3. Expand / "+X more items" Row ─────────────────────────
-          if (hasMore) ...[
-            SizedBox(height: getProportionateScreenHeight(10)),
-            _buildMoreItemsRow(products, remainingCount),
+            if (hasMore) ...[
+              SizedBox(height: getProportionateScreenHeight(10)),
+              _buildMoreItemsRow(products, remainingCount),
+            ],
+
+            _buildCheckoutFooter(products),
           ],
-
-          // ── 4. Footer: Checkout card ───────────────────────────────
-          _buildCheckoutFooter(products),
         ],
       ),
     );
@@ -217,7 +224,7 @@ class _StoreFetchingCardState extends State<StoreFetchingCard>
 
         SizedBox(width: getProportionateScreenWidth(12)),
 
-        // Store Name & Delivery Subtitle
+        // Store Name & Description
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,56 +241,99 @@ class _StoreFetchingCardState extends State<StoreFetchingCard>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(height: getProportionateScreenHeight(2)),
+              SizedBox(height: getProportionateScreenHeight(3)),
+              // Category badge
               Text(
-                store.deliveryTime,
+                store.category,
                 style: TextStyle(
-                  fontSize: getProportionateScreenWidth(12.5),
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF94A3B8),
+                  fontSize: getProportionateScreenWidth(12),
+                  fontWeight: FontWeight.w500,
+                  color: kSecondaryColor,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              SizedBox(height: getProportionateScreenHeight(4)),
+              // Rating + delivery time + location row
+              Wrap(
+                spacing: getProportionateScreenWidth(8),
+                runSpacing: getProportionateScreenHeight(2),
+                children: [
+                  // Star rating
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        HeroiconsSolid.star,
+                        size: getProportionateScreenWidth(11),
+                        color: const Color(0xFFF59E0B),
+                      ),
+                      SizedBox(width: getProportionateScreenWidth(3)),
+                      Text(
+                        store.rating.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(11.5),
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF475569),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Delivery time
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        HeroiconsOutline.clock,
+                        size: getProportionateScreenWidth(11),
+                        color: const Color(0xFF94A3B8),
+                      ),
+                      SizedBox(width: getProportionateScreenWidth(3)),
+                      Text(
+                        store.deliveryTime,
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(11.5),
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF94A3B8),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                  // Location
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        HeroiconsSolid.mapPin,
+                        size: getProportionateScreenWidth(11),
+                        color: const Color(0xFF94A3B8),
+                      ),
+                      SizedBox(width: getProportionateScreenWidth(3)),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: getProportionateScreenWidth(110),
+                        ),
+                        child: Text(
+                          store.location,
+                          style: TextStyle(
+                            fontSize: getProportionateScreenWidth(11.5),
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ],
           ),
         ),
-
-        // Expand / Popout Icon button
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              // Open the full all-stores sheet (same card UI) with this
-              // store highlighted at the top.
-              Navigator.push(
-                context,
-                SlideAllStoresPageRoute(
-                  page: AllStoresSheet(
-                    highlightedStore: store,
-                    onAddToCart: widget.onAddToCart,
-                    onProductTap: widget.onProductTap,
-                  ),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: EdgeInsets.all(getProportionateScreenWidth(7)),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-              ),
-              child: Icon(
-                HeroiconsOutline.arrowsPointingOut,
-                size: getProportionateScreenWidth(17),
-                color: const Color(0xFF64748B),
-              ),
-            ),
-          ),
-        ),
+        // ── end of store info ──────────────────────────────────────
       ],
     );
   }
