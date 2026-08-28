@@ -56,16 +56,16 @@ class MockProduct {
   }
 
   Map<String, dynamic> toJson() => {
-        '_id': id,
-        'store_id': storeId,
-        'name': name,
-        'price': price,
-        'original_price': originalPrice,
-        'unit': unit,
-        'category': category,
-        'description': description,
-        'image_url': imageUrl,
-      };
+    '_id': id,
+    'store_id': storeId,
+    'name': name,
+    'price': price,
+    'original_price': originalPrice,
+    'unit': unit,
+    'category': category,
+    'description': description,
+    'image_url': imageUrl,
+  };
 }
 
 /// Catalog used for offline/mock chatbot product recommendations and cart testing.
@@ -175,7 +175,8 @@ const List<MockProduct> mockProducts = [
     unit: '12 oz',
     currencySymbol: '\$',
     category: 'Coffee',
-    description: 'Medium roast Ethiopian Yirgacheffe single-origin ground coffee',
+    description:
+        'Medium roast Ethiopian Yirgacheffe single-origin ground coffee',
     localImageAsset: _imgCoffee,
   ),
   MockProduct(
@@ -200,7 +201,8 @@ const List<MockProduct> mockProducts = [
     originalPrice: 280.0,
     unit: '1 portion',
     category: 'Burger',
-    description: 'Juicy grilled beef patty with melted cheddar cheese & house sauce',
+    description:
+        'Juicy grilled beef patty with melted cheddar cheese & house sauce',
     localImageAsset: _imgBurger,
   ),
   MockProduct(
@@ -211,7 +213,8 @@ const List<MockProduct> mockProducts = [
     originalPrice: 360.0,
     unit: '1 portion',
     category: 'Burger',
-    description: 'Two beef patties, loaded double cheese, pickles and signature dressing',
+    description:
+        'Two beef patties, loaded double cheese, pickles and signature dressing',
     localImageAsset: _imgBurger,
   ),
   MockProduct(
@@ -221,7 +224,8 @@ const List<MockProduct> mockProducts = [
     price: 180.0,
     unit: '1 portion',
     category: 'Burger',
-    description: 'Signature grilled beef patty with crisp lettuce and fresh tomatoes',
+    description:
+        'Signature grilled beef patty with crisp lettuce and fresh tomatoes',
     localImageAsset: _imgBurger,
   ),
   MockProduct(
@@ -241,7 +245,8 @@ const List<MockProduct> mockProducts = [
     price: 210.0,
     unit: '1 portion',
     category: 'Burger',
-    description: 'Spicy crunchy chicken patty with zesty relish and fresh greens',
+    description:
+        'Spicy crunchy chicken patty with zesty relish and fresh greens',
     localImageAsset: _imgBurger,
   ),
   MockProduct(
@@ -251,7 +256,8 @@ const List<MockProduct> mockProducts = [
     price: 160.0,
     unit: '1 portion',
     category: 'Burger',
-    description: 'Delicious plant-based patty with avocado sauce and garden veggies',
+    description:
+        'Delicious plant-based patty with avocado sauce and garden veggies',
     localImageAsset: _imgBurger,
   ),
   MockProduct(
@@ -262,7 +268,8 @@ const List<MockProduct> mockProducts = [
     originalPrice: 390.0,
     unit: '8 slices',
     category: 'Pizza',
-    description: 'Hand-tossed crust, Italian tomato sauce, mozzarella & beef pepperoni',
+    description:
+        'Hand-tossed crust, Italian tomato sauce, mozzarella & beef pepperoni',
     localImageAsset: _imgPizza,
   ),
   MockProduct(
@@ -272,7 +279,8 @@ const List<MockProduct> mockProducts = [
     price: 260.0,
     unit: '6 slices',
     category: 'Pizza',
-    description: 'Fresh mozzarella cheese, tomato passata, virgin olive oil and basil',
+    description:
+        'Fresh mozzarella cheese, tomato passata, virgin olive oil and basil',
     localImageAsset: _imgPizzaAlt,
   ),
   MockProduct(
@@ -292,7 +300,8 @@ const List<MockProduct> mockProducts = [
     price: 200.0,
     unit: '8 pc',
     category: 'Sides',
-    description: '8 pieces of crispy juicy chicken wings in smoky barbecue glaze',
+    description:
+        '8 pieces of crispy juicy chicken wings in smoky barbecue glaze',
     localImageAsset: _imgSides,
   ),
   MockProduct(
@@ -302,7 +311,8 @@ const List<MockProduct> mockProducts = [
     price: 60.0,
     unit: '1 cup',
     category: 'Coffee',
-    description: 'Freshly brewed rich espresso topped with smooth velvety milk foam',
+    description:
+        'Freshly brewed rich espresso topped with smooth velvety milk foam',
     localImageAsset: _imgCoffee,
   ),
   MockProduct(
@@ -332,7 +342,8 @@ const List<MockProduct> mockProducts = [
     price: 240.0,
     unit: '1 bowl',
     category: 'Salad',
-    description: 'Crisp romaine, grilled chicken breast, parmesan & caesar dressing',
+    description:
+        'Crisp romaine, grilled chicken breast, parmesan & caesar dressing',
     localImageAsset: _imgSides,
   ),
   MockProduct(
@@ -345,8 +356,37 @@ const List<MockProduct> mockProducts = [
     description: 'Warm chocolate fudge cake with molten chocolate core',
     localImageAsset: _imgSides,
   ),
+  MockProduct(
+    id: '64aba5286d11e42d492fbab0',
+    storeId: '64aba2706d11e42d492fba72',
+    name: 'Butter Croissant',
+    price: 85.0,
+    unit: '1 piece',
+    category: 'Pastry',
+    description: 'Golden flaky croissant baked fresh each morning',
+    localImageAsset: _imgSides,
+  ),
+  MockProduct(
+    id: '64aba5286d11e42d492fbab1',
+    storeId: '64aba2706d11e42d492fba73',
+    name: 'Spiced Tibs Bowl',
+    price: 280.0,
+    unit: '1 bowl',
+    category: 'Ethiopian Cuisine',
+    description: 'Tender beef tibs with onions, peppers and traditional spices',
+    localImageAsset: _imgSides,
+  ),
+  MockProduct(
+    id: '64aba5286d11e42d492fbab2',
+    storeId: '64aba2706d11e42d492fba74',
+    name: 'Fresh Fruit Juice',
+    price: 75.0,
+    unit: '500 ml',
+    category: 'Drinks',
+    description: 'Refreshing mixed fruit juice prepared to order',
+    localImageAsset: _imgCoffee,
+  ),
 ];
-
 
 /// Demo store model used for mock store discovery and recommendations.
 class MockStore {
@@ -437,6 +477,39 @@ const List<MockStore> mockStores = [
     logoText: 'Green\nGarden',
     themeColor: Color(0xFF15803D),
   ),
+  MockStore(
+    id: '64aba2706d11e42d492fba72',
+    name: 'Bole Bakery House',
+    category: 'Bakery & Pastries',
+    location: 'Bole, Addis Ababa',
+    rating: 4.5,
+    deliveryTime: 'Delivery in 20-30 min',
+    deliveryFee: 35.0,
+    logoText: 'Bole\nBakery',
+    themeColor: Color(0xFFB45309),
+  ),
+  MockStore(
+    id: '64aba2706d11e42d492fba73',
+    name: 'Addis Spice Kitchen',
+    category: 'Ethiopian Cuisine',
+    location: 'Mexico, Addis Ababa',
+    rating: 4.8,
+    deliveryTime: 'Delivery in 25-40 min',
+    deliveryFee: 45.0,
+    logoText: 'Addis\nSpice',
+    themeColor: Color(0xFF9F1239),
+  ),
+  MockStore(
+    id: '64aba2706d11e42d492fba74',
+    name: 'Quick Basket Market',
+    category: 'Grocery & Convenience',
+    location: 'CMC, Addis Ababa',
+    rating: 4.4,
+    deliveryTime: 'Delivery in 15-25 min',
+    deliveryFee: 30.0,
+    logoText: 'Quick\nBasket',
+    themeColor: Color(0xFF0369A1),
+  ),
 ];
 
 /// Mock active order details for order tracking and inquiries
@@ -487,9 +560,7 @@ const MockOrderInfo mockPastOrder = MockOrderInfo(
   orderId: 'ZM-77215',
   storeName: 'Pizza Bella Italia',
   status: 'Delivered ✅',
-  items: [
-    '1x Pepperoni Pizza Large (350 ETB)',
-  ],
+  items: ['1x Pepperoni Pizza Large (350 ETB)'],
   totalAmount: 350.0,
   driverName: 'Abebe K.',
   driverPhone: '+251 92 334 5566',
@@ -506,13 +577,17 @@ String getMockChatbotSystemPrompt({
   String? userOrderStatus,
 }) {
   final productsList = mockProducts
-      .map((p) =>
-          '- ${p.name} [Category: ${p.category}] — ${p.price.toStringAsFixed(0)} ETB: ${p.description}')
+      .map(
+        (p) =>
+            '- ${p.name} [Category: ${p.category}] — ${p.price.toStringAsFixed(0)} ETB: ${p.description}',
+      )
       .join('\n');
 
   final storesList = mockStores
-      .map((s) =>
-          '- ${s.name} (${s.category}) at ${s.location} | Rating: ⭐${s.rating} | Est. Delivery: ${s.deliveryTime} | Fee: ${s.deliveryFee.toStringAsFixed(0)} ETB')
+      .map(
+        (s) =>
+            '- ${s.name} (${s.category}) at ${s.location} | Rating: ⭐${s.rating} | Est. Delivery: ${s.deliveryTime} | Fee: ${s.deliveryFee.toStringAsFixed(0)} ETB',
+      )
       .join('\n');
 
   final activeOrderId = userOrderId ?? mockActiveOrder.orderId;
@@ -633,9 +708,11 @@ List<MockProduct> searchMockProducts(String message) {
   for (final entry in keywordCategories.entries) {
     if (lower.contains(entry.key)) {
       final matches = mockProducts
-          .where((product) =>
-              product.category == entry.value ||
-              product.name.toLowerCase().contains(entry.key))
+          .where(
+            (product) =>
+                product.category == entry.value ||
+                product.name.toLowerCase().contains(entry.key),
+          )
           .toList();
       if (matches.isNotEmpty) {
         return matches;
@@ -752,7 +829,9 @@ MockStore searchMockStore(String message) {
   }
 
   // Salad / healthy
-  if (lower.contains('salad') || lower.contains('healthy') || lower.contains('bowl')) {
+  if (lower.contains('salad') ||
+      lower.contains('healthy') ||
+      lower.contains('bowl')) {
     return mockStores.firstWhere(
       (s) => s.id == '64aba2706d11e42d492fba70',
       orElse: () => mockStores.first,
@@ -824,7 +903,11 @@ String formatMockStores(List<MockStore> stores) {
 }
 
 /// Generates a rich mock bot reply offline when network is unreachable.
-String getOfflineMockResponse(String message, {String? orderId, String? status}) {
+String getOfflineMockResponse(
+  String message, {
+  String? orderId,
+  String? status,
+}) {
   final lower = message.toLowerCase().trim();
 
   // 1. Special Offers & Deals (matches "What are today's special offers?")
@@ -958,7 +1041,10 @@ String getOfflineMockResponse(String message, {String? orderId, String? status})
   }
 
   // 10. Delivery Policies
-  if (lower.contains('delivery') || lower.contains('deliver') || lower.contains('time') || lower.contains('fee')) {
+  if (lower.contains('delivery') ||
+      lower.contains('deliver') ||
+      lower.contains('time') ||
+      lower.contains('fee')) {
     return "🚚 **Delivery Information**:\n\n"
         "• **Standard Delivery**: 30–45 mins (Citywide in Addis Ababa)\n"
         "• **Express Delivery**: 15–30 mins\n"
@@ -1023,7 +1109,9 @@ String getOfflineMockResponse(String message, {String? orderId, String? status})
   }
 
   // 15. Cart & Checkout
-  if (lower.contains('cart') || lower.contains('basket') || lower.contains('checkout')) {
+  if (lower.contains('cart') ||
+      lower.contains('basket') ||
+      lower.contains('checkout')) {
     return "🛒 **Your ZMall Cart**:\n\n"
         "Tap the green **View Cart** button below anytime to view your basket, adjust quantities, and checkout with Telebirr or cash! 🍔";
   }
@@ -1041,7 +1129,9 @@ String getOfflineMockResponse(String message, {String? orderId, String? status})
   }
 
   // 17. Help
-  if (lower.contains('help') || lower.contains('what can you do') || lower.contains('who are you')) {
+  if (lower.contains('help') ||
+      lower.contains('what can you do') ||
+      lower.contains('who are you')) {
     return "💡 **Here is what I can help you with**:\n\n"
         "• 🍔 Browse popular burgers, pizza, sides & drinks\n"
         "• 📦 Live track your active order **#$activeId**\n"
@@ -1139,8 +1229,8 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
         : userId;
     cart.serverToken =
         (cart.serverToken != null && cart.serverToken!.isNotEmpty)
-            ? cart.serverToken
-            : serverToken;
+        ? cart.serverToken
+        : serverToken;
     cart.storeLocation ??= StoreLocation(lat: 9.010498, long: 38.761886);
     cart.destinationAddress ??= DestinationAddress(
       name: "Current Location",

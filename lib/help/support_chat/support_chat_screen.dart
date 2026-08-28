@@ -6,7 +6,7 @@ import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:zmall/help/support_chat/screens/mock_product_screen.dart';
+import 'package:zmall/help/support_chat/components/product_detail_sheet.dart';
 import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/profile/components/profile_list_tile.dart';
@@ -281,6 +281,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     _fetchBotResponse(message);
   }
 
+  void _handleStoreMenuRequest(MockStore store) {
+    _messageController.text = 'Show me the menu for ${store.name}';
+    _handleSendMessage();
+  }
+
   void _handleQuickReply(String reply) {
     _addUserMessage(reply);
     // Hide quick replies after selection
@@ -375,10 +380,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     if (!mounted) return;
 
     final store = searchMockStore(userMessage);
-    final botText =
-        "Here's **${store.name}** near you! 🏪\n"
-        "${store.category} · ${store.deliveryTime}. "
-        "Tap the expand icon to see all stores near you.";
+    final isMenuRequest = userMessage.toLowerCase().contains('menu');
+    final botText = isMenuRequest
+        ? "Here's the menu for **${store.name}**! 🍽️\n"
+              "Choose an item below to view details or add it to your cart."
+        : "Here's **${store.name}** near you! 🏪\n"
+              "${store.category} · ${store.deliveryTime}. "
+              "Tap a store to ask for its menu.";
 
     _addBotMessage(botText);
     if (mounted) setState(() => _isLoading = false);
@@ -697,6 +705,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                     onViewCart: () =>
                                         _handleViewCartForMessage(index),
                                     onAddToCart: _handleAddProductToCart,
+                                    onMenuRequested: _handleStoreMenuRequest,
                                     onProductTap: (product) => _openMockProduct(
                                       product,
                                       products: storeProducts.isNotEmpty
@@ -763,19 +772,33 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     );
   }
 
-  /// Opens the immersive product viewer (all mock products of a store).
+  /// Opens the product detail bottom sheet — no page navigation.
   void _openMockProduct(MockProduct product, {List<MockProduct>? products}) {
-    final list = (products != null && products.isNotEmpty)
-        ? products
-        : <MockProduct>[product];
-    var index = list.indexWhere((p) => p.id == product.id);
-    if (index < 0) index = 0;
-
-    Navigator.push(
+    ProductDetailSheet.show(
       context,
-      SlideProductPageRoute(
-        page: MockProductScreen(products: list, initialIndex: index),
-      ),
+      product: product,
+      onAddToCart: (p, qty) async {
+        final items = List<MockProduct>.filled(qty, p);
+        await addMockProductsToCart(items);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$qty × ${p.name} added to cart'),
+            backgroundColor: kBlackColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            action: SnackBarAction(
+              label: 'View Cart',
+              textColor: kSecondaryColor,
+              onPressed: () =>
+                  Navigator.pushNamed(context, CartScreen.routeName),
+            ),
+          ),
+        );
+      },
     );
   }
 

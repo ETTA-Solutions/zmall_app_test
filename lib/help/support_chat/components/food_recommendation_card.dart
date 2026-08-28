@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
-import 'package:zmall/cart/cart_screen.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
@@ -147,7 +146,19 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                       child: GestureDetector(
                         onTap: () {
                           HapticFeedback.mediumImpact();
-                          Navigator.pushNamed(context, CartScreen.routeName);
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '$_qty × ${widget.product.name} in cart',
+                              ),
+                              backgroundColor: kBlackColor,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          );
                         },
                         child: Container(
                           padding: EdgeInsets.all(

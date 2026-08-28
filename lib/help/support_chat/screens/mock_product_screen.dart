@@ -113,6 +113,7 @@ class _MockProductScreenState extends State<MockProductScreen>
       _quantities[product.id] = qty.clamp(1, 9);
     });
   }
+  
    
 
   Future<void> _addToCart() async {

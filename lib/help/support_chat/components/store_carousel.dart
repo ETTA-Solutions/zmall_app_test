@@ -10,7 +10,16 @@ import 'package:zmall/utils/size_config.dart';
 /// pushing everything else off-screen. The user simply scrolls up/down
 /// inside the card to browse all stores — no navigation needed.
 class StoreCarousel extends StatelessWidget {
-  const StoreCarousel({super.key});
+  final ValueChanged<MockProduct>? onProductTap;
+  final ValueChanged<MockProduct>? onAddToCart;
+  final ValueChanged<MockStore>? onMenuRequested;
+
+  const StoreCarousel({
+    super.key,
+    this.onProductTap,
+    this.onAddToCart,
+    this.onMenuRequested,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +98,9 @@ class StoreCarousel extends StatelessWidget {
                 store: stores[index],
                 isFirst: index == 0,
                 isLast: index == stores.length - 1,
+                onProductTap: onProductTap,
+                onAddToCart: onAddToCart,
+                onMenuRequested: onMenuRequested,
               ),
             ),
           ),
@@ -129,11 +141,17 @@ class _StoreRow extends StatelessWidget {
   final MockStore store;
   final bool isFirst;
   final bool isLast;
+  final ValueChanged<MockProduct>? onProductTap;
+  final ValueChanged<MockProduct>? onAddToCart;
+  final ValueChanged<MockStore>? onMenuRequested;
 
   const _StoreRow({
     required this.store,
     required this.isFirst,
     required this.isLast,
+    this.onProductTap,
+    this.onAddToCart,
+    this.onMenuRequested,
   });
 
   @override
@@ -142,107 +160,113 @@ class _StoreRow extends StatelessWidget {
         ? store.logoText
         : store.name.substring(0, store.name.length.clamp(0, 10));
 
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.symmetric(
-        horizontal: getProportionateScreenWidth(14),
-        vertical: getProportionateScreenHeight(10),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Logo avatar
-          Container(
-            width: getProportionateScreenWidth(44),
-            height: getProportionateScreenWidth(44),
-            decoration: BoxDecoration(
-              color: store.themeColor,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: store.themeColor.withValues(alpha: 0.25),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
+    return InkWell(
+      onTap: () => onMenuRequested?.call(store),
+      child: Container(
+        color: Colors.white,
+        padding: EdgeInsets.symmetric(
+          horizontal: getProportionateScreenWidth(14),
+          vertical: getProportionateScreenHeight(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Logo avatar
+            Container(
+              width: getProportionateScreenWidth(44),
+              height: getProportionateScreenWidth(44),
+              decoration: BoxDecoration(
+                color: store.themeColor,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: store.themeColor.withValues(alpha: 0.25),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              padding: EdgeInsets.all(getProportionateScreenWidth(3)),
+              child: Text(
+                logoText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: getProportionateScreenWidth(8),
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
                 ),
-              ],
-            ),
-            alignment: Alignment.center,
-            padding: EdgeInsets.all(getProportionateScreenWidth(3)),
-            child: Text(
-              logoText,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: getProportionateScreenWidth(8),
-                fontWeight: FontWeight.w800,
-                height: 1.1,
               ),
             ),
-          ),
 
-          SizedBox(width: getProportionateScreenWidth(12)),
+            SizedBox(width: getProportionateScreenWidth(12)),
 
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  store.name,
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(13.5),
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1E293B),
-                    letterSpacing: -0.2,
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    store.name,
+                    style: TextStyle(
+                      fontSize: getProportionateScreenWidth(13.5),
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1E293B),
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: getProportionateScreenHeight(2)),
-                Text(
-                  store.category,
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(11),
-                    fontWeight: FontWeight.w500,
-                    color: kSecondaryColor,
+                  SizedBox(height: getProportionateScreenHeight(2)),
+                  Text(
+                    store.category,
+                    style: TextStyle(
+                      fontSize: getProportionateScreenWidth(11),
+                      fontWeight: FontWeight.w500,
+                      color: kSecondaryColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: getProportionateScreenHeight(4)),
-                // Rating · delivery · location
-                Wrap(
-                  spacing: getProportionateScreenWidth(10),
-                  children: [
-                    _meta(
-                      HeroiconsSolid.star,
-                      const Color(0xFFF59E0B),
-                      store.rating.toStringAsFixed(1),
-                    ),
-                    _meta(
-                      HeroiconsOutline.clock,
-                      const Color(0xFF94A3B8),
-                      store.deliveryTime,
-                    ),
-                    _meta(
-                      HeroiconsSolid.mapPin,
-                      const Color(0xFF94A3B8),
-                      store.location,
-                    ),
-                  ],
-                ),
-              ],
+                  SizedBox(height: getProportionateScreenHeight(4)),
+                  // Rating · delivery · location
+                  Wrap(
+                    spacing: getProportionateScreenWidth(10),
+                    children: [
+                      _meta(
+                        HeroiconsSolid.star,
+                        const Color(0xFFF59E0B),
+                        store.rating.toStringAsFixed(1),
+                      ),
+                      _meta(
+                        HeroiconsOutline.clock,
+                        const Color(0xFF94A3B8),
+                        store.deliveryTime,
+                      ),
+                      _meta(
+                        HeroiconsSolid.mapPin,
+                        const Color(0xFF94A3B8),
+                        store.location,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          SizedBox(width: getProportionateScreenWidth(6)),
-          Icon(
-            HeroiconsMini.chevronRight,
-            size: getProportionateScreenWidth(15),
-            color: const Color(0xFFCBD5E1),
-          ),
-        ],
+            SizedBox(width: getProportionateScreenWidth(6)),
+            Tooltip(
+              message: 'View menu',
+              child: Icon(
+                HeroiconsOutline.rectangleStack,
+                size: getProportionateScreenWidth(18),
+                color: kSecondaryColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

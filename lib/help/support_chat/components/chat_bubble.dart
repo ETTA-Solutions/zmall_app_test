@@ -18,9 +18,11 @@ class ChatBubble extends StatefulWidget {
   final VoidCallback? onViewCart;
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
+  final ValueChanged<MockStore>? onMenuRequested;
   final List<MockProduct> matchedProducts;
   final MockStore? matchedStore;
   final bool showProducts;
+
   /// When true the store-list vertical card is shown.
   /// When false (food/item query) the horizontal product swipe cards are shown.
   final bool isStoreOnly;
@@ -33,6 +35,7 @@ class ChatBubble extends StatefulWidget {
     this.onViewCart,
     this.onProductTap,
     this.onAddToCart,
+    this.onMenuRequested,
     this.matchedProducts = const [],
     this.matchedStore,
     this.showProducts = true,
@@ -163,14 +166,19 @@ class _ChatBubbleState extends State<ChatBubble> {
             SizedBox(height: getProportionateScreenHeight(6)),
             if (widget.isStoreOnly)
               // Store query → vertical scrollable list of all stores inline
-              const StoreCarousel()
+              StoreCarousel(
+                onProductTap: widget.onProductTap,
+                onAddToCart: widget.onAddToCart,
+                onMenuRequested: widget.onMenuRequested,
+              )
             else
               // Food/item query → horizontal swipe cards
               FoodRecommendationRow(
                 products: widget.matchedProducts.isNotEmpty
                     ? widget.matchedProducts
                     : getStoreProducts(
-                        widget.matchedStore?.id ?? mockStores.first.id),
+                        widget.matchedStore?.id ?? mockStores.first.id,
+                      ),
                 onViewCart: widget.onViewCart,
                 onProductTap: widget.onProductTap,
                 onAddToCart: widget.onAddToCart,
