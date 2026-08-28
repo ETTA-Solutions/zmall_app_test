@@ -105,7 +105,7 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Image area: white bg, product centered ─────────────
+              // ── Image area: full-bleed product image ───────────────
               Stack(
                 children: [
                   Container(
@@ -123,13 +123,16 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                         ),
                       ),
                     ),
-                    padding: EdgeInsets.all(getProportionateScreenWidth(16)),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(15),
+                      ),
                       child: hasImage
                           ? Image.asset(
                               widget.product.localImageAsset,
-                              fit: BoxFit.contain,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
                               filterQuality: FilterQuality.high,
                               errorBuilder: (_, __, ___) =>
                                   _buildImageFallback(),
