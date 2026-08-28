@@ -239,7 +239,7 @@ class _ChatBubbleState extends State<ChatBubble> {
     );
   }
 
-  // ── Bot bubble: kWhiteColor bg, thin light border ─────────────────────────
+  // ── Bot bubble: clean white bg, thin light border ─────────────────────────
   Widget _buildBotBubble() {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -247,7 +247,7 @@ class _ChatBubbleState extends State<ChatBubble> {
         vertical: getProportionateScreenHeight(11),
       ),
       decoration: BoxDecoration(
-        color: kWhiteColor,
+        color: Colors.white,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(18),
           topRight: Radius.circular(18),

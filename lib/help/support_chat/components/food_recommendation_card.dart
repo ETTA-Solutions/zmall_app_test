@@ -46,9 +46,10 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
       lowerBound: 0,
       upperBound: 0.03,
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _pressController, curve: Curves.easeOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.97,
+    ).animate(CurvedAnimation(parent: _pressController, curve: Curves.easeOut));
   }
 
   @override
@@ -74,7 +75,8 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
     final cardWidth = getProportionateScreenWidth(160);
     final imageAreaSize = cardWidth; // square image area
     final hasImage = widget.product.localImageAsset.isNotEmpty;
-    final hasOriginal = widget.product.originalPrice != null &&
+    final hasOriginal =
+        widget.product.originalPrice != null &&
         widget.product.originalPrice! > widget.product.price;
 
     return ScaleTransition(
@@ -112,7 +114,7 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                     width: double.infinity,
                     height: imageAreaSize,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F8F8),
+                      color: Colors.white,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(15),
                       ),
@@ -201,8 +203,9 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                                       '$_qty',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize:
-                                            getProportionateScreenWidth(7.5),
+                                        fontSize: getProportionateScreenWidth(
+                                          7.5,
+                                        ),
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
@@ -290,9 +293,7 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                     // Add / stepper
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
-                      child: _qty == 0
-                          ? _buildAddButton()
-                          : _buildStepper(),
+                      child: _qty == 0 ? _buildAddButton() : _buildStepper(),
                     ),
                   ],
                 ),
