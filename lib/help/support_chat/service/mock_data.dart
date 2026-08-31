@@ -40,6 +40,54 @@ class MockProduct {
     this.localImageAsset = '',
   });
 
+  /// Factory constructor for creating MockProduct from backend data
+  /// when only basic fields (name, amount, price) are available
+  factory MockProduct.fromBackendData({
+    required String name,
+    required double price,
+    String? amount,
+    String? id,
+    String? storeId,
+  }) {
+    final productId = id ?? 'backend_${name.hashCode}';
+    final productStoreId = storeId ?? 'backend';
+    
+    // Simple category guessing based on name
+    String categoryName = 'Food';
+    final lower = name.toLowerCase();
+    if (lower.contains('burger') || lower.contains('sandwich')) categoryName = 'Burger';
+    else if (lower.contains('pizza')) categoryName = 'Pizza';
+    else if (lower.contains('coffee') || lower.contains('cappuccino')) categoryName = 'Coffee';
+    else if (lower.contains('fries') || lower.contains('wings')) categoryName = 'Sides';
+    else if (lower.contains('salad')) categoryName = 'Salad';
+    else if (lower.contains('juice') || lower.contains('drink')) categoryName = 'Drinks';
+    else if (lower.contains('cake') || lower.contains('dessert')) categoryName = 'Dessert';
+    else if (lower.contains('steak') || lower.contains('filet')) categoryName = 'Steak';
+    
+    // Simple image assignment based on category
+    String imageAsset = 'images/meal/one.jpg';
+    if (categoryName == 'Burger' || categoryName == 'Steak') imageAsset = 'images/meal/burger_with_fires.jpg';
+    else if (categoryName == 'Pizza') imageAsset = 'images/meal/pizza.jpg';
+    else if (categoryName == 'Coffee' || categoryName == 'Drinks') imageAsset = 'images/meal/two.jpg';
+    else if (categoryName == 'Dessert') imageAsset = 'images/meal/pizza_hot.jpg';
+    
+    // Use provided amount or default based on category
+    final unitText = amount ?? (categoryName == 'Burger' || categoryName == 'Pizza' || categoryName == 'Steak' ? '1 portion' : '1 kg');
+
+    return MockProduct(
+      id: productId,
+      storeId: productStoreId,
+      name: name,
+      price: price,
+      category: categoryName,
+      unit: unitText,
+      currencySymbol: 'ETB',
+      description: '',
+      imageUrl: '',
+      localImageAsset: imageAsset,
+    );
+  }
+
   String get formattedPrice {
     if (currencySymbol == '\$') {
       return '\$${price.toStringAsFixed(2)}';
@@ -1273,4 +1321,56 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
 
     await Service.save('cart', cart.toJson());
   } catch (_) {}
+}
+
+/// Simplified parser for backend responses that only contain basic product info
+/// (name, amount, price) without complex formatting or additional metadata.
+/// This is designed to work with the simple backend structure the user described.
+List<MockProduct> parseSimpleBackendProducts(List<dynamic> backendItems) {
+  final results = <MockProduct>[];
+
+  for (final item in backendItems) {
+    try {
+      // Handle different possible backend structures
+      final name = item['name']?.toString() ?? 
+                   item['product_name']?.toString() ?? 
+                   item['item_name']?.toString() ?? 
+                   item['title']?.toString() ?? '';
+      
+      final price = double.tryParse(
+        item['price']?.toString() ?? 
+        item['amount']?.toString() ?? 
+        item['cost']?.toString() ?? '0'
+      ) ?? 0.0;
+      
+      final amount = item['amount']?.toString() ?? 
+                     item['quantity']?.toString() ?? 
+                     item['unit']?.toString();
+      
+      final id = item['id']?.toString() ?? 
+                 item['_id']?.toString() ?? 
+                 item['product_id']?.toString();
+      
+      final storeId = item['store_id']?.toString() ?? 
+                      item['storeId']?.toString();
+
+      if (name.isEmpty || price <= 0) continue;
+
+      // Use the factory constructor for simplified backend data
+      results.add(
+        MockProduct.fromBackendData(
+          name: name,
+          price: price,
+          amount: amount,
+          id: id,
+          storeId: storeId,
+        ),
+      );
+    } catch (e) {
+      // Skip items that can't be parsed
+      continue;
+    }
+  }
+
+  return results;
 }

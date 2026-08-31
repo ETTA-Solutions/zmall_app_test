@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
@@ -55,6 +53,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   String?
   userLastOrderId; // Store as String (API returns int, converted to String)
   var userOrderStatus;
+
+  /// Session ID returned by the /chat_test backend — sent back on every
+  /// subsequent turn so the server can maintain conversation context.
+  String? _sessionId;
 
   String get userName {
     if (userData != null && userData['user'] != null) {
@@ -268,16 +270,22 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
 
+    debugPrint("🚀 [CHAT SCREEN] _handleSendMessage called with: $message");
+    debugPrint("🚀 [CHAT SCREEN] Current userId: $userId");
+    debugPrint("🚀 [CHAT SCREEN] Current serverToken: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}");
+
     _addUserMessage(message);
     _messageController.clear();
 
     // If this is a store/restaurant query → reply inline with store card
     if (isStoreQuery(message)) {
+      debugPrint("🚀 [CHAT SCREEN] Detected store query, calling _fetchBotStoreResponse");
       _fetchBotStoreResponse(message);
       return;
     }
 
     // Otherwise fetch normal bot response
+    debugPrint("🚀 [CHAT SCREEN] Regular message, calling _fetchBotResponse");
     _fetchBotResponse(message);
   }
 
@@ -330,32 +338,123 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _isLoading = true;
     });
 
+    debugPrint("🚀 [CHAT SCREEN] _fetchBotResponse called");
+    debugPrint("🚀 [CHAT SCREEN] User ID: $userId");
+    debugPrint("🚀 [CHAT SCREEN] Server Token: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}");
+    debugPrint("🚀 [CHAT SCREEN] User Message: $userMessage");
+
     try {
-      // Simulate realistic chatbot thinking delay (2-4 seconds random)
-      final randomDelay = 2000 + math.Random().nextInt(2001); // 2000-4000ms
-      await Future.delayed(Duration(milliseconds: randomDelay));
-      if (!mounted) return;
+      if (userId.isEmpty || serverToken.isEmpty) {
+        debugPrint("⚠️ [CHAT SCREEN] Missing credentials - userId: $userId, serverToken: $serverToken");
+        if (mounted) {
+          _addBotMessage(
+            "I'm here to help with your ZMall orders, menus, and deliveries! 😊",
+          );
+        }
+        return;
+      }
 
-      final activeOrderId =
-          (userLastOrderId != null && userLastOrderId!.isNotEmpty)
-          ? userLastOrderId
-          : mockActiveOrder.orderId;
-      final activeOrderStatus = userOrderStatus ?? mockActiveOrder.status;
-
-      // Instant local mock engine response
-      final botMessage = getOfflineMockResponse(
-        userMessage,
-        orderId: activeOrderId,
-        status: activeOrderStatus,
+      debugPrint("🚀 [CHAT SCREEN] Calling ChatService.sendMessage...");
+      final response = await ChatService.sendMessage(
+        message: userMessage,
+        context: context,
+        userId: userId,
+        serverToken: serverToken,
+        userLocation: userLocation,
+        orderId: userLastOrderId,
+        sessionId: _sessionId,
       );
 
+      debugPrint("🚀 [CHAT SCREEN] Backend response received: $response");
+
       if (!mounted) return;
-      _addBotMessage(
-        botMessage,
-        showCartAction: _shouldShowCartAction(botMessage),
-      );
+
+      if (response != null && response['error'] != true) {
+        // Update session ID if provided by backend
+        if (response['session_id'] != null) {
+          _sessionId = response['session_id'].toString();
+        }
+
+        final botMessage = response['message']?.toString() ??
+            response['response']?.toString() ??
+            response['reply']?.toString() ??
+            response['text']?.toString() ??
+            "I'm here to help with your ZMall orders, menus, and deliveries! 😊";
+        
+        debugPrint("🚀 [CHAT SCREEN] Bot message: $botMessage");
+        
+        // Check if the bot message contains store listings (based on the backend response format)
+        final parsedStores = parseStoresFromBotText(botMessage);
+        if (parsedStores.isNotEmpty) {
+          debugPrint("🚀 [CHAT SCREEN] Parsed ${parsedStores.length} stores from bot message");
+          // The chat UI will automatically handle store display from the text
+          // No need to create additional text since parseStoresFromBotText already handles it
+          _addBotMessage(
+            botMessage,
+            showCartAction: _shouldShowCartAction(botMessage),
+          );
+          if (mounted) setState(() => _isLoading = false);
+          return;
+        }
+        
+        // Check if backend returned product data in a structured format
+        if (response['products'] != null || response['items'] != null || response['menu'] != null) {
+          final backendProducts = response['products'] ?? response['items'] ?? response['menu'];
+          if (backendProducts is List && backendProducts.isNotEmpty) {
+            debugPrint("🚀 [CHAT SCREEN] Backend returned ${backendProducts.length} products");
+            // Parse backend products using the simplified parser
+            final parsedProducts = parseSimpleBackendProducts(backendProducts);
+            if (parsedProducts.isNotEmpty) {
+              // Create a text representation that will be parsed by the UI
+              final productText = parsedProducts
+                  .map((p) => '• ${p.name} — ${p.price.toStringAsFixed(0)} ETB')
+                  .join('\n');
+              
+              _addBotMessage(
+                "🍽️ Here's what I found for you — tap a card to view details or add to cart! 🛒\n\n$productText",
+                showCartAction: _shouldShowCartAction(botMessage),
+              );
+              if (mounted) setState(() => _isLoading = false);
+              return;
+            }
+          }
+        }
+        
+        // Check if backend returned store data in structured format
+        if (response['stores'] != null || response['companies'] != null) {
+          final backendStores = response['stores'] ?? response['companies'];
+          if (backendStores is List && backendStores.isNotEmpty) {
+            debugPrint("🚀 [CHAT SCREEN] Backend returned ${backendStores.length} stores");
+            final storeText = backendStores
+                .map((store) {
+                  final name = store['name']?.toString() ?? store['company_name']?.toString() ?? '';
+                  final distance = store['distance']?.toString() ?? '';
+                  return '• $name ($distance)';
+                })
+                .join('\n');
+            
+            _addBotMessage(
+              "📍 Here are some open stores near you:\n\n$storeText\n\nCheck the store items below and tap **+** to add directly to your cart! 🛍️",
+              showCartAction: _shouldShowCartAction(botMessage),
+            );
+            if (mounted) setState(() => _isLoading = false);
+            return;
+          }
+        }
+        
+        // Fallback to regular text message
+        debugPrint("🚀 [CHAT SCREEN] Using fallback text message");
+        _addBotMessage(
+          botMessage,
+          showCartAction: _shouldShowCartAction(botMessage),
+        );
+      } else {
+        final errorMessage = response?['message'] ?? "Something went wrong. Please try again.";
+        debugPrint("⚠️ [CHAT SCREEN] Backend error: $errorMessage");
+        _addBotMessage(errorMessage);
+      }
     } catch (e) {
-      debugPrint("Error generating mock response: $e");
+      debugPrint("❌ [CHAT SCREEN] Error calling chat API: $e");
       if (mounted) {
         _addBotMessage(
           "I'm here to help with your ZMall orders, menus, and deliveries! 😊",
@@ -375,21 +474,55 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   Future<void> _fetchBotStoreResponse(String userMessage) async {
     setState(() => _isLoading = true);
 
-    // Brief delay so the typing indicator is visible
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
+    try {
+      // First try to get real backend stores
+      final backendStores = await ChatService.getNearbyStores(context: context);
+      
+      if (backendStores != null && backendStores['success'] == true && backendStores['company_list'] != null) {
+        // Use real backend stores - create simple text format
+        final stores = backendStores['company_list'] as List;
+        final storeText = stores.map((store) {
+          final name = store['company_name']?.toString() ?? store['name']?.toString() ?? '';
+          final distance = store['distance']?.toString() ?? '';
+          return '• $name ($distance)';
+        }).join('\n');
+        
+        final botText = "Here are some open stores near you:\n\n$storeText\n\nCheck the store items below and tap **+** to add directly to your cart! 🛍️";
+        
+        _addBotMessage(botText);
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+      
+      // Fallback to mock stores if backend fails
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (!mounted) return;
 
-    final store = searchMockStore(userMessage);
-    final isMenuRequest = userMessage.toLowerCase().contains('menu');
-    final botText = isMenuRequest
-        ? "Here's the menu for **${store.name}**! 🍽️\n"
-              "Choose an item below to view details or add it to your cart."
-        : "Here's **${store.name}** near you! 🏪\n"
-              "${store.category} · ${store.deliveryTime}. "
-              "Tap a store to ask for its menu.";
+      final store = searchMockStore(userMessage);
+      final isMenuRequest = userMessage.toLowerCase().contains('menu');
+      final botText = isMenuRequest
+          ? "Here's the menu for **${store.name}**! 🍽️\n"
+                "Choose an item below to view details or add it to your cart."
+          : "Here's **${store.name}** near you! 🏪\n"
+                "${store.category} · ${store.deliveryTime}. "
+                "Tap a store to ask for its menu.";
 
-    _addBotMessage(botText);
-    if (mounted) setState(() => _isLoading = false);
+      _addBotMessage(botText);
+      if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint("Error fetching store response: $e");
+      // Fallback to mock stores on error
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (!mounted) return;
+
+      final store = searchMockStore(userMessage);
+      final botText = "Here's **${store.name}** near you! 🏪\n"
+            "${store.category} · ${store.deliveryTime}. "
+            "Tap a store to ask for its menu.";
+
+      _addBotMessage(botText);
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handleAddProductToCart(MockProduct product) async {

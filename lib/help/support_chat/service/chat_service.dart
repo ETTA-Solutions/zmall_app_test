@@ -52,7 +52,12 @@ class ChatService {
     // Get base URL from metadata provider
     final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
     var url = "$baseUrl/chat_test";
-    // var url = "https://test.zmallapp.com/chat_test";
+    
+    debugPrint("🚀 [CHAT DEBUG] Base URL: $baseUrl");
+    debugPrint("🚀 [CHAT DEBUG] Full URL: $url");
+    debugPrint("🚀 [CHAT DEBUG] User ID: $userId");
+    debugPrint("🚀 [CHAT DEBUG] Server Token: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}");
+    debugPrint("🚀 [CHAT DEBUG] User Location: $userLocation");
 
     try {
       Map<String, dynamic> data = {
@@ -70,7 +75,7 @@ class ChatService {
         data["order_id"] = orderId;
       }
 
-      // debugPrint("====Chat API Request: $data");
+      debugPrint("🚀 [CHAT DEBUG] Request Data: $data");
       var body = json.encode(data);
 
       http.Response response = await http
@@ -105,13 +110,13 @@ class ChatService {
         };
       }
     } on TimeoutException {
-      // debugPrint("====Chat API Timeout: $e");
+      debugPrint("====Chat API Timeout");
       return {
         'error': true,
         'message': 'Connection timed out. Please try again.',
       };
     } catch (e) {
-      // debugPrint("=====Chat API Error: $e");
+      debugPrint("=====Chat API Error: $e");
       return {'error': true, 'message': 'You finished your daily token.'};
     }
   }
