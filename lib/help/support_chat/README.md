@@ -142,18 +142,7 @@ ProfileListTile(
 ### ChatService Methods
 
 The chat system uses `ChatService` for backend communication:
-
-#### 1. User Details
-
-```dart
-await ChatService.userDetails(
-  context: context,
-  userId: userId,
-  serverToken: serverToken,
-);
-```
-
-#### 2. Send Message
+#### 1. Send Message
 
 ```dart
 await ChatService.sendMessage(
@@ -166,7 +155,7 @@ await ChatService.sendMessage(
 );
 ```
 
-#### 3. Get User Orders
+#### 2. Get User Orders
 
 ```dart
 await ChatService.getOrders(

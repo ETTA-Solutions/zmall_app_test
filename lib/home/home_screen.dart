@@ -8,9 +8,7 @@ import 'components/home_body.dart';
 class HomeScreen extends StatefulWidget {
   static String routeName = "/home";
 
-  const HomeScreen({
-    this.isLaunched = false,
-  });
+  const HomeScreen({this.isLaunched = false});
 
   final bool isLaunched;
 
@@ -40,9 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: HomeBody(
-        isLaunched: widget.isLaunched,
-      ),
+      body: HomeBody(isLaunched: widget.isLaunched),
       floatingActionButton: FloatingChatButton(
         onTap: () {
           Navigator.pushNamed(context, SupportChatScreen.routeName);

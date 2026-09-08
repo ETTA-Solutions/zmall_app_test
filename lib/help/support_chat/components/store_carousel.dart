@@ -10,20 +10,25 @@ import 'package:zmall/utils/size_config.dart';
 /// pushing everything else off-screen. The user simply scrolls up/down
 /// inside the card to browse all stores — no navigation needed.
 class StoreCarousel extends StatelessWidget {
+  final List<MockStore>? stores; // Optional: if null, uses mock data
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
   final ValueChanged<MockStore>? onMenuRequested;
+  final Function(MockStore, List<MockProduct>)? onMenuRequestedWithProducts;
 
   const StoreCarousel({
     super.key,
+    this.stores,
     this.onProductTap,
     this.onAddToCart,
     this.onMenuRequested,
+    this.onMenuRequestedWithProducts,
   });
 
   @override
   Widget build(BuildContext context) {
-    final stores = mockStores;
+    final storeList = stores ?? const [];
+    if (storeList.isEmpty) return const SizedBox.shrink();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -65,7 +70,7 @@ class StoreCarousel extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  '${stores.length} stores',
+                  '${storeList.length} stores',
                   style: TextStyle(
                     fontSize: getProportionateScreenWidth(11),
                     fontWeight: FontWeight.w600,
@@ -86,7 +91,7 @@ class StoreCarousel extends StatelessWidget {
             child: ListView.separated(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.zero,
-              itemCount: stores.length,
+              itemCount: storeList.length,
               separatorBuilder: (_, __) => Container(
                 height: 1,
                 color: const Color(0xFFF1F5F9),
@@ -95,12 +100,13 @@ class StoreCarousel extends StatelessWidget {
                 ),
               ),
               itemBuilder: (context, index) => _StoreRow(
-                store: stores[index],
+                store: storeList[index],
                 isFirst: index == 0,
-                isLast: index == stores.length - 1,
+                isLast: index == storeList.length - 1,
                 onProductTap: onProductTap,
                 onAddToCart: onAddToCart,
                 onMenuRequested: onMenuRequested,
+                onMenuRequestedWithProducts: onMenuRequestedWithProducts,
               ),
             ),
           ),
@@ -144,6 +150,7 @@ class _StoreRow extends StatelessWidget {
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
   final ValueChanged<MockStore>? onMenuRequested;
+  final Function(MockStore, List<MockProduct>)? onMenuRequestedWithProducts;
 
   const _StoreRow({
     required this.store,
@@ -152,6 +159,7 @@ class _StoreRow extends StatelessWidget {
     this.onProductTap,
     this.onAddToCart,
     this.onMenuRequested,
+    this.onMenuRequestedWithProducts,
   });
 
   @override
@@ -161,7 +169,16 @@ class _StoreRow extends StatelessWidget {
         : store.name.substring(0, store.name.length.clamp(0, 10));
 
     return InkWell(
-      onTap: () => onMenuRequested?.call(store),
+      onTap: () {
+        // If we have the callback with products, use it (for backend stores)
+        if (onMenuRequestedWithProducts != null) {
+          // For backend stores, we'll need to fetch products dynamically
+          // For now, fall back to the simple callback
+          onMenuRequested?.call(store);
+        } else {
+          onMenuRequested?.call(store);
+        }
+      },
       child: Container(
         color: Colors.white,
         padding: EdgeInsets.symmetric(
@@ -231,15 +248,16 @@ class _StoreRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: getProportionateScreenHeight(4)),
-                  // Rating · delivery · location
+                  // Rating · delivery · location (only show rating if available)
                   Wrap(
                     spacing: getProportionateScreenWidth(10),
                     children: [
-                      _meta(
-                        HeroiconsSolid.star,
-                        const Color(0xFFF59E0B),
-                        store.rating.toStringAsFixed(1),
-                      ),
+                      if (store.hasRating)
+                        _meta(
+                          HeroiconsSolid.star,
+                          const Color(0xFFF59E0B),
+                          store.rating.toStringAsFixed(1),
+                        ),
                       _meta(
                         HeroiconsOutline.clock,
                         const Color(0xFF94A3B8),

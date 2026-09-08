@@ -81,57 +81,17 @@ class ZmallAvailabilityResult {
   final bool canCheckout;
   final List<ZmallProductAvailability> products;
   final String? error;
-
-  List<ZmallProductAvailability> get unavailableProducts =>
-      products.where((p) => !p.available).toList();
-}
-
-/// Holds both the parsed result and the raw HTTP exchange for debug display.
-class ZmallAvailabilityCheckResult {
-  const ZmallAvailabilityCheckResult({
-    required this.result,
-    required this.requestUrl,
-    required this.requestBody,
-    required this.statusCode,
-    required this.rawResponse,
-  });
-
-  /// null means a network/timeout exception — see [rawResponse] for the message.
-  final ZmallAvailabilityResult? result;
-  final String requestUrl;
-  final String requestBody;
-  /// -1 when a network exception was thrown before a response arrived.
-  final int statusCode;
-  final String rawResponse;
 }
 
 /// Branch-scoped forecasted inventory check against the Odoo server.
-/// See docs/superpowers/specs/2026-08-11-zmall-branch-availability-design.md
 class ZmallAvailabilityService {
-  /// Original method — returns only the parsed result (used by production flow).
   static Future<ZmallAvailabilityResult?> check({
     required String branchSlug,
     required List<Map<String, dynamic>> products,
     int timeoutSeconds = 15,
   }) async {
-    final raw = await checkWithRaw(
-      branchSlug: branchSlug,
-      products: products,
-      timeoutSeconds: timeoutSeconds,
-    );
-    return raw.result;
-  }
-
-  /// Extended method — returns parsed result AND full raw HTTP exchange.
-  /// Used by the debug panel so you can inspect exactly what was sent/received.
-  static Future<ZmallAvailabilityCheckResult> checkWithRaw({
-    required String branchSlug,
-    required List<Map<String, dynamic>> products,
-    int timeoutSeconds = 15,
-  }) async {
     final url = "$kZmallOdooBaseUrl/zmall_order/$branchSlug";
-    final requestBody = const JsonEncoder.withIndent('  ')
-        .convert({"products": products});
+    final requestBody = jsonEncode({"products": products});
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -166,51 +126,21 @@ class ZmallAvailabilityService {
         body: response.body,
       );
 
-      // Pretty-print the raw response body if it is valid JSON.
-      String prettyResponse;
-      try {
-        final decoded = jsonDecode(response.body);
-        prettyResponse = const JsonEncoder.withIndent('  ').convert(decoded);
-      } catch (_) {
-        prettyResponse = response.body;
-      }
-
-      BackendLogger.response(
-        method: 'POST',
-        url: url,
-        statusCode: response.statusCode,
-        body: "pretty:\n$prettyResponse",
-      );
-
       if (response.statusCode != 200) {
         Map<String, dynamic>? decoded;
         try {
           decoded = jsonDecode(response.body) as Map<String, dynamic>;
         } catch (_) {}
-        final result = ZmallAvailabilityResult(
+        return ZmallAvailabilityResult(
           success: false,
           canCheckout: false,
           error: decoded?["error"] ??
               "Availability check failed (HTTP ${response.statusCode})",
         );
-        return ZmallAvailabilityCheckResult(
-          result: result,
-          requestUrl: url,
-          requestBody: requestBody,
-          statusCode: response.statusCode,
-          rawResponse: prettyResponse,
-        );
       }
 
-      final result = ZmallAvailabilityResult.fromJson(
+      return ZmallAvailabilityResult.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
-      );
-      return ZmallAvailabilityCheckResult(
-        result: result,
-        requestUrl: url,
-        requestBody: requestBody,
-        statusCode: response.statusCode,
-        rawResponse: prettyResponse,
       );
     } catch (e) {
       BackendLogger.error(
@@ -218,13 +148,7 @@ class ZmallAvailabilityService {
         url: url,
         error: '${stopwatch.elapsed.inMilliseconds} ms -> $e',
       );
-      return ZmallAvailabilityCheckResult(
-        result: null,
-        requestUrl: url,
-        requestBody: requestBody,
-        statusCode: -1,
-        rawResponse: "Exception: $e",
-      );
+      return null;
     }
   }
 }

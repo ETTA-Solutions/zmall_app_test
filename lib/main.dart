@@ -12,7 +12,6 @@ import 'package:firebase_in_app_messaging/firebase_in_app_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:zmall/mcp/mcp_cart_screen.dart';
-import 'package:zmall/cart/cart_screen.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
@@ -166,16 +165,6 @@ class _MyAppState extends State<MyApp> {
 
     _deepLinkSub = appLinks.uriLinkStream.listen(_handleDeepLink);
 
-    // Debug helper: `flutter run --dart-define=DEBUG_CART=true` opens the
-    // cart screen right after startup so you can watch the [CART DEBUG] /
-    // [BACKEND] logs without navigating manually.
-    if (const bool.fromEnvironment('DEBUG_CART')) {
-      debugPrint('DEBUG_CART enabled -> auto-opening cart screen');
-      Future.delayed(const Duration(seconds: 3), () {
-        if (!mounted) return;
-        navigatorKey.currentState?.pushNamed(CartScreen.routeName);
-      });
-    }
 
     // Handle AI cart push notifications
     FirebaseMessaging.instance.getInitialMessage().then(_handleFcmMessage);

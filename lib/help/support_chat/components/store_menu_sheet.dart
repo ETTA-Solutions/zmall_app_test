@@ -12,21 +12,23 @@ import 'package:zmall/utils/size_config.dart';
 ///
 /// Usage:
 ///   StoreMenuSheet.show(context, store: store);
+///   StoreMenuSheet.show(context, store: store, products: backendProducts);
 class StoreMenuSheet {
-  static void show(BuildContext context, {required MockStore store}) {
+  static void show(BuildContext context, {required MockStore store, List<MockProduct>? products}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (_) => _StoreMenuSheet(store: store),
+      builder: (_) => _StoreMenuSheet(store: store, products: products),
     );
   }
 }
 
 class _StoreMenuSheet extends StatefulWidget {
   final MockStore store;
-  const _StoreMenuSheet({required this.store});
+  final List<MockProduct>? products; // Optional backend products
+  const _StoreMenuSheet({required this.store, this.products});
 
   @override
   State<_StoreMenuSheet> createState() => _StoreMenuSheetState();
@@ -65,7 +67,7 @@ class _StoreMenuSheetState extends State<_StoreMenuSheet> {
   @override
   Widget build(BuildContext context) {
     final store = widget.store;
-    final products = getStoreProducts(store.id);
+    final products = widget.products ?? const [];
     final logoText = store.logoText.isNotEmpty
         ? store.logoText
         : store.name.substring(0, store.name.length.clamp(0, 10));
@@ -171,20 +173,23 @@ class _StoreMenuSheetState extends State<_StoreMenuSheet> {
                           SizedBox(height: getProportionateScreenHeight(5)),
                           Row(
                             children: [
-                              Icon(
-                                HeroiconsSolid.star,
-                                size: getProportionateScreenWidth(11),
-                                color: const Color(0xFFF59E0B),
-                              ),
-                              SizedBox(width: getProportionateScreenWidth(3)),
-                              Text(
-                                store.rating.toStringAsFixed(1),
-                                style: TextStyle(
-                                  fontSize: getProportionateScreenWidth(11.5),
-                                  color: const Color(0xFF64748B),
+                              // Only show rating if available from backend
+                              if (store.hasRating) ...[
+                                Icon(
+                                  HeroiconsSolid.star,
+                                  size: getProportionateScreenWidth(11),
+                                  color: const Color(0xFFF59E0B),
                                 ),
-                              ),
-                              SizedBox(width: getProportionateScreenWidth(10)),
+                                SizedBox(width: getProportionateScreenWidth(3)),
+                                Text(
+                                  store.rating.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: getProportionateScreenWidth(11.5),
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
+                                SizedBox(width: getProportionateScreenWidth(10)),
+                              ],
                               Icon(
                                 HeroiconsOutline.clock,
                                 size: getProportionateScreenWidth(11),

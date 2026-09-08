@@ -19,8 +19,10 @@ class ChatBubble extends StatefulWidget {
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
   final ValueChanged<MockStore>? onMenuRequested;
+  final Function(MockStore, List<MockProduct>)? onMenuRequestedWithProducts;
   final List<MockProduct> matchedProducts;
   final MockStore? matchedStore;
+  final List<MockStore>? matchedStores; // Multiple stores from backend
   final bool showProducts;
 
   /// When true the store-list vertical card is shown.
@@ -36,8 +38,10 @@ class ChatBubble extends StatefulWidget {
     this.onProductTap,
     this.onAddToCart,
     this.onMenuRequested,
+    this.onMenuRequestedWithProducts,
     this.matchedProducts = const [],
     this.matchedStore,
+    this.matchedStores,
     this.showProducts = true,
     this.isStoreOnly = false,
   });
@@ -162,23 +166,22 @@ class _ChatBubbleState extends State<ChatBubble> {
           // ── Store card OR horizontal product cards ───────────────
           if (!isUser &&
               (widget.matchedProducts.isNotEmpty ||
-                  widget.matchedStore != null)) ...[
+                  widget.matchedStore != null ||
+                  widget.matchedStores != null)) ...[
             SizedBox(height: getProportionateScreenHeight(6)),
             if (widget.isStoreOnly)
               // Store query → vertical scrollable list of all stores inline
               StoreCarousel(
+                stores: widget.matchedStores, // Use backend stores if available
                 onProductTap: widget.onProductTap,
                 onAddToCart: widget.onAddToCart,
                 onMenuRequested: widget.onMenuRequested,
+                onMenuRequestedWithProducts: widget.onMenuRequestedWithProducts,
               )
-            else
+            else if (widget.matchedProducts.isNotEmpty)
               // Food/item query → horizontal swipe cards
               FoodRecommendationRow(
-                products: widget.matchedProducts.isNotEmpty
-                    ? widget.matchedProducts
-                    : getStoreProducts(
-                        widget.matchedStore?.id ?? mockStores.first.id,
-                      ),
+                products: widget.matchedProducts,
                 onViewCart: widget.onViewCart,
                 onProductTap: widget.onProductTap,
                 onAddToCart: widget.onAddToCart,

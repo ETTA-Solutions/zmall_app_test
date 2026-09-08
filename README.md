@@ -101,6 +101,7 @@ flutter build ios --release        # iOS (then archive in Xcode)
 
 Project docs live in [`zmall_files/docs/`](zmall_files/docs):
 
+- [`GIT_PUSH_README.md`](GIT_PUSH_README.md) — feature release guide (Odoo Availability, AI Chatbot, Telebirr USSD Channel)
 - [`api_endpoints_reference.md`](zmall_files/docs/api_endpoints_reference.md) — full API/endpoint catalog
 - [`api_dio_migration_plan.md`](zmall_files/docs/api_dio_migration_plan.md) — plan to migrate `http` → organized `dio`
 - [`heroicons_flutter_compatibility_fix.md`](zmall_files/docs/heroicons_flutter_compatibility_fix.md) — icon package fix

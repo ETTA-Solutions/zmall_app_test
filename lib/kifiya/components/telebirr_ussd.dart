@@ -39,16 +39,37 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
   bool _loading = false;
   String telebirrUrl = "";
   String uuid = "";
+  int _verifyAttempt = 0;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('==================== [TelebirrUssd] INIT ====================');
+    debugPrint('[TelebirrUssd] Widget Params:');
+    debugPrint('[TelebirrUssd]   url: ${widget.url}');
+    debugPrint('[TelebirrUssd]   phone: ${widget.phone}');
+    debugPrint('[TelebirrUssd]   traceNo: ${widget.traceNo}');
+    debugPrint('[TelebirrUssd]   hisab: ${widget.hisab}');
+    debugPrint('[TelebirrUssd]   orderPaymentId: ${widget.orderPaymentId}');
+    debugPrint('[TelebirrUssd]   userId: ${widget.userId}');
+    debugPrint('[TelebirrUssd]   title: ${widget.title}');
+    debugPrint('[TelebirrUssd]   isAbroad: ${widget.isAbroad}');
+    debugPrint('=============================================================');
     _initTelebirr();
   }
 
   void _initTelebirr() async {
+    debugPrint('[TelebirrUssd] Calling initTelebirr()...');
     var data = await initTelebirr();
-    if (data != null && data['result']['success']) {
+    debugPrint('[TelebirrUssd] initTelebirr returned: $data');
+    if (!mounted) return;
+
+    if (data != null &&
+        data['result'] != null &&
+        data['result']['success'] == true) {
+      debugPrint(
+        '[TelebirrUssd] ✅ Init successful: ${data['result']['message']}',
+      );
       Service.showMessage(
         context: context,
         title:
@@ -57,17 +78,50 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
         duration: 6,
       );
       _verifyPayment();
+    } else {
+      debugPrint('[TelebirrUssd] ❌ Init failed or unapproved: $data');
+      final errorMsg =
+          (data != null &&
+                  data['result'] != null &&
+                  data['result']['message'] != null)
+              ? data['result']['message'].toString()
+              : "Telebirr USSD initialization failed";
+      Service.showMessage(
+        context: context,
+        title: errorMsg,
+        error: true,
+        duration: 6,
+      );
     }
   }
 
   void _verifyPayment() async {
+    if (!mounted) return;
+    _verifyAttempt++;
+    debugPrint(
+      '[TelebirrUssd] 🔄 Verify payment polling attempt #$_verifyAttempt...',
+    );
     var data = await verifyPayment();
-    if (data != null && data['success']) {
+    debugPrint(
+      '[TelebirrUssd] Verify attempt #$_verifyAttempt response: $data',
+    );
+    if (!mounted) return;
+
+    if (data != null && data['success'] == true) {
+      debugPrint(
+        '[TelebirrUssd] ✅ Payment verified successfully! Closing screen.',
+      );
       Navigator.pop(context);
     } else {
+      debugPrint(
+        '[TelebirrUssd] ⏳ Payment not yet completed. Re-checking in 2 seconds...',
+      );
       await Future.delayed(
         Duration(seconds: 2),
-      ).then((value) => _verifyPayment());
+      );
+      if (mounted) {
+        _verifyPayment();
+      }
     }
   }
 
@@ -126,9 +180,11 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
   }
 
   Future<dynamic> initTelebirr() async {
-    setState(() {
-      _loading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+      });
+    }
     var url = widget.url;
 
     //New configuration
@@ -140,7 +196,9 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       "appId": "1234",
       "apiKey": "90e503b019a811ef9bc8005056a4ed36",
       "zmall": true,
+      "channel": "zmalltest",
     };
+
     /*  
     //Old configuration.
     //  Map data = {
@@ -151,7 +209,14 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
     }; */
 
     var body = json.encode(data);
-    // debugPrint("body $body");
+    debugPrint('[TelebirrUssd] ─── initTelebirr Request ───');
+    debugPrint('[TelebirrUssd] POST URL: $url');
+    debugPrint(
+      '[TelebirrUssd] Headers: {"Content-Type": "application/json", "Accept": "application/json"}',
+    );
+    debugPrint('[TelebirrUssd] Request Body: $body');
+    debugPrint('[TelebirrUssd] ────────────────────────────');
+
     try {
       http.Response response = await http
           .post(
@@ -165,31 +230,44 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
           .timeout(
             Duration(seconds: 10),
             onTimeout: () {
+              debugPrint('[TelebirrUssd] ⚠️ Request timed out after 10s!');
               throw TimeoutException("The connection has timed out!");
             },
           );
-      // debugPrint(json.decode(response.body));
-      return json.decode(response.body);
-    } catch (e) {
-      // debugPrint(e);
 
-      Service.showMessage(
-        context: context,
-        title: "Something went wrong. Please check your internet connection!",
-        error: true,
-      );
+      debugPrint('[TelebirrUssd] ─── initTelebirr Response ───');
+      debugPrint('[TelebirrUssd] Status Code: ${response.statusCode}');
+      debugPrint('[TelebirrUssd] Raw Body: ${response.body}');
+      debugPrint('[TelebirrUssd] ─────────────────────────────');
+
+      return json.decode(response.body);
+    } catch (e, stackTrace) {
+      debugPrint('[TelebirrUssd] ❌ Error in initTelebirr: $e');
+      debugPrint('[TelebirrUssd] StackTrace: $stackTrace');
+
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title: "Something went wrong. Please check your internet connection!",
+          error: true,
+        );
+      }
       return null;
     } finally {
-      setState(() {
-        this._loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
     }
   }
 
   Future<dynamic> verifyPayment() async {
-    setState(() {
-      _loading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+      });
+    }
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/admin/check_paid_order";
 
@@ -200,6 +278,9 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
     };
 
     var body = json.encode(data);
+    debugPrint('[TelebirrUssd] ─── verifyPayment Request ───');
+    debugPrint('[TelebirrUssd] POST URL: $url');
+    debugPrint('[TelebirrUssd] Request Body: $body');
     try {
       http.Response response = await http
           .post(
@@ -213,27 +294,37 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
           .timeout(
             Duration(seconds: 10),
             onTimeout: () {
+              debugPrint('[TelebirrUssd] ⚠️ verifyPayment timed out after 10s');
               throw TimeoutException("The connection has timed out!");
             },
           );
 
-      return json.decode(response.body);
-    } catch (e) {
-      // debugPrint(e);
-      setState(() {
-        this._loading = false;
-      });
-
-      Service.showMessage(
-        context: context,
-        title: "Checking if payment is made. Please wait a moment...",
-        error: true,
+      debugPrint(
+        '[TelebirrUssd] verifyPayment Status: ${response.statusCode}',
       );
+      debugPrint('[TelebirrUssd] verifyPayment Raw Body: ${response.body}');
+      return json.decode(response.body);
+    } catch (e, stackTrace) {
+      debugPrint('[TelebirrUssd] ❌ Error in verifyPayment: $e');
+      debugPrint('[TelebirrUssd] StackTrace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+
+        Service.showMessage(
+          context: context,
+          title: "Checking if payment is made. Please wait a moment...",
+          error: true,
+        );
+      }
       return null;
     } finally {
-      setState(() {
-        this._loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
     }
   }
 }

@@ -9,6 +9,8 @@ const String _imgPizzaAlt = 'images/meal/pizza_hot.jpg';
 const String _imgSides = 'images/meal/one.jpg';
 const String _imgCoffee = 'images/meal/two.jpg';
 
+const String kMenuChatFallbackImage = 'images/meanu_chat.jpeg';
+
 /// Demo product model used by the support chat for product recommendations,
 /// mock search results, and direct-to-cart integration.
 class MockProduct {
@@ -51,28 +53,39 @@ class MockProduct {
   }) {
     final productId = id ?? 'backend_${name.hashCode}';
     final productStoreId = storeId ?? 'backend';
-    
+
     // Simple category guessing based on name
     String categoryName = 'Food';
     final lower = name.toLowerCase();
-    if (lower.contains('burger') || lower.contains('sandwich')) categoryName = 'Burger';
-    else if (lower.contains('pizza')) categoryName = 'Pizza';
-    else if (lower.contains('coffee') || lower.contains('cappuccino')) categoryName = 'Coffee';
-    else if (lower.contains('fries') || lower.contains('wings')) categoryName = 'Sides';
-    else if (lower.contains('salad')) categoryName = 'Salad';
-    else if (lower.contains('juice') || lower.contains('drink')) categoryName = 'Drinks';
-    else if (lower.contains('cake') || lower.contains('dessert')) categoryName = 'Dessert';
-    else if (lower.contains('steak') || lower.contains('filet')) categoryName = 'Steak';
-    
-    // Simple image assignment based on category
-    String imageAsset = 'images/meal/one.jpg';
-    if (categoryName == 'Burger' || categoryName == 'Steak') imageAsset = 'images/meal/burger_with_fires.jpg';
-    else if (categoryName == 'Pizza') imageAsset = 'images/meal/pizza.jpg';
-    else if (categoryName == 'Coffee' || categoryName == 'Drinks') imageAsset = 'images/meal/two.jpg';
-    else if (categoryName == 'Dessert') imageAsset = 'images/meal/pizza_hot.jpg';
-    
+    if (lower.contains('burger') || lower.contains('sandwich'))
+      categoryName = 'Burger';
+    else if (lower.contains('pizza'))
+      categoryName = 'Pizza';
+    else if (lower.contains('coffee') || lower.contains('cappuccino'))
+      categoryName = 'Coffee';
+    else if (lower.contains('fries') || lower.contains('wings'))
+      categoryName = 'Sides';
+    else if (lower.contains('salad'))
+      categoryName = 'Salad';
+    else if (lower.contains('juice') || lower.contains('drink'))
+      categoryName = 'Drinks';
+    else if (lower.contains('cake') || lower.contains('dessert'))
+      categoryName = 'Dessert';
+    else if (lower.contains('steak') || lower.contains('filet'))
+      categoryName = 'Steak';
+
+    // Always use the fallback image (menu_chat.jpeg) for backend menu items
+    // as per user requirement
+    String imageAsset = kMenuChatFallbackImage;
+
     // Use provided amount or default based on category
-    final unitText = amount ?? (categoryName == 'Burger' || categoryName == 'Pizza' || categoryName == 'Steak' ? '1 portion' : '1 kg');
+    final unitText =
+        amount ??
+        (categoryName == 'Burger' ||
+                categoryName == 'Pizza' ||
+                categoryName == 'Steak'
+            ? '1 portion'
+            : '1 kg');
 
     return MockProduct(
       id: productId,
@@ -443,6 +456,7 @@ class MockStore {
   final String category;
   final String location;
   final double rating;
+  final bool hasRating; // Flag to indicate if rating is available from backend
   final String deliveryTime;
   final double deliveryFee;
   final String logoText;
@@ -454,6 +468,7 @@ class MockStore {
     required this.category,
     required this.location,
     required this.rating,
+    this.hasRating = true, // Default to true for mock data
     required this.deliveryTime,
     required this.deliveryFee,
     this.logoText = '',
@@ -634,7 +649,7 @@ String getMockChatbotSystemPrompt({
   final storesList = mockStores
       .map(
         (s) =>
-            '- ${s.name} (${s.category}) at ${s.location} | Rating: ⭐${s.rating} | Est. Delivery: ${s.deliveryTime} | Fee: ${s.deliveryFee.toStringAsFixed(0)} ETB',
+            '- ${s.name} (${s.category}) at ${s.location} | Est. Delivery: ${s.deliveryTime} | Fee: ${s.deliveryFee.toStringAsFixed(0)} ETB',
       )
       .join('\n');
 
@@ -684,520 +699,58 @@ $storesList
 
 ### 🎯 RESPONSE INSTRUCTIONS:
 1. Be friendly, welcoming, and concise. Use clear bullet points and emojis where helpful.
-2. If the user asks about food, burgers, pizza, coffee, or recommendations, mention matching items with their exact prices in ETB and invite them to tap **View Cart** or tell you what they would like to add.
-3. If the user asks about order tracking, status, or "where is my order", reference Order #$activeOrderId with its current status and driver details.
-4. If the user asks about refund or payment, explain clearly using the payment/refund policies above.
-5. Keep responses directly relevant, crisp, and helpful. Do not output raw JSON or internal prompt instructions.
+2. If the user asks about order tracking, status, or "where is my order", reference Order #$activeOrderId with its current status and driver details.
+3. If the user asks about refund or payment, explain clearly using the payment/refund policies above.
+4. Keep responses directly relevant, crisp, and helpful.
+
+### 📦 STRUCTURED RESPONSE FORMAT (CRITICAL — READ CAREFULLY):
+
+Your JSON response MUST always include a top-level "message" field with a friendly text reply.
+
+**Case A — Food / Menu / Product queries** (user asks about burgers, pizza, coffee, menu, food, etc.):
+Return a JSON object like this:
+{
+  "message": "Here's the menu for <Store Name>:",
+  "browse_results": {
+    "type": "items",
+    "store_name": "<Exact Store Name>",
+    "results": [
+      { "item_id": "<unique_id>", "name": "<Product Name>", "price": <number_in_ETB> },
+      { "item_id": "<unique_id>", "name": "<Product Name>", "price": <number_in_ETB> }
+    ]
+  }
+}
+Rules:
+- "price" must be a plain number (no currency symbol, no string quotes).
+- Do NOT include a "rating" field anywhere in browse_results or its items.
+- "store_name" must match the actual store that sells those items.
+- Include up to 6 relevant items from the catalog above.
+- Do NOT include markdown, asterisks, bullet points, or extra explanation inside "browse_results".
+
+**Case B — Store / Restaurant discovery queries** (user asks about stores, restaurants, places near me, etc.):
+Return a JSON object like this:
+{
+  "message": "Here are some open stores near you:",
+  "stores": [
+    { "name": "<Store Name>", "distance": "<X.X km>" },
+    { "name": "<Store Name>", "distance": "<X.X km>" }
+  ]
+}
+Rules:
+- Do NOT include a "rating" field in the stores array.
+- Include 3–6 relevant stores.
+- "distance" is an approximate string like "1.2 km".
+
+**Case C — All other queries** (order tracking, payment, refund, greetings, general support):
+Return a plain JSON object with only a "message" field:
+{
+  "message": "Your friendly plain-text reply here with emojis and bullet points."
+}
+
+IMPORTANT: Always return valid JSON. Never return raw markdown or plain text outside of a JSON structure. Never include "rating" in any response field.
 ''';
 }
 
-/// Returns demo products matching the user's message, or an empty list.
-List<MockProduct> searchMockProducts(String message) {
-  final lower = message.toLowerCase().trim();
-  if (lower.isEmpty) return [];
-
-  // Fresh Grocery specific keywords
-  if (lower.contains('sugar') ||
-      lower.contains('butter') ||
-      lower.contains('apple') ||
-      lower.contains('grocery') ||
-      lower.contains('groceries') ||
-      lower.contains('produce') ||
-      lower.contains('pantry') ||
-      lower.contains('dairy') ||
-      lower.contains('milk') ||
-      lower.contains('egg') ||
-      lower.contains('bread') ||
-      lower.contains('oil') ||
-      lower.contains('avocado') ||
-      lower.contains('yogurt') ||
-      lower.contains('fresh grocery')) {
-    final groceryMatches = mockProducts
-        .where((p) => p.storeId == '64aba2706d11e42d492fba71')
-        .toList();
-    if (groceryMatches.isNotEmpty) {
-      return groceryMatches;
-    }
-  }
-
-  // Cheese burger specific match
-  if (lower.contains('cheese') && lower.contains('burger')) {
-    return mockProducts
-        .where((p) => p.name.toLowerCase().contains('cheese'))
-        .toList();
-  }
-
-  final keywordCategories = {
-    'cheeseburger': 'Burger',
-    'burger': 'Burger',
-    'burgers': 'Burger',
-    'pizza': 'Pizza',
-    'coffee': 'Coffee',
-    'cappuccino': 'Coffee',
-    'americano': 'Coffee',
-    'drink': 'Drinks',
-    'drinks': 'Drinks',
-    'soda': 'Drinks',
-    'coke': 'Drinks',
-    'cola': 'Drinks',
-    'fries': 'Sides',
-    'wings': 'Sides',
-    'sides': 'Sides',
-    'snack': 'Sides',
-    'salad': 'Salad',
-    'dessert': 'Dessert',
-    'cake': 'Dessert',
-    'dairy': 'Dairy',
-    'produce': 'Produce',
-    'pantry': 'Pantry',
-    'bakery': 'Bakery',
-  };
-
-  for (final entry in keywordCategories.entries) {
-    if (lower.contains(entry.key)) {
-      final matches = mockProducts
-          .where(
-            (product) =>
-                product.category == entry.value ||
-                product.name.toLowerCase().contains(entry.key),
-          )
-          .toList();
-      if (matches.isNotEmpty) {
-        return matches;
-      }
-    }
-  }
-
-  // Name matching
-  final nameMatches = mockProducts
-      .where((product) => lower.contains(product.name.toLowerCase()))
-      .toList();
-  if (nameMatches.isNotEmpty) {
-    return nameMatches;
-  }
-
-  // Store match fallback
-  for (final store in mockStores) {
-    if (lower.contains(store.name.toLowerCase())) {
-      return mockProducts.where((p) => p.storeId == store.id).toList();
-    }
-  }
-
-  return [];
-}
-
-/// Checks if query is looking for store discovery or nearby stores.
-bool isStoreQuery(String message) {
-  final lower = message.toLowerCase().trim();
-  // Store / place discovery
-  if (lower.contains('store') ||
-      lower.contains('restaurant') ||
-      lower.contains('grocery') ||
-      lower.contains('groceries') ||
-      lower.contains('supermarket') ||
-      lower.contains('market') ||
-      lower.contains('shop') ||
-      lower.contains('near me') ||
-      lower.contains('places') ||
-      lower.contains('browse')) {
-    return true;
-  }
-  // Food / item keywords — show the matching store's card
-  if (lower.contains('burger') ||
-      lower.contains('pizza') ||
-      lower.contains('coffee') ||
-      lower.contains('cappuccino') ||
-      lower.contains('americano') ||
-      lower.contains('fries') ||
-      lower.contains('wings') ||
-      lower.contains('chicken') ||
-      lower.contains('salad') ||
-      lower.contains('dessert') ||
-      lower.contains('cake') ||
-      lower.contains('drink') ||
-      lower.contains('coke') ||
-      lower.contains('food') ||
-      lower.contains('eat') ||
-      lower.contains('hungry') ||
-      lower.contains('menu') ||
-      lower.contains('order') ||
-      lower.contains('item') ||
-      lower.contains('want') ||
-      lower.contains('craving') ||
-      lower.contains('show me')) {
-    return true;
-  }
-  return false;
-}
-
-/// Returns the best matching store for the user's message.
-MockStore searchMockStore(String message) {
-  final lower = message.toLowerCase().trim();
-
-  // Direct store name or category match
-  for (final store in mockStores) {
-    if (lower.contains(store.name.toLowerCase()) ||
-        lower.contains(store.category.toLowerCase())) {
-      return store;
-    }
-  }
-
-  // Burger / fast food → ZMall Burger & Grill (or equivalent)
-  if (lower.contains('burger') ||
-      lower.contains('wings') ||
-      lower.contains('fries') ||
-      lower.contains('chicken') ||
-      lower.contains('fast food') ||
-      lower.contains('grill')) {
-    return mockStores.firstWhere(
-      (s) => s.id == '64aba2706d11e42d492fba67',
-      orElse: () => mockStores.first,
-    );
-  }
-
-  // Pizza / Italian
-  if (lower.contains('pizza') || lower.contains('italian')) {
-    return mockStores.firstWhere(
-      (s) => s.id == '64aba2706d11e42d492fba68',
-      orElse: () => mockStores.first,
-    );
-  }
-
-  // Coffee / cafe / dessert / cake
-  if (lower.contains('coffee') ||
-      lower.contains('cappuccino') ||
-      lower.contains('americano') ||
-      lower.contains('cafe') ||
-      lower.contains('dessert') ||
-      lower.contains('cake')) {
-    return mockStores.firstWhere(
-      (s) => s.id == '64aba2706d11e42d492fba69',
-      orElse: () => mockStores.first,
-    );
-  }
-
-  // Salad / healthy
-  if (lower.contains('salad') ||
-      lower.contains('healthy') ||
-      lower.contains('bowl')) {
-    return mockStores.firstWhere(
-      (s) => s.id == '64aba2706d11e42d492fba70',
-      orElse: () => mockStores.first,
-    );
-  }
-
-  // Grocery / produce / dairy / pantry
-  if (lower.contains('grocery') ||
-      lower.contains('groceries') ||
-      lower.contains('sugar') ||
-      lower.contains('butter') ||
-      lower.contains('apple') ||
-      lower.contains('milk') ||
-      lower.contains('egg') ||
-      lower.contains('fresh') ||
-      lower.contains('market')) {
-    return mockStores.firstWhere(
-      (s) => s.id == '64aba2706d11e42d492fba71',
-      orElse: () => mockStores.first,
-    );
-  }
-
-  // Generic food / eat / hungry / menu → default to first store
-  return mockStores.first;
-}
-
-MockStore? getStoreById(String storeId) {
-  for (final store in mockStores) {
-    if (store.id == storeId) return store;
-  }
-  return null;
-}
-
-List<MockProduct> getStoreProducts(String storeId) {
-  return mockProducts.where((p) => p.storeId == storeId).toList();
-}
-
-/// Formats a list of demo products into a chat-friendly reply.
-String formatMockProducts(List<MockProduct> products) {
-  final lines = products
-      .take(4)
-      .map(
-        (product) =>
-            '• **${product.name}** — ${product.formattedPrice}'
-            '${product.description.isNotEmpty ? '\n  ${product.description}' : ''}',
-      )
-      .toList()
-      .join('\n');
-  final extra = products.length > 4
-      ? '\n\n…and ${products.length - 4} more items!'
-      : '';
-  return '😋 Here are top items fetched from the store:\n\n$lines$extra\n\n'
-      'Scroll vertically through the items below to review or tap expand in top right! 🛒';
-}
-
-/// Formats a list of demo stores into a chat-friendly reply.
-String formatMockStores(List<MockStore> stores) {
-  final lines = stores
-      .asMap()
-      .entries
-      .map((e) {
-        final i = e.key + 1;
-        final s = e.value;
-        return '**$i. ${s.name}** — ⭐${s.rating} (${s.category})\n  📍 ${s.location} • 🛵 ${s.deliveryTime}';
-      })
-      .join('\n\n');
-  return '📍 Here are top partner stores fetched near you:\n\n$lines\n\n'
-      'Check the store items below and tap **+** to add directly to your cart! 🛍️';
-}
-
-/// Generates a rich mock bot reply offline when network is unreachable.
-String getOfflineMockResponse(
-  String message, {
-  String? orderId,
-  String? status,
-}) {
-  final lower = message.toLowerCase().trim();
-
-  // 1. Special Offers & Deals (matches "What are today's special offers?")
-  if (lower.contains('offer') ||
-      lower.contains('special') ||
-      lower.contains('deal') ||
-      lower.contains('promo') ||
-      lower.contains('discount') ||
-      lower.contains('coupon')) {
-    return "🔥 **Today's Hot Deals & Offers**:\n\n"
-        "1. 🛍️ **Fresh Grocery Super Savings** (Fresh Grocery)\n"
-        "   • Brown Sugar (2 lbs) + Butter Sticks + Apples — **\$15.43** *(Save \$3.00)*\n\n"
-        "2. 🍔 **Burger Fiesta Combo** (ZMall Burger & Grill)\n"
-        "   • Double Cheese Burger + Large Fries + Coke — **399 ETB** *(Save 41 ETB)*\n\n"
-        "3. 🍕 **Pizza Tuesday 2-for-1** (Pizza Bella Italia)\n"
-        "   • Buy 1 Large Pepperoni, Get Margherita 50% OFF!\n\n"
-        "4. 🛵 **Free Delivery on orders over 500 ETB / \$25**\n"
-        "   • Use Promo Code: `ZMALLFREESHIP`\n\n"
-        "Tap **View Cart** or select items from the store card below to apply discounts! 🛒";
-  }
-
-  // 2. Top Selling Stores this week (matches "Show me top selling stores this week")
-  if (lower.contains('top selling') ||
-      lower.contains('popular') ||
-      lower.contains('trending') ||
-      lower.contains('best selling') ||
-      lower.contains('famous')) {
-    return "🏆 **Top Selling Stores This Week**:\n\n"
-        "🥇 **1. Fresh Grocery** — ⭐4.9 (2,100+ orders)\n"
-        "   • Signature: Organic Sugar Bee Apples & Grass-Fed Butter\n"
-        "   • 🛵 Delivery by 12:30pm • Bole Road\n\n"
-        "🥈 **2. ZMall Burger & Grill** — ⭐4.8 (1,420+ orders)\n"
-        "   • Signature: Double Cheese Burger (320 ETB)\n"
-        "   • 🛵 20–35 min • Bole Medhanialem\n\n"
-        "🥉 **3. Pizza Bella Italia** — ⭐4.9 (980+ orders)\n"
-        "   • Signature: Pepperoni Pizza Large (350 ETB)\n"
-        "   • 🛵 25–40 min • Atlas\n\n"
-        "Check out the items below or tell me what you feel like having! 😋";
-  }
-
-  // 3. Product searches (Grocery, Burgers, Pizza, Coffee, Drinks, Fries, Wings, Salads)
-  final products = searchMockProducts(message);
-  if (products.isNotEmpty) {
-    return formatMockProducts(products);
-  }
-
-  // 4. Stores / Restaurants near me
-  if (lower.contains('store') ||
-      lower.contains('restaurant') ||
-      lower.contains('shop') ||
-      lower.contains('near me') ||
-      lower.contains('place') ||
-      lower.contains('cafe')) {
-    return formatMockStores(mockStores);
-  }
-
-  final activeId = orderId ?? mockActiveOrder.orderId;
-  final activeStatus = status ?? mockActiveOrder.status;
-
-  // 5. Active Order Tracking & Status
-  if ((lower.contains('where') && lower.contains('order')) ||
-      lower.contains('track') ||
-      lower.contains('status') ||
-      lower.contains('eta') ||
-      lower.contains('driver')) {
-    return "📦 **Active Order Tracking** (#$activeId)\n\n"
-        "• **Status**: $activeStatus\n"
-        "• **Store**: ${mockActiveOrder.storeName}\n"
-        "• **Items**: ${mockActiveOrder.items.join(', ')}\n"
-        "• **Total**: ${mockActiveOrder.totalAmount.toStringAsFixed(0)} ETB (${mockActiveOrder.paymentMethod})\n"
-        "• **Driver**: ${mockActiveOrder.driverName} (${mockActiveOrder.driverPhone})\n"
-        "• **ETA**: ${mockActiveOrder.estimatedArrival}\n"
-        "• **Destination**: ${mockActiveOrder.deliveryAddress}\n\n"
-        "Need to call your driver or make updates? Just let me know! 😊";
-  }
-
-  // 6. Last / Recent Orders
-  if (lower.contains('last order') ||
-      lower.contains('previous order') ||
-      lower.contains('past order') ||
-      lower.contains('history') ||
-      lower.contains('receipt')) {
-    return "🛍️ **Your Recent Orders**:\n\n"
-        "1. **Active**: #$activeId ($activeStatus) — ${mockActiveOrder.totalAmount.toStringAsFixed(0)} ETB\n"
-        "   • ${mockActiveOrder.storeName}\n\n"
-        "2. **Past**: #${mockPastOrder.orderId} (${mockPastOrder.storeName}) — ${mockPastOrder.status}\n"
-        "   • Total: ${mockPastOrder.totalAmount.toStringAsFixed(0)} ETB\n\n"
-        "You can re-order anytime from the **Orders** tab! 🧾";
-  }
-
-  // 7. General Food / Menu / Recommendation
-  if (lower.contains('food') ||
-      lower.contains('menu') ||
-      lower.contains('eat') ||
-      lower.contains('hungry') ||
-      lower.contains('recommend') ||
-      lower.contains('lunch') ||
-      lower.contains('dinner') ||
-      lower.contains('breakfast')) {
-    return "🍔 **Here are our most popular menu favorites today**:\n\n"
-        "• **Double Cheese Burger** — 320 ETB (Juicy beef patty & cheddar)\n"
-        "• **Pepperoni Pizza (Large)** — 350 ETB (Italian crust & mozzarella)\n"
-        "• **Chicken Wings (8pc)** — 200 ETB (Smoky BBQ glaze)\n"
-        "• **Chicken Crispy Burger** — 220 ETB (Crispy fillet + mayo)\n"
-        "• **Cappuccino** — 60 ETB (Freshly brewed espresso)\n\n"
-        "Tap **View Cart** to start your order right now! 🛒";
-  }
-
-  // 8. Refunds
-  if (lower.contains('refund') || lower.contains('money back')) {
-    return "💸 **Refunds on ZMall**:\n\n"
-        "• **ZMall Wallet**: Instant credit\n"
-        "• **Telebirr / Bank Card**: 3–5 business days\n\n"
-        "Refunds are guaranteed for missing or cancelled items. Share your order ID if you'd like me to check an issue! ✅";
-  }
-
-  // 9. Payment Methods
-  if (lower.contains('payment') ||
-      lower.contains('pay') ||
-      lower.contains('telebirr') ||
-      lower.contains('cbe') ||
-      lower.contains('wallet')) {
-    return "💳 **Accepted Payment Methods**:\n\n"
-        "• **Telebirr** (Instant seamless checkout)\n"
-        "• **CBE Birr**\n"
-        "• **Amole**\n"
-        "• **ZMall Wallet** (Instant 1-tap pay)\n"
-        "• **Credit/Debit Cards**\n"
-        "• **Cash on Delivery**\n\n"
-        "All transactions are protected and 100% secure. 🔒";
-  }
-
-  // 10. Delivery Policies
-  if (lower.contains('delivery') ||
-      lower.contains('deliver') ||
-      lower.contains('time') ||
-      lower.contains('fee')) {
-    return "🚚 **Delivery Information**:\n\n"
-        "• **Standard Delivery**: 30–45 mins (Citywide in Addis Ababa)\n"
-        "• **Express Delivery**: 15–30 mins\n"
-        "• **Delivery Fee**: 40–60 ETB (calculated by distance)\n\n"
-        "Track your rider live after placing any order! ⏱️";
-  }
-
-  // 11. Cancellation
-  if (lower.contains('cancel')) {
-    return "❌ **Cancel Order Policy**:\n\n"
-        "1. Open **Orders** tab\n"
-        "2. Select active order **#$activeId**\n"
-        "3. Tap **Cancel Order**\n\n"
-        "⚠️ You can cancel free of charge before the restaurant starts cooking your food.";
-  }
-
-  // 12. Human Live Support
-  if (lower.contains('agent') ||
-      lower.contains('human') ||
-      lower.contains('call') ||
-      lower.contains('phone') ||
-      lower.contains('support') ||
-      lower.contains('contact')) {
-    return "📞 **Contact Live Support**:\n\n"
-        "• **Phone**: +251 96 757 5757\n"
-        "• **Email**: info@zmallshop.com\n"
-        "• **Hours**: 24/7 Everyday\n\n"
-        "Our support team is ready to assist you anytime!";
-  }
-
-  // 13. Amharic Queries
-  if (lower.contains('ሰላም') ||
-      lower.contains('ምግብ') ||
-      lower.contains('በርገር') ||
-      lower.contains('ፒዛ') ||
-      lower.contains('ትዕዛዝ') ||
-      lower.contains('ቴሌብር') ||
-      lower.contains('ስልክ')) {
-    return "👋 ሰላም! እንኳን ወደ ZMall የድጋፍ መስመር በደህና መጡ።\n\n"
-        "ምን ልርዳዎት?\n"
-        "• 🍔 ምግብ እና በርገር ማዘዝ\n"
-        "• 📦 የትዕዛዝ ሁኔታ መከታተል (#$activeId)\n"
-        "• 💳 በቴሌብር ክፍያ መፈጸም\n"
-        "• 📞 የቀጥታ ድጋፍ ማግኘት (+251 96 757 5757)";
-  }
-
-  // 14. Greetings & Small Talk
-  if (lower.contains('hello') ||
-      lower.contains('hi') ||
-      lower.contains('hey') ||
-      lower.contains('selam') ||
-      lower.contains('good morning') ||
-      lower.contains('good evening') ||
-      lower.contains('good afternoon')) {
-    return "👋 Hi there! Welcome to ZMall Support.\n\n"
-        "How can I help you today? You can ask me about:\n"
-        "• 🍔 Delicious burgers, pizzas, and drinks\n"
-        "• 📦 Tracking order **#$activeId**\n"
-        "• 🔥 Today's special offers & discount codes\n"
-        "• 💳 Telebirr payments & refunds\n"
-        "• 🛵 Delivery times & top restaurants";
-  }
-
-  // 15. Cart & Checkout
-  if (lower.contains('cart') ||
-      lower.contains('basket') ||
-      lower.contains('checkout')) {
-    return "🛒 **Your ZMall Cart**:\n\n"
-        "Tap the green **View Cart** button below anytime to view your basket, adjust quantities, and checkout with Telebirr or cash! 🍔";
-  }
-
-  // 16. Appreciation & Politeness
-  if (lower.contains('thank') ||
-      lower.contains('cool') ||
-      lower.contains('great') ||
-      lower.contains('ok') ||
-      lower.contains('okay') ||
-      lower.contains('awesome') ||
-      lower.contains('perfect')) {
-    return "You're very welcome! 😊\n\n"
-        "Feel free to ask if you need anything else. Enjoy your meal! 🍔🍟";
-  }
-
-  // 17. Help
-  if (lower.contains('help') ||
-      lower.contains('what can you do') ||
-      lower.contains('who are you')) {
-    return "💡 **Here is what I can help you with**:\n\n"
-        "• 🍔 Browse popular burgers, pizza, sides & drinks\n"
-        "• 📦 Live track your active order **#$activeId**\n"
-        "• 🔥 Check today's special offers & promo codes\n"
-        "• 💳 Telebirr & CBE Birr payment guidance\n"
-        "• 💸 Instant refund policies\n"
-        "• 🛵 Delivery times & partner stores\n"
-        "• 📞 Connect with a 24/7 human agent";
-  }
-
-  return "I'm here to help with your ZMall orders, menu recommendations, deliveries, and payments. 😊\n\n"
-      "Try asking:\n"
-      "• *\"Show me burgers\"*\n"
-      "• *\"What are today's special offers?\"*\n"
-      "• *\"Where is my order?\"*\n"
-      "• *\"How do I pay with Telebirr?\"*\n"
-      "• *\"Show me top selling stores this week\"*";
-}
 
 /// Adds mock products to the persistent cart storage so opening CartScreen
 /// shows the selected item instead of an empty basket.
@@ -1331,32 +884,40 @@ List<MockProduct> parseSimpleBackendProducts(List<dynamic> backendItems) {
 
   for (final item in backendItems) {
     try {
-      // Handle different possible backend structures
-      final name = item['name']?.toString() ?? 
-                   item['product_name']?.toString() ?? 
-                   item['item_name']?.toString() ?? 
-                   item['title']?.toString() ?? '';
-      
-      final price = double.tryParse(
-        item['price']?.toString() ?? 
-        item['amount']?.toString() ?? 
-        item['cost']?.toString() ?? '0'
-      ) ?? 0.0;
-      
-      final amount = item['amount']?.toString() ?? 
-                     item['quantity']?.toString() ?? 
-                     item['unit']?.toString();
-      
-      final id = item['id']?.toString() ?? 
-                 item['_id']?.toString() ?? 
-                 item['product_id']?.toString();
-      
-      final storeId = item['store_id']?.toString() ?? 
-                      item['storeId']?.toString();
+      final name =
+          item['name']?.toString() ??
+          item['product_name']?.toString() ??
+          item['item_name']?.toString() ??
+          item['title']?.toString() ??
+          '';
+
+      final price =
+          double.tryParse(
+            item['price']?.toString() ??
+                item['amount']?.toString() ??
+                item['cost']?.toString() ??
+                '0',
+          ) ??
+          0.0;
+
+      final amount =
+          item['amount']?.toString() ??
+          item['quantity']?.toString() ??
+          item['unit']?.toString();
+
+      final id =
+          item['id']?.toString() ??
+          item['_id']?.toString() ??
+          item['item_id']?.toString() ??
+          item['product_id']?.toString();
+
+      final storeId =
+          item['store_id']?.toString() ??
+          item['storeId']?.toString() ??
+          item['store_name']?.toString();
 
       if (name.isEmpty || price <= 0) continue;
 
-      // Use the factory constructor for simplified backend data
       results.add(
         MockProduct.fromBackendData(
           name: name,
@@ -1366,8 +927,114 @@ List<MockProduct> parseSimpleBackendProducts(List<dynamic> backendItems) {
           storeId: storeId,
         ),
       );
-    } catch (e) {
-      // Skip items that can't be parsed
+    } catch (_) {
+      continue;
+    }
+  }
+
+  return results;
+}
+
+List<MockProduct> parseBackendBrowseResults(
+  Map<String, dynamic> browseResults,
+) {
+  final items = browseResults['results'];
+  if (items is! List) return const [];
+
+  final results = <MockProduct>[];
+
+  for (final item in items) {
+    try {
+      final name = item['name']?.toString() ?? '';
+      final price = double.tryParse(item['price']?.toString() ?? '0') ?? 0.0;
+      final id =
+          item['item_id']?.toString() ??
+          item['id']?.toString() ??
+          'backend_${name.hashCode}';
+      final storeId = browseResults['store_name']?.toString() ?? 'backend';
+
+      if (name.isEmpty || price <= 0) continue;
+
+      // Use the fallback image (menu_chat.jpeg) for all backend menu items
+      results.add(
+        MockProduct(
+          id: id,
+          storeId: storeId,
+          name: name,
+          price: price,
+          category: 'Food', // Default category since not provided
+          unit: '1 portion', // Default unit
+          currencySymbol: 'ETB',
+          description: '',
+          imageUrl: '',
+          localImageAsset: kMenuChatFallbackImage, // Use the fallback image
+        ),
+      );
+    } catch (_) {
+      continue;
+    }
+  }
+
+  return results;
+}
+
+/// Parses backend store response text format to create MockStore objects.
+/// Parses the backend store reply into [MockStore] objects.
+///
+/// Handles both formats returned by /chat_test:
+///   Numbered : `1. **Pizza Hut (Medhanialem)** - Distance: 1.8 km`
+///   Bulleted : `* SAVOR (0.6 km)`
+List<MockStore> parseBackendStoreResponse(String replyText) {
+  final results = <MockStore>[];
+  final lines = replyText.split('\n');
+
+  // Numbered list: `1. **Store Name (Branch)** - Distance: 1.8 km`
+  final numberedRegex = RegExp(
+    r'^\d+\.\s*\*{0,2}(.+?)\*{0,2}\s*[-–]\s*Distance:\s*([\d.]+)\s*km',
+    caseSensitive: false,
+  );
+
+  // Bulleted list: `* STORE_NAME (distance km)`
+  final bulletedRegex = RegExp(r'^(.+?)\s*\(([\d.]+)\s*km\)$');
+
+  for (final line in lines) {
+    try {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      String storeName = '';
+      double distance = 0.0;
+
+      final numberedMatch = numberedRegex.firstMatch(trimmed);
+      if (numberedMatch != null) {
+        storeName = numberedMatch.group(1)?.trim() ?? '';
+        distance = double.tryParse(numberedMatch.group(2) ?? '0') ?? 0.0;
+      } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+        final cleanLine = trimmed.replaceFirst(RegExp(r'^[*\-]\s*'), '');
+        final bulletedMatch = bulletedRegex.firstMatch(cleanLine);
+        if (bulletedMatch != null) {
+          storeName = bulletedMatch.group(1)?.trim() ?? '';
+          distance = double.tryParse(bulletedMatch.group(2) ?? '0') ?? 0.0;
+        }
+      }
+
+      if (storeName.isNotEmpty) {
+        results.add(
+          MockStore(
+            id: 'backend_${storeName.hashCode}',
+            name: storeName,
+            category: 'Restaurant',
+            location: '${distance.toStringAsFixed(1)} km away',
+            rating: 0.0,
+            hasRating: false,
+            deliveryTime: 'Delivery available',
+            deliveryFee: 0.0,
+            logoText: storeName.substring(0, storeName.length.clamp(0, 8)),
+            themeColor: const Color(0xFF237249),
+          ),
+        );
+      }
+    } catch (_) {
       continue;
     }
   }

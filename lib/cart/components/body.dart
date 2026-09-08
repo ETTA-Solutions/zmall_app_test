@@ -388,12 +388,6 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       return true;
     }
 
-    BackendLogger.request(
-      method: 'POST',
-      url: '$kZmallOdooBaseUrl/zmall_order/$branchSlug',
-      body: 'branch=$branchSlug storeId=${cart!.storeId} products=$products',
-    );
-
     final result = await ZmallAvailabilityService.check(
       branchSlug: branchSlug,
       products: products,
@@ -450,44 +444,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     if (_checkoutBlocked != block) {
       setState(() => _checkoutBlocked = block);
     }
-    _debugDumpCart(available);
     if (showStockLeftNotification) {
       _maybeShowStockLeftNotification(availability.result);
     }
-  }
-
-  /// Debug-only dump of everything the availability/lock logic depends on.
-  /// Run with `flutter run` (debug build) and read the [CART DEBUG] lines.
-  void _debugDumpCart(bool? available) {
-    if (!kDebugMode) return;
-    final StringBuffer sb = StringBuffer('\n===== CART DEBUG =====\n');
-    sb.writeln(
-      'storeId: ${cart?.storeId ?? 'null'} (trimmed: "${cart?.storeId?.trim() ?? ''}")',
-    );
-    final String? slug = zmallBranchSlugForStore(cart?.storeId);
-    sb.writeln(
-      'branchSlug: ${slug ?? 'null  <-- NOT MAPPED: availability check is SKIPPED, checkout stays open'}',
-    );
-    if (cart?.items != null && cart!.items!.isNotEmpty) {
-      sb.writeln('items:');
-      for (final item in cart!.items!) {
-        sb.writeln(
-          '  - ${item.itemName ?? '(no name)'} | qty=${item.quantity ?? 1} | odoo_product_id=${item.odooProductId ?? 'null  <-- cannot be checked'}',
-        );
-      }
-    } else {
-      sb.writeln('items: (empty)');
-    }
-    sb.writeln(
-      'availability: ${available == null
-          ? 'UNKNOWN (network/server error -> not blocking)'
-          : available
-          ? 'available -> checkout UNLOCKED'
-          : 'NOT available -> checkout LOCKED'}',
-    );
-    sb.writeln('_checkoutBlocked: $_checkoutBlocked');
-    sb.writeln('===== /CART DEBUG =====');
-    debugPrintSynchronously(sb.toString());
   }
 
   /// Core availability logic shared by the tap-time and auto checks.

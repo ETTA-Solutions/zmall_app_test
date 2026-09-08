@@ -42,6 +42,7 @@ const BASE_URL_TEST =
     "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
 // const BASE_URL = BASE_URL_TEST;
+
 const BASE_URL = BASE_URL_TEST;
 
 // const ayat = "6a6b069856bef41124383c9e"`;
@@ -51,10 +52,6 @@ const BASE_URL = BASE_URL_TEST;
 ///
 /// This endpoint lives on the Odoo server, NOT the regular Zmall backend.
 const String kZmallOdooBaseUrl = "http://196.191.117.85:9070";
-
-/// JSON field on each item (from the store API) carrying the Odoo
-/// product.template id used by the availability endpoint.
-const String kZmallOdooProductIdField = "odoo_product_id";
 
 /// Maps Zmall store_id -> Odoo pos.config.zmall_branch_slug.
 /// Fill these in with the real store ids and their branch slugs.
@@ -77,9 +74,6 @@ bool isOdooStoreByName(String? storeName) {
   final name = storeName.toLowerCase();
   return kZmallBranchSlugs.values.any((slug) => name.contains(slug));
 }
-
-bool isOdooAvailabilityStore(String? storeId) =>
-    zmallBranchSlugForStore(storeId) != null;
 
 //
 
