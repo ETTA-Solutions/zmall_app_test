@@ -43,7 +43,7 @@ const BASE_URL_TEST =
 //
 // const BASE_URL = BASE_URL_TEST;
 
-const BASE_URL = BASE_URL_TEST;
+const BASE_URL = BASE_URL_PROD;
 
 // const ayat = "6a6b069856bef41124383c9e"`;
 // const mexico = "6a6b0c4a56bef41124383ca2";
