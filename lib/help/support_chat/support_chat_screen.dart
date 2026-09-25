@@ -374,12 +374,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           _sessionId = response['session_id'].toString();
         }
 
-        final botMessage =
-            response['message']?.toString() ??
-            response['response']?.toString() ??
-            response['reply']?.toString() ??
-            response['text']?.toString() ??
-            "I'm here to help with your ZMall orders, menus, and deliveries! 😊";
+        // ChatService has already normalized the reply into JSON
+        // (message + browse_results / products / stores).
+        final rawMessage = response['message']?.toString().trim() ?? '';
+        final botMessage = rawMessage.isNotEmpty
+            ? rawMessage
+            : "I'm here to help with your ZMall orders, menus, and deliveries! 😊";
 
         debugPrint("🚀 [CHAT SCREEN] Bot message: $botMessage");
 
@@ -494,27 +494,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           }
         }
 
-        // Check if backend returned store list in text format
-        final parsedStores = parseBackendStoreResponse(botMessage);
-        if (parsedStores.isNotEmpty) {
-          _addBotMessage(
-            botMessage,
-            storeMatches: parsedStores,
-            showCartAction: _shouldShowCartAction(botMessage),
-          );
-          if (mounted) setState(() => _isLoading = false);
-          return;
-        }
-
-        // Fallback to regular text message - but clean it up if it looks like a menu/list
-        debugPrint("🚀 [CHAT SCREEN] Using fallback text message");
-
-        // Check if the message looks like a raw menu/store list and clean it up
-        final cleanFallbackMessage = _cleanBackendResponse(botMessage);
-
         _addBotMessage(
-          cleanFallbackMessage,
-          showCartAction: _shouldShowCartAction(cleanFallbackMessage),
+          botMessage,
+          showCartAction: _shouldShowCartAction(botMessage),
         );
       } else {
         final errorMessage =
@@ -583,24 +565,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         lower.contains('basket') ||
         lower.contains('cart') ||
         lower.contains('checkout');
-  }
-
-  /// Cleans up backend responses that look like raw menu/store lists
-  /// Returns a clean, user-friendly message instead of the raw backend text
-  String _cleanBackendResponse(String message) {
-    // Check if message looks like a raw menu with bullet points and prices
-    if (message.contains('###') ||
-        message.contains('*') && message.contains('ETB')) {
-      return "Here's what I found for you. Please check the items below!";
-    }
-
-    // Check if message looks like a raw store list
-    if (message.contains('*') && message.contains('km')) {
-      return "Here are some stores near you. Please check the store list below!";
-    }
-
-    // Return original message if it doesn't look like raw data
-    return message;
   }
 
   void _scrollToBottom() {

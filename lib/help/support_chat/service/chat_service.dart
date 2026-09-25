@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/models/metadata.dart';
+import 'package:zmall/help/support_chat/service/chat_response_parser.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 
 class ChatService {
@@ -91,7 +92,12 @@ class ChatService {
         debugPrint("====Chat API Response Body: ${response.body}");
 
         if (response.statusCode == 200) {
-          return json.decode(response.body);
+          final decoded = json.decode(response.body);
+          if (decoded is Map) {
+            // Convert markdown replies into browse_results / stores JSON
+            return normalizeChatResponse(Map<String, dynamic>.from(decoded));
+          }
+          return {'message': decoded.toString()};
         }
 
         // Non-200 but the server responded — no point retrying
