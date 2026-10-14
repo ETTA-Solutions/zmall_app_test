@@ -165,7 +165,6 @@ class _MyAppState extends State<MyApp> {
 
     _deepLinkSub = appLinks.uriLinkStream.listen(_handleDeepLink);
 
-
     // Handle AI cart push notifications
     FirebaseMessaging.instance.getInitialMessage().then(_handleFcmMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleFcmMessage);
