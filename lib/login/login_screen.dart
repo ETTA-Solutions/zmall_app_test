@@ -718,6 +718,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<bool> _resumePendingAiCartIfAny() async {
     final cartId = await Service.consumePendingAiCart();
     if (cartId != null && mounted) {
+      debugPrint('[MCP CART] Resuming pending AI cart $cartId after login');
       Navigator.pushReplacementNamed(
         context,
         McpCartScreen.routeName,

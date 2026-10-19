@@ -72,21 +72,15 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _handleDeepLink(Uri uri) {
-    if (_shouldIgnoreDeepLink(uri)) return;
+    if (_shouldIgnoreDeepLink(uri)) {
+      debugPrint('[MCP DEEP LINK] Ignoring duplicate deep link: $uri');
+      return;
+    }
 
-    // debugPrint('=== DEEP LINK RECEIVED === $uri');
-    // debugPrint(
-    //   'DeepLink parts -> scheme:${uri.scheme} host:${uri.host} path:${uri.path}',
-    // );
-    // print('=== DEEP LINK RECEIVED === $uri');
-    // print(
-    //   'DeepLink parts -> scheme:${uri.scheme} host:${uri.host} path:${uri.path}',
-    // );
-
-    // Always log the incoming deep link so we can verify handling in logs
-    try {
-      // print('DEEP LINK HANDLER invoked with uri: $uri');
-    } catch (e) {}
+    debugPrint('\n╔═══════════════════════════════════════════════════════════');
+    debugPrint('║ [MCP DEEP LINK] Received URI: $uri');
+    debugPrint('║ scheme: ${uri.scheme} | host: ${uri.host} | path: ${uri.path}');
+    debugPrint('║ segments: ${uri.pathSegments}');
 
     String? cartId;
 
@@ -95,23 +89,29 @@ class _MyAppState extends State<MyApp> {
       if (uri.pathSegments.isNotEmpty) {
         cartId = uri.pathSegments.first;
       }
+      debugPrint('║ Pattern: zmall://cart/{cartId} -> cartId: $cartId');
     } else if ((uri.scheme == 'https' || uri.scheme == 'http') &&
         uri.pathSegments.length >= 2 &&
         uri.pathSegments[0] == 'ai-cart') {
       // https://testapp.zmall.et/ai-cart/{cartId} or https://zmall-web.vercel.app/ai-cart/{cartId}
       cartId = uri.pathSegments[1];
+      debugPrint('║ Pattern: /ai-cart/{cartId} -> cartId: $cartId');
     } else if ((uri.scheme == 'https' || uri.scheme == 'http') &&
         uri.pathSegments.length >= 3 &&
         uri.pathSegments[0] == 'go' &&
         uri.pathSegments[1] == 'cart') {
       // https://testapp.zmall.et/go/cart/{cartId}
       cartId = uri.pathSegments[2];
+      debugPrint('║ Pattern: /go/cart/{cartId} -> cartId: $cartId');
+    } else {
+      debugPrint('║ Pattern: No cart pattern matched.');
     }
+    debugPrint('╚═══════════════════════════════════════════════════════════\n');
 
     if (cartId != null && cartId.isNotEmpty) {
-      // print(
-      //   'DEEP LINK -> Scheduling McpCartScreen navigation for cartId=$cartId',
-      // );
+      debugPrint(
+        '[MCP DEEP LINK] Scheduling McpCartScreen navigation for cartId=$cartId',
+      );
       isProcessingDeepLinkCart = true;
       _scheduleCartNavigation(cartId);
     }
@@ -127,26 +127,40 @@ class _MyAppState extends State<MyApp> {
     // pushReplacement (8-second timer + SharedPreferences reads) has fully
     // settled. This avoids the Flutter debug "_debugLocked" / "deactivated
     // widget" race that fires when pushReplacement and pushNamed overlap.
+    debugPrint('[MCP DEEP LINK] Starting 3s delay before McpCartScreen navigation attempts...');
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted || pushed) return;
       _cartNavigationTimer = Timer.periodic(const Duration(milliseconds: 500), (
         timer,
       ) {
         if (!mounted || pushed || attempts++ >= 20) {
+          debugPrint(
+            '[MCP DEEP LINK] Navigation timer cancelled (attempts: $attempts, pushed: $pushed)',
+          );
           timer.cancel();
           _cartNavigationTimer = null;
           return;
         }
         final nav = navigatorKey.currentState;
-        if (nav == null) return;
+        if (nav == null) {
+          debugPrint(
+            '[MCP DEEP LINK] Attempt $attempts: navigatorKey.currentState is null, waiting...',
+          );
+          return;
+        }
         try {
+          debugPrint(
+            '[MCP DEEP LINK] Attempt $attempts: pushing McpCartScreen with cartId=$cartId',
+          );
           nav.pushNamed(McpCartScreen.routeName, arguments: {'cartId': cartId});
           pushed = true;
           timer.cancel();
           _cartNavigationTimer = null;
-          // print('DEEP LINK -> Navigated to McpCartScreen (attempt $attempts)');
+          debugPrint(
+            '[MCP DEEP LINK] Successfully navigated to McpCartScreen on attempt $attempts',
+          );
         } catch (e) {
-          // print('DEEP LINK -> Attempt $attempts failed: $e');
+          debugPrint('[MCP DEEP LINK] Attempt $attempts navigation failed: $e');
         }
       });
     });
@@ -158,22 +172,36 @@ class _MyAppState extends State<MyApp> {
 
     appLinks.getInitialLink().then((uri) {
       if (uri != null) {
+        debugPrint('[MCP DEEP LINK] Initial link retrieved on startup: $uri');
         _handleDeepLink(uri);
       }
     });
 
-    _deepLinkSub = appLinks.uriLinkStream.listen(_handleDeepLink);
+    _deepLinkSub = appLinks.uriLinkStream.listen((uri) {
+      debugPrint('[MCP DEEP LINK] uriLinkStream emitted: $uri');
+      _handleDeepLink(uri);
+    });
 
     // Handle AI cart push notifications
-    FirebaseMessaging.instance.getInitialMessage().then(_handleFcmMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleFcmMessage);
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) {
+        debugPrint('[MCP FCM] Initial FCM message on launch: ${message.data}');
+        _handleFcmMessage(message);
+      }
+    });
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      debugPrint('[MCP FCM] Notification opened app: ${message.data}');
+      _handleFcmMessage(message);
+    });
   }
 
   void _handleFcmMessage(RemoteMessage? message) {
     if (message == null) return;
+    debugPrint('[MCP FCM] Processing FCM message data: ${message.data}');
     final type = message.data['type'];
     final cartId = message.data['cart_id'];
     if (type == 'ai_cart' && cartId != null && cartId.isNotEmpty) {
+      debugPrint('[MCP FCM] Valid AI cart notification detected. Scheduling McpCartScreen navigation for cartId=$cartId');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         navigatorKey.currentState?.pushNamed(
           McpCartScreen.routeName,

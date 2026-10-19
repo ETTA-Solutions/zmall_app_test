@@ -887,12 +887,19 @@ class Service {
         : jsonDecode(pendingRaw.toString());
     final savedAt = pending['saved_at'] as int? ?? 0;
     final ageMs = DateTime.now().millisecondsSinceEpoch - savedAt;
+    final cartId = pending['cart_id'] as String?;
 
     await Service.remove('pending_ai_cart');
 
     if (ageMs < 2 * 60 * 60 * 1000) {
-      return pending['cart_id'] as String?;
+      debugPrint(
+        '[MCP CART] Consumed pending AI cart: $cartId (${ageMs ~/ 1000}s old)',
+      );
+      return cartId;
     }
+    debugPrint(
+      '[MCP CART] Expired pending AI cart discarded: $cartId (${ageMs ~/ 1000}s old)',
+    );
     return null;
   }
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:encrypt/encrypt.dart' as Encrypt;
@@ -27,7 +28,8 @@ const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 
 // Ethiopia test
 //  // const BASE_URL_TEST = "http://196.189.44.49:7000"; //test
-//  // const BASE_URL_TEST = "https://testapp.zmall.et"; //Eth new test.  the current test domain
+const BASE_URL_TEST_Old =
+    "https://testapp.zmall.et"; //Eth new test.  the current test domain
 //  // Blen
 //  // const BASE_URL_TEST = "http://196.189.124.132:8000"; //test (blen)
 //  // const new_test_zmall = "http://196.189.126.150:8002"; // new test blen
@@ -37,10 +39,11 @@ const BASE_URL_PROD = "https://app.zmall.et"; //Eth new domain
 // const BASE_URL = kDebugMode ? BASE_URL_TEST : BASE_URL_PROD;
 //
 
-// const BASE_URL_TEST ="https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
+const BASE_URL_TEST =
+    "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
 // const BASE_URL = BASE_URL_TEST;
-const BASE_URL = BASE_URL_PROD;
+const BASE_URL = BASE_URL_TEST_Old;
 
 //
 String appName = "ZMall";

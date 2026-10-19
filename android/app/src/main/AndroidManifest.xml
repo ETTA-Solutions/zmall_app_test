@@ -101,6 +101,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/go/cart" />
                 <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/cart" />
             </intent-filter>
             <!-- https://zmall-web.vercel.app/ai-cart/{cartId} — Vercel web AI cart link -->

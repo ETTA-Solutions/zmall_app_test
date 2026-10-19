@@ -28,14 +28,17 @@ class _McpCartScreenState extends State<McpCartScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[MCP CART] McpCartScreen initialized for cartId: ${widget.cartId}');
     bridgeCart();
   }
 
   Future<void> bridgeCart() async {
     try {
+      debugPrint('[MCP CART] bridgeCart() starting for cartId: ${widget.cartId}');
       final userRaw = await Service.read('user');
 
       if (userRaw == null) {
+        debugPrint('[MCP CART] No user session found. Storing pending_ai_cart and redirecting to login.');
         await Service.save('pending_ai_cart', {
           'cart_id': widget.cartId,
           'saved_at': DateTime.now().millisecondsSinceEpoch,
@@ -48,6 +51,11 @@ class _McpCartScreenState extends State<McpCartScreen> {
       }
 
       final user = userRaw is Map ? userRaw : jsonDecode(userRaw.toString());
+      final userId = user['user']?['_id'] ?? user['_id'] ?? '';
+      final serverToken =
+          user['user']?['server_token'] ?? user['server_token'] ?? '';
+
+      debugPrint('[MCP CART] User authenticated: userId=$userId');
 
       if (mounted) {
         setState(() {
@@ -57,46 +65,47 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
       final uri = Uri.parse('$BASE_URL/api/ai/cart/${widget.cartId}');
 
-      // DEBUG: print credentials + cartId so you can test deeplinks manually
-      // print('\n');
-      // print('╔═══════════════════════════════════════════════════════════');
-      // print('║  DEEPLINK DEBUG — McpCartScreen.bridgeCart()');
-      // print('║  cartId (from deeplink) : ${widget.cartId}');
-      // print('║  user_id                : ${user['user']['_id']}');
-      // print('║  server_token           : ${user['user']['server_token']}');
-      // print('║  request URL            : $uri');
-      // print('║');
-      // print('║  Test deeplink via adb:');
-      // print(
-      //   '║  adb shell am start -a android.intent.action.VIEW -d "zmall://cart/${widget.cartId}"',
-      // );
-      // print('╚═══════════════════════════════════════════════════════════\n');
+      debugPrint('\n╔═══════════════════════════════════════════════════════════');
+      debugPrint('║  [MCP CART REQUEST] McpCartScreen.bridgeCart()');
+      debugPrint('║  cartId (from deeplink) : ${widget.cartId}');
+      debugPrint('║  user_id                : $userId');
+      debugPrint(
+        '║  server_token           : ${serverToken.isNotEmpty ? (serverToken.toString().length > 8 ? "${serverToken.toString().substring(0, 8)}..." : "present") : "EMPTY"}',
+      );
+      debugPrint('║  request URL            : $uri');
+      debugPrint('║');
+      debugPrint('║  Test deeplink via adb:');
+      debugPrint(
+        '║  adb shell am start -a android.intent.action.VIEW -d "zmall://cart/${widget.cartId}"',
+      );
+      debugPrint('╚═══════════════════════════════════════════════════════════\n');
 
       final response = await http
           .get(
             uri,
             headers: {
-              'server_token': user['user']['server_token']?.toString() ?? '',
-              'user_id': user['user']['_id']?.toString() ?? '',
+              'server_token': serverToken.toString(),
+              'user_id': userId.toString(),
             },
           )
           .timeout(const Duration(seconds: 15));
       final data = jsonDecode(response.body);
 
-      // DEBUG: print full API response
-      // print('\n');
-      // print('╔═══════════════════════════════════════════════════════════');
-      // print('║  DEEPLINK API RESPONSE — /api/ai/cart/${widget.cartId}');
-      // print('║  status_code : ${response.statusCode}');
-      // print('║  success     : ${data['success']}');
-      // print('║  store_id    : ${data['store_id']}');
-      // print('║  store_name  : ${data['store_name']}');
-      // print('║  items count : ${(data['items'] as List?)?.length ?? 0}');
-      // print('║  error       : ${data['error']}');
-      // print('║  raw body    : ${response.body}');
-      // print('╚═══════════════════════════════════════════════════════════\n');
+      debugPrint('\n╔═══════════════════════════════════════════════════════════');
+      debugPrint('║  [MCP CART RESPONSE] /api/ai/cart/${widget.cartId}');
+      debugPrint('║  status_code : ${response.statusCode}');
+      debugPrint('║  success     : ${data['success']}');
+      debugPrint('║  store_id    : ${data['store_id']}');
+      debugPrint('║  store_name  : ${data['store_name']}');
+      debugPrint('║  items count : ${(data['items'] as List?)?.length ?? 0}');
+      debugPrint('║  error       : ${data['error']}');
+      debugPrint('║  raw body    : ${response.body}');
+      debugPrint('╚═══════════════════════════════════════════════════════════\n');
 
       if (response.statusCode == 404 || data['success'] != true) {
+        debugPrint(
+          '[MCP CART] Cart retrieval failed: status=${response.statusCode}, error=${data['error']}',
+        );
         if (mounted) {
           setState(() {
             error = data['error'] ?? 'Cart not found or expired.';
@@ -126,6 +135,10 @@ class _McpCartScreenState extends State<McpCartScreen> {
           )
           .toList();
 
+      debugPrint(
+        '[MCP CART] Mapped ${items.length} items for store: "$storeName" ($storeId)',
+      );
+
       final existingCartRaw = await Service.read('cart');
 
       if (existingCartRaw != null) {
@@ -141,6 +154,9 @@ class _McpCartScreenState extends State<McpCartScreen> {
         if (existingItems.isNotEmpty &&
             existingStoreId != null &&
             existingStoreId != storeId) {
+          debugPrint(
+            '[MCP CART] Store conflict detected: existingStoreId=$existingStoreId vs newStoreId=$storeId',
+          );
           if (!mounted) return;
 
           final replace = await showConflictDialog(
@@ -148,6 +164,8 @@ class _McpCartScreenState extends State<McpCartScreen> {
                 existingCart['store_name']?.toString() ?? 'another store',
             newStoreName: storeName,
           );
+
+          debugPrint('[MCP CART] User conflict dialog choice: replace=$replace');
 
           if (!mounted) return;
 
@@ -165,11 +183,12 @@ class _McpCartScreenState extends State<McpCartScreen> {
         items: items,
         storeLocation: storeLocation,
       );
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('[MCP CART ERROR] Exception in bridgeCart: $e\n$stack');
       isProcessingDeepLinkCart = false;
       if (mounted) {
         setState(() {
-          error = 'Could not load cart. Please check your connection.';
+          error = 'Could not load cart: $e';
         });
       }
     }
@@ -219,6 +238,9 @@ class _McpCartScreenState extends State<McpCartScreen> {
       'is_laundry_service': false,
     };
 
+    debugPrint(
+      '[MCP CART] Saving cart to local storage with ${items.length} items for "$storeName"...',
+    );
     await Service.save('cart', cartData);
 
     final savedCartRaw = await Service.read('cart');
@@ -231,7 +253,14 @@ class _McpCartScreenState extends State<McpCartScreen> {
         (savedCart['store_id']?.toString().isNotEmpty ?? false);
     final hasOrderDetails = savedCart is Map && savedCart['items'] is List;
 
+    debugPrint(
+      '[MCP CART] Verification: hasStoreId=$hasStoreId, hasOrderDetails=$hasOrderDetails',
+    );
+
     if (!hasStoreId || !hasOrderDetails) {
+      debugPrint(
+        '[MCP CART ERROR] Cart verification failed! Saved cart data: $savedCart',
+      );
       if (mounted) {
         setState(() {
           error = 'Cart verification failed. Please try again.';
@@ -242,14 +271,23 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
     if (!mounted) return;
 
+    debugPrint(
+      '[MCP CART] Cart successfully verified and saved. Navigating to CartScreen.',
+    );
     _replaceRoute(CartScreen.routeName);
   }
 
   void _replaceRoute(String routeName) {
-    if (_didNavigate) return;
+    if (_didNavigate) {
+      debugPrint(
+        '[MCP CART] Already navigated. Ignoring duplicate call to _replaceRoute($routeName)',
+      );
+      return;
+    }
     _didNavigate = true;
     isProcessingDeepLinkCart = false;
 
+    debugPrint('[MCP CART] Replacing route with: $routeName');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       navigatorKey.currentState?.pushNamedAndRemoveUntil(
         routeName,
