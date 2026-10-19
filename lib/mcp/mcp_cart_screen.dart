@@ -95,32 +95,71 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
       debugPrint('\n╔═══════════════════════════════════════════════════════════');
       debugPrint('║  [MCP CART RESPONSE] /api/ai/cart/${widget.cartId}');
-      debugPrint('║  status_code : ${response.statusCode}');
-      debugPrint('║  success     : ${data['success']}');
-      debugPrint('║  store_id    : ${data['store_id']}');
-      debugPrint('║  store_name  : ${data['store_name']}');
-      debugPrint('║  items count : ${(data['items'] as List?)?.length ?? 0}');
-      debugPrint('║  error       : ${data['error']}');
-      debugPrint('║  raw body    : ${response.body}');
+      debugPrint('║  [MCP CART] status_code : ${response.statusCode}');
+      debugPrint('║  [MCP CART] success     : ${data is Map ? data['success'] : null}');
+      debugPrint('║  [MCP CART] store_id    : ${data is Map ? (data['store_id'] ?? data['cart']?['store_id']) : null}');
+      debugPrint('║  [MCP CART] store_name  : ${data is Map ? (data['store_name'] ?? data['cart']?['store_name']) : null}');
+      debugPrint('║  [MCP CART] error       : ${data is Map ? data['error'] : null}');
+      debugPrint('║  [MCP CART] raw body    : ${response.body}');
       debugPrint('╚═══════════════════════════════════════════════════════════\n');
 
-      if (response.statusCode == 404 || data['success'] != true) {
+      if (response.statusCode == 404 || (data is Map && data['success'] == false)) {
         debugPrint(
-          '[MCP CART] Cart retrieval failed: status=${response.statusCode}, error=${data['error']}',
+          '[MCP CART] Cart retrieval failed: status=${response.statusCode}, error=${data is Map ? data['error'] : 'Unknown error'}',
         );
         if (mounted) {
           setState(() {
-            error = data['error'] ?? 'Cart not found or expired.';
+            error = (data is Map ? data['error'] : null) ?? 'Cart not found or expired.';
           });
         }
         return;
       }
 
-      final storeId = data['store_id']?.toString() ?? '';
-      final storeName = data['store_name']?.toString() ?? '';
-      final storeLocation = data['store_location'];
+      if (data is! Map) {
+        debugPrint('[MCP CART] Invalid response structure: $data');
+        if (mounted) {
+          setState(() {
+            error = 'Invalid cart response received.';
+          });
+        }
+        return;
+      }
 
-      final items = (data['items'] as List).map((i) {
+      final storeId = (data['store_id'] ?? data['cart']?['store_id'] ?? data['data']?['store_id'])?.toString() ?? '';
+      final storeName = (data['store_name'] ?? data['cart']?['store_name'] ?? data['data']?['store_name'])?.toString() ?? '';
+      final storeLocation = data['store_location'] ?? data['cart']?['store_location'] ?? data['data']?['store_location'];
+
+      dynamic rawItemsList = data['items'];
+      if (rawItemsList == null && data['cart'] is Map) {
+        rawItemsList = data['cart']['items'] ?? data['cart']['order_details'];
+      }
+      if (rawItemsList == null && data['data'] is Map) {
+        rawItemsList = data['data']['items'] ?? data['data']['order_details'];
+      }
+      if (rawItemsList == null) {
+        rawItemsList = data['order_details'];
+      }
+
+      final List rawItems = (rawItemsList is List) ? rawItemsList : [];
+
+      final invoice = data['invoice'] ??
+          (data['cart'] is Map ? data['cart']['invoice'] : null) ??
+          (data['data'] is Map ? data['data']['invoice'] : null);
+
+      if (rawItems.isEmpty && invoice == null) {
+        debugPrint('[MCP CART] No items found in cart: $data');
+        if (mounted) {
+          setState(() {
+            error = data['error']?.toString() ??
+                data['message']?.toString() ??
+                'Cart has no items or has expired.';
+          });
+        }
+        return;
+      }
+
+      final items = rawItems.map((i) {
+        if (i is! Map) return <String, dynamic>{};
         List<dynamic> specs = [];
         if (i['specifications'] != null && i['specifications'] is List) {
           specs = List.from(i['specifications']);
@@ -135,27 +174,37 @@ class _McpCartScreenState extends State<McpCartScreen> {
               specGroup['list'] is List &&
               specGroup['list'].isNotEmpty) {
             bool hasDefault = specGroup['list'].any(
-              (option) => option['is_default_selected'] == true,
+              (option) => option is Map && option['is_default_selected'] == true,
             );
-            if (!hasDefault) {
+            if (!hasDefault && specGroup['list'][0] is Map) {
               specGroup['list'][0]['is_default_selected'] = true;
             }
           }
         }
 
+        final rawPrice = i['price'];
+        final double itemPrice = (rawPrice is num)
+            ? rawPrice.toDouble()
+            : (double.tryParse(rawPrice?.toString() ?? '0') ?? 0.0);
+
+        final rawQty = i['quantity'];
+        final int quantity = (rawQty is num)
+            ? rawQty.toInt()
+            : (int.tryParse(rawQty?.toString() ?? '1') ?? 1);
+
         return {
-          '_id': i['item_id'] ?? i['_id'] ?? '',
-          'item_name': i['name'] ?? i['item_name'] ?? '',
-          'price': (i['price'] as num).toDouble(),
-          'quantity': i['quantity'] ?? 1,
+          '_id': (i['item_id'] ?? i['_id'] ?? '').toString(),
+          'item_name': (i['name'] ?? i['item_name'] ?? '').toString(),
+          'price': itemPrice,
+          'quantity': quantity,
           'specification': specs,
-          'note_for_item': i['note_for_item'] ?? '',
+          'note_for_item': (i['note_for_item'] ?? '').toString(),
           // image_url from the AI cart API can be [] — normalise to String.
           'image_url': (i['image_url'] is List || i['image_url'] == null)
               ? ''
               : i['image_url'].toString(),
         };
-      }).toList();
+      }).where((element) => element.isNotEmpty).toList();
 
       debugPrint(
         '[MCP CART] Mapped ${items.length} items for store: "$storeName" ($storeId)',
@@ -223,7 +272,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
     required String storeName,
     required List items,
     required dynamic storeLocation,
-    Map<String, dynamic>? data,
+    Map? data,
   }) async {
     if (mounted) {
       setState(() {
@@ -334,17 +383,18 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
     if (!mounted) return;
 
-    final invoice = data?['invoice'];
+    final invoice = data?['invoice'] ?? (data?['cart'] is Map ? data!['cart']['invoice'] : null);
     final bool canFastTrackToKifiya = (widget.target == 'kifiya' || invoice != null) &&
         invoice != null &&
+        invoice is Map &&
         invoice['order_payment_id'] != null &&
         invoice['order_payment_unique_id'] != null;
 
     if (canFastTrackToKifiya) {
-      final double price = (invoice['user_pay_payment'] as num?)?.toDouble() ?? 0.0;
+      final double price = (num.tryParse(invoice['user_pay_payment']?.toString() ?? invoice['total']?.toString() ?? '0') ?? 0.0).toDouble();
       final String paymentId = invoice['order_payment_id'].toString();
       final String uniqueId = invoice['order_payment_unique_id'].toString();
-      final String vehicleId = data?['default_vehicle']?['_id']?.toString() ??
+      final String vehicleId = (data?['default_vehicle'] is Map ? data!['default_vehicle']['_id'] : null)?.toString() ??
           data?['vehicle_id']?.toString() ??
           '';
 

@@ -107,15 +107,29 @@ class _MyAppState extends State<MyApp> {
       // https://testapp.zmall.et/go/cart/{cartId}
       cartId = uri.pathSegments[2];
       debugPrint('║ Pattern: /go/cart/{cartId} -> cartId: $cartId');
+    } else if ((uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.pathSegments.length >= 2 &&
+        uri.pathSegments[0] == 'cart') {
+      // https://testapp.zmall.et/cart/{cartId}
+      cartId = uri.pathSegments[1];
+      debugPrint('║ Pattern: /cart/{cartId} -> cartId: $cartId');
     } else if (uri.queryParameters.containsKey('next')) {
-      // https://zmall-web.vercel.app/login?next=/ai-cart/{cartId}
+      // e.g. login?next=/go/cart/{cartId} or ?next=/ai-cart/{cartId}
       final nextPath = uri.queryParameters['next'] ?? '';
       final nextUri = Uri.tryParse(nextPath.startsWith('/') ? 'app://$nextPath' : nextPath);
-      if (nextUri != null &&
-          nextUri.pathSegments.length >= 2 &&
-          nextUri.pathSegments[0] == 'ai-cart') {
-        cartId = nextUri.pathSegments[1];
-        debugPrint('║ Pattern: ?next=/ai-cart/{cartId} -> cartId: $cartId');
+      if (nextUri != null) {
+        if (nextUri.pathSegments.length >= 2 && nextUri.pathSegments[0] == 'ai-cart') {
+          cartId = nextUri.pathSegments[1];
+          debugPrint('║ Pattern: ?next=/ai-cart/{cartId} -> cartId: $cartId');
+        } else if (nextUri.pathSegments.length >= 3 &&
+            nextUri.pathSegments[0] == 'go' &&
+            nextUri.pathSegments[1] == 'cart') {
+          cartId = nextUri.pathSegments[2];
+          debugPrint('║ Pattern: ?next=/go/cart/{cartId} -> cartId: $cartId');
+        } else if (nextUri.pathSegments.length >= 2 && nextUri.pathSegments[0] == 'cart') {
+          cartId = nextUri.pathSegments[1];
+          debugPrint('║ Pattern: ?next=/cart/{cartId} -> cartId: $cartId');
+        }
       }
     } else {
       debugPrint('║ Pattern: No cart pattern matched.');
