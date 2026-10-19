@@ -122,6 +122,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (data != null) {
       setState(() {
         cart = Cart.fromJson(data);
+        if (cart != null && cart!.isMcp) {
+          tip = 0.0;
+          tipTemp = 0.0;
+        }
         if (cart != null && cart!.destinationAddress?.name == "User Pickup") {
           selfPickup = true;
         }
@@ -242,6 +246,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } else {
       _getTotalDistance(cart);
     }
+  }
+
+  String _getDefaultMotorVehicleId() {
+    if (responseData != null &&
+        responseData['vehicles'] != null &&
+        responseData['vehicles'] is List &&
+        responseData['vehicles'].isNotEmpty) {
+      for (var v in responseData['vehicles']) {
+        final name = (v['name'] ?? '').toString().toLowerCase();
+        if (name.contains('motor') || name.contains('bike')) {
+          return v['_id'].toString();
+        }
+      }
+      return responseData['vehicles'][0]['_id'].toString();
+    }
+    return widget.vehicleId ?? '';
   }
 
   void _applyPromoCode() async {
@@ -417,6 +437,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         );
                         return;
                       }
+                      if (responseData['is_distance_alarm'] == true) {
+                        Service.showMessage(
+                          context: context,
+                          title:
+                              "This branch is too far from your location for delivery. Please select a closer branch.",
+                          error: true,
+                          duration: 4,
+                        );
+                        return;
+                      }
                       if (scheduledOrder) {
                         if (_scheduledDate != null) {
                           Navigator.push(
@@ -435,7 +465,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                       responseData['order_payment']['unique_id']
                                           .toString(),
                                   onlyCashless: onlyCashless,
-                                  vehicleId: responseData['vehicles'][0]['_id'],
+                                  vehicleId: _getDefaultMotorVehicleId(),
                                   userpickupWithSchedule:
                                       cart!.isSchedule && selfPickup
                                       ? true
@@ -479,7 +509,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 //     : selfPickup
                                 //         ? true
                                 //         : false,
-                                vehicleId: responseData['vehicles'][0]['_id'],
+                                vehicleId: _getDefaultMotorVehicleId(),
                                 userpickupWithSchedule:
                                     cart!.isSchedule && selfPickup
                                     ? true
@@ -1196,40 +1226,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                           //               .orderTime,
                                           //         ),
                                           //       ),
-                                          DetailsRow(
-                                            title: Provider.of<ZLanguage>(
-                                              context,
-                                            ).promoPayment,
-                                            subtitle: promoCodeApplied
-                                                ? "${Provider.of<ZMetaData>(context, listen: false).currency} -${promoCodeData['order_payment']['promo_payment'].toStringAsFixed(2)}"
-                                                : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['promo_payment'].toStringAsFixed(2)}",
-                                            onTap: () {
-                                              _showApplyPromoCodeWidget();
-                                            },
-                                          ),
-                                          SizedBox(
-                                            height:
-                                                getProportionateScreenHeight(
-                                                  kDefaultPadding / 3,
-                                                ),
-                                          ),
-
-                                          DetailsRow(
-                                            title: Provider.of<ZLanguage>(
-                                              context,
-                                            ).tip,
-                                            subtitle:
-                                                "${tip!.toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency}",
-                                            onTap: () {
-                                              _showTipWidget();
-                                            },
-                                          ),
-                                          SizedBox(
-                                            height:
-                                                getProportionateScreenHeight(
-                                                  kDefaultPadding / 3,
-                                                ),
-                                          ),
+                                          if (cart == null || !cart!.isMcp) ...[
+                                            DetailsRow(
+                                              title: Provider.of<ZLanguage>(
+                                                context,
+                                              ).promoPayment,
+                                              subtitle: promoCodeApplied
+                                                  ? "${Provider.of<ZMetaData>(context, listen: false).currency} -${promoCodeData['order_payment']['promo_payment'].toStringAsFixed(2)}"
+                                                  : "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_payment']['promo_payment'].toStringAsFixed(2)}",
+                                              onTap: () {
+                                                _showApplyPromoCodeWidget();
+                                              },
+                                            ),
+                                            SizedBox(
+                                              height:
+                                                  getProportionateScreenHeight(
+                                                    kDefaultPadding / 3,
+                                                  ),
+                                            ),
+                                            DetailsRow(
+                                              title: Provider.of<ZLanguage>(
+                                                context,
+                                              ).tip,
+                                              subtitle:
+                                                  "${tip!.toStringAsFixed(2)} ${Provider.of<ZMetaData>(context, listen: false).currency}",
+                                              onTap: () {
+                                                _showTipWidget();
+                                              },
+                                            ),
+                                            SizedBox(
+                                              height:
+                                                  getProportionateScreenHeight(
+                                                    kDefaultPadding / 3,
+                                                  ),
+                                            ),
+                                          ],
                                           if (_etaLow != null ||
                                               (aliexpressCart != null &&
                                                   aliexpressCart!

@@ -118,22 +118,42 @@ class _McpCartScreenState extends State<McpCartScreen> {
       final storeName = data['store_name']?.toString() ?? '';
       final storeLocation = data['store_location'];
 
-      final items = (data['items'] as List)
-          .map(
-            (i) => {
-              '_id': i['item_id'],
-              'item_name': i['name'],
-              'price': (i['price'] as num).toDouble(),
-              'quantity': i['quantity'],
-              'specification': [],
-              'note_for_item': '',
-              // image_url from the AI cart API can be [] — normalise to String.
-              'image_url': (i['image_url'] is List || i['image_url'] == null)
-                  ? ''
-                  : i['image_url'].toString(),
-            },
-          )
-          .toList();
+      final items = (data['items'] as List).map((i) {
+        List<dynamic> specs = [];
+        if (i['specifications'] != null && i['specifications'] is List) {
+          specs = List.from(i['specifications']);
+        } else if (i['specification'] != null && i['specification'] is List) {
+          specs = List.from(i['specification']);
+        }
+
+        // Auto-select one default size/specification if available
+        for (var specGroup in specs) {
+          if (specGroup is Map &&
+              specGroup['list'] != null &&
+              specGroup['list'] is List &&
+              specGroup['list'].isNotEmpty) {
+            bool hasDefault = specGroup['list'].any(
+              (option) => option['is_default_selected'] == true,
+            );
+            if (!hasDefault) {
+              specGroup['list'][0]['is_default_selected'] = true;
+            }
+          }
+        }
+
+        return {
+          '_id': i['item_id'] ?? i['_id'] ?? '',
+          'item_name': i['name'] ?? i['item_name'] ?? '',
+          'price': (i['price'] as num).toDouble(),
+          'quantity': i['quantity'] ?? 1,
+          'specification': specs,
+          'note_for_item': i['note_for_item'] ?? '',
+          // image_url from the AI cart API can be [] — normalise to String.
+          'image_url': (i['image_url'] is List || i['image_url'] == null)
+              ? ''
+              : i['image_url'].toString(),
+        };
+      }).toList();
 
       debugPrint(
         '[MCP CART] Mapped ${items.length} items for store: "$storeName" ($storeId)',
@@ -182,6 +202,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
         storeName: storeName,
         items: items,
         storeLocation: storeLocation,
+        data: data,
       );
     } catch (e, stack) {
       debugPrint('[MCP CART ERROR] Exception in bridgeCart: $e\n$stack');
@@ -200,6 +221,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
     required String storeName,
     required List items,
     required dynamic storeLocation,
+    Map<String, dynamic>? data,
   }) async {
     if (mounted) {
       setState(() {
@@ -218,17 +240,55 @@ class _McpCartScreenState extends State<McpCartScreen> {
     } else if (storeLocation is Map) {
       storeLocationMap = Map<String, dynamic>.from(storeLocation);
     } else {
-      storeLocationMap = {'lat': 0.0, 'long': 0.0};
+      storeLocationMap = {'lat': 9.010498, 'long': 38.761886};
+    }
+
+    // Ensure destination_address is mandatory and has valid coordinates
+    Map<String, dynamic> destAddress;
+    final rawDest = data?['destination_address'];
+    if (rawDest != null &&
+        rawDest is Map &&
+        rawDest['lat'] != null &&
+        (rawDest['lat'] as num) != 0) {
+      destAddress = {
+        'name': rawDest['name'] ?? 'Delivery Address',
+        'lat': (rawDest['lat'] as num).toDouble(),
+        'long': (rawDest['long'] as num).toDouble(),
+        'note': rawDest['note'] ?? '',
+      };
+    } else {
+      final userLocation = await Service.read('location');
+      if (userLocation != null &&
+          userLocation is Map &&
+          userLocation['latitude'] != null) {
+        destAddress = {
+          'name': userLocation['address'] ?? 'My Location',
+          'lat': (userLocation['latitude'] as num).toDouble(),
+          'long': (userLocation['longitude'] as num).toDouble(),
+          'note': '',
+        };
+      } else {
+        destAddress = {
+          'name': 'Store Delivery Zone',
+          'lat': storeLocationMap['lat'] != 0.0
+              ? storeLocationMap['lat']
+              : 9.010498,
+          'long': storeLocationMap['long'] != 0.0
+              ? storeLocationMap['long']
+              : 38.761886,
+          'note': '',
+        };
+      }
     }
 
     final cartData = {
-      'user_id': user['user']['_id'] ?? user['_id'] ?? '',
+      'user_id': user['user']?['_id'] ?? user['_id'] ?? '',
       'server_token':
-          user['user']['server_token'] ?? user['server_token'] ?? '',
+          user['user']?['server_token'] ?? user['server_token'] ?? '',
       'store_id': storeId,
       'store_name': storeName,
       'items': items,
-      'destination_address': {'name': '', 'lat': 0.0, 'long': 0.0, 'note': ''},
+      'destination_address': destAddress,
       'store_location': storeLocationMap,
       'is_schedule': false,
       'schedule_start': null,
@@ -236,6 +296,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
       'username': '',
       'phone': '',
       'is_laundry_service': false,
+      'is_mcp': true,
     };
 
     debugPrint(

@@ -300,7 +300,27 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
 
     if (data != null && data['success']) {
       extraItems = data['items'];
-      // debugPrint(storeID);
+      if (cart != null && cart!.items != null && extraItems is List) {
+        List<String> unavailableItemNames = [];
+        for (var cartItem in cart!.items!) {
+          final match = extraItems.firstWhere(
+            (e) => e['_id'] == cartItem.id || e['name'] == cartItem.itemName,
+            orElse: () => null,
+          );
+          if (match != null && match['is_available'] == false) {
+            unavailableItemNames.add(cartItem.itemName ?? 'Item');
+          }
+        }
+        if (unavailableItemNames.isNotEmpty && mounted) {
+          Service.showMessage(
+            context: context,
+            title:
+                "${unavailableItemNames.join(', ')} is currently unavailable. Please review your cart.",
+            error: true,
+            duration: 4,
+          );
+        }
+      }
     } else {
       setState(() {
         _loading = false;
