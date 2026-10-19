@@ -107,6 +107,16 @@ class _MyAppState extends State<MyApp> {
       // https://testapp.zmall.et/go/cart/{cartId}
       cartId = uri.pathSegments[2];
       debugPrint('║ Pattern: /go/cart/{cartId} -> cartId: $cartId');
+    } else if (uri.queryParameters.containsKey('next')) {
+      // https://zmall-web.vercel.app/login?next=/ai-cart/{cartId}
+      final nextPath = uri.queryParameters['next'] ?? '';
+      final nextUri = Uri.tryParse(nextPath.startsWith('/') ? 'app://$nextPath' : nextPath);
+      if (nextUri != null &&
+          nextUri.pathSegments.length >= 2 &&
+          nextUri.pathSegments[0] == 'ai-cart') {
+        cartId = nextUri.pathSegments[1];
+        debugPrint('║ Pattern: ?next=/ai-cart/{cartId} -> cartId: $cartId');
+      }
     } else {
       debugPrint('║ Pattern: No cart pattern matched.');
     }
