@@ -154,6 +154,14 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             }
           }
           vehicleId = vehicleList['vehicles'][selectedVehicle]['_id'];
+        } else {
+          Service.showMessage(
+            context: context,
+            title:
+                "Delivery is not available to this location. Please update your address.",
+            error: true,
+            duration: 4,
+          );
         }
         // debugPrint("selectedVehicle after $selectedVehicle");
         // debugPrint("selected vehicle id  after ${vehicleId}");

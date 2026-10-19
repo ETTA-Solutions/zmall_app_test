@@ -437,6 +437,30 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                 //   });
                                 // } else {
 
+                                final minPrice = (storeDetail != null &&
+                                        storeDetail['store'] != null)
+                                    ? ((storeDetail['store']
+                                                ['min_order_price'] ??
+                                            storeDetail['store']
+                                                ['minimum_order_price'] ??
+                                            storeDetail['store']
+                                                ['min_order'] ??
+                                            0) as num)
+                                        .toDouble()
+                                    : 0.0;
+                                if (minPrice > 0 && price < minPrice) {
+                                  final diff =
+                                      (minPrice - price).toStringAsFixed(0);
+                                  Service.showMessage(
+                                    context: context,
+                                    title:
+                                        "${storeName.isNotEmpty ? storeName : 'This store'} requires a minimum order of ${minPrice.toInt()} ETB (You need $diff ETB more).",
+                                    error: true,
+                                    duration: 4,
+                                  );
+                                  return;
+                                }
+
                                 if (!isLocationServicesEnabled) {
                                   Service.showMessage(
                                     context: context,

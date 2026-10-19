@@ -447,6 +447,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         );
                         return;
                       }
+                      if (responseData['vehicles'] == null ||
+                          (responseData['vehicles'] is List &&
+                              responseData['vehicles'].isEmpty)) {
+                        Service.showMessage(
+                          context: context,
+                          title:
+                              "Delivery is not available to this location. Please update your address.",
+                          error: true,
+                          duration: 4,
+                        );
+                        return;
+                      }
                       if (scheduledOrder) {
                         if (_scheduledDate != null) {
                           Navigator.push(

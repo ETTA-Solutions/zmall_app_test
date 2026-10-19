@@ -332,10 +332,68 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
     if (!mounted) return;
 
+    final invoice = data?['invoice'];
+    final bool canFastTrackToKifiya = (widget.target == 'kifiya' || invoice != null) &&
+        invoice != null &&
+        invoice['order_payment_id'] != null &&
+        invoice['order_payment_unique_id'] != null;
+
+    if (canFastTrackToKifiya) {
+      final double price = (invoice['user_pay_payment'] as num?)?.toDouble() ?? 0.0;
+      final String paymentId = invoice['order_payment_id'].toString();
+      final String uniqueId = invoice['order_payment_unique_id'].toString();
+      final String vehicleId = data?['default_vehicle']?['_id']?.toString() ??
+          data?['vehicle_id']?.toString() ??
+          '';
+
+      debugPrint(
+        '[MCP CART] Fast-track enabled: Navigating directly to KifiyaScreen in 1 second (price: $price, paymentId: $paymentId, uniqueId: $uniqueId)',
+      );
+      _navigateToKifiya(
+        price: price,
+        orderPaymentId: paymentId,
+        orderPaymentUniqueId: uniqueId,
+        vehicleId: vehicleId,
+      );
+      return;
+    }
+
     debugPrint(
       '[MCP CART] Cart successfully verified and saved. Navigating to CartScreen.',
     );
     _replaceRoute(CartScreen.routeName);
+  }
+
+  void _navigateToKifiya({
+    required double price,
+    required String orderPaymentId,
+    required String orderPaymentUniqueId,
+    required String vehicleId,
+  }) {
+    if (_didNavigate) {
+      debugPrint(
+        '[MCP CART] Already navigated. Ignoring duplicate call to _navigateToKifiya()',
+      );
+      return;
+    }
+    _didNavigate = true;
+    isProcessingDeepLinkCart = false;
+
+    debugPrint('[MCP CART] Navigating directly to KifiyaScreen');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        KifiyaScreen.routeName,
+        (route) => false,
+        arguments: {
+          'price': price,
+          'orderPaymentId': orderPaymentId,
+          'orderPaymentUniqueId': orderPaymentUniqueId,
+          'vehicleId': vehicleId.isNotEmpty ? vehicleId : null,
+          'onlyCashless': false,
+          'userpickupWithSchedule': false,
+        },
+      );
+    });
   }
 
   void _replaceRoute(String routeName) {
@@ -491,6 +549,8 @@ class _McpCartScreenState extends State<McpCartScreen> {
   @override
   Widget build(BuildContext context) {
     if (error != null) {
+      final isExpired = error!.toLowerCase().contains('expire') ||
+          error!.toLowerCase().contains('not found');
       return _buildStatusShell(
         accentColor: kSecondaryColor,
         backgroundTint: Colors.white,
@@ -500,9 +560,9 @@ class _McpCartScreenState extends State<McpCartScreen> {
           height: 40,
           fit: BoxFit.cover,
         ),
-        title: 'Cart Unavailable',
-        message: error!.contains('not found')
-            ? 'Cart not found. Please try again.'
+        title: isExpired ? 'Order Link Expired' : 'Cart Unavailable',
+        message: isExpired
+            ? 'This order link has expired or is no longer available. Please start a fresh order.'
             : error!,
         actions: [
           SizedBox(
@@ -518,27 +578,35 @@ class _McpCartScreenState extends State<McpCartScreen> {
                 ),
               ),
               onPressed: () {
-                setState(() => error = null);
-                bridgeCart();
+                isProcessingDeepLinkCart = false;
+                Navigator.pushReplacementNamed(context, '/home');
               },
-              child: const Text('Try Again'),
+              child: const Text(
+                'Start Fresh Order',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: kPrimaryColor,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: kBlackColor,
+                side: BorderSide(color: Colors.grey.shade300),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
               onPressed: () {
+                isProcessingDeepLinkCart = false;
                 Navigator.pushReplacementNamed(context, '/home');
               },
-              child: const Text('Browse Stores'),
+              child: const Text(
+                'Go to Home',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ),
         ],

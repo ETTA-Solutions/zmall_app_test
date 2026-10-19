@@ -48,8 +48,18 @@ final Map<String, WidgetBuilder> routes = {
   LocationScreen.routeName: (context) => LocationScreen(),
   CheckoutScreen.routeName: (context) => CheckoutScreen(),
   ReportScreen.routeName: (context) => ReportScreen(),
-  KifiyaScreen.routeName: (context) => KifiyaScreen(),
-  OrderHistoryDetail.routeName: (context) => OrderHistoryDetail(),
+  KifiyaScreen.routeName: (context) {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    return KifiyaScreen(
+      price: (args?['price'] as num?)?.toDouble() ?? 0.0,
+      orderPaymentId: args?['orderPaymentId']?.toString() ?? '',
+      orderPaymentUniqueId: args?['orderPaymentUniqueId']?.toString() ?? '',
+      vehicleId: args?['vehicleId']?.toString(),
+      onlyCashless: args?['onlyCashless'] ?? false,
+      userpickupWithSchedule: args?['userpickupWithSchedule'] ?? false,
+    );
+  },
   OrderRating.routeName: (context) => OrderRating(),
   RegisterScreen.routeName: (context) => RegisterScreen(),
   ProviderLocation.routeName: (context) => ProviderLocation(),
