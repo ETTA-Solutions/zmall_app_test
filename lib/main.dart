@@ -77,9 +77,13 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
-    debugPrint('\n╔═══════════════════════════════════════════════════════════');
+    debugPrint(
+      '\n╔═══════════════════════════════════════════════════════════',
+    );
     debugPrint('║ [MCP DEEP LINK] Received URI: $uri');
-    debugPrint('║ scheme: ${uri.scheme} | host: ${uri.host} | path: ${uri.path}');
+    debugPrint(
+      '║ scheme: ${uri.scheme} | host: ${uri.host} | path: ${uri.path}',
+    );
     debugPrint('║ segments: ${uri.pathSegments}');
 
     String? cartId;
@@ -106,7 +110,9 @@ class _MyAppState extends State<MyApp> {
     } else {
       debugPrint('║ Pattern: No cart pattern matched.');
     }
-    debugPrint('╚═══════════════════════════════════════════════════════════\n');
+    debugPrint(
+      '╚═══════════════════════════════════════════════════════════\n',
+    );
 
     if (cartId != null && cartId.isNotEmpty) {
       debugPrint(
@@ -127,7 +133,9 @@ class _MyAppState extends State<MyApp> {
     // pushReplacement (8-second timer + SharedPreferences reads) has fully
     // settled. This avoids the Flutter debug "_debugLocked" / "deactivated
     // widget" race that fires when pushReplacement and pushNamed overlap.
-    debugPrint('[MCP DEEP LINK] Starting 3s delay before McpCartScreen navigation attempts...');
+    debugPrint(
+      '[MCP DEEP LINK] Starting 3s delay before McpCartScreen navigation attempts...',
+    );
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted || pushed) return;
       _cartNavigationTimer = Timer.periodic(const Duration(milliseconds: 500), (
@@ -201,7 +209,9 @@ class _MyAppState extends State<MyApp> {
     final type = message.data['type'];
     final cartId = message.data['cart_id'];
     if (type == 'ai_cart' && cartId != null && cartId.isNotEmpty) {
-      debugPrint('[MCP FCM] Valid AI cart notification detected. Scheduling McpCartScreen navigation for cartId=$cartId');
+      debugPrint(
+        '[MCP FCM] Valid AI cart notification detected. Scheduling McpCartScreen navigation for cartId=$cartId',
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) {
         navigatorKey.currentState?.pushNamed(
           McpCartScreen.routeName,
