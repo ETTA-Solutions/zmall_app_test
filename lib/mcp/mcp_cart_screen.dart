@@ -285,8 +285,8 @@ class _McpCartScreenState extends State<McpCartScreen> {
     if (storeLocation is List && storeLocation.length >= 2) {
       // MongoDB GeoJSON is [longitude, latitude], so index 1 is lat, 0 is long
       storeLocationMap = {
-        'lat': (storeLocation[1] as num).toDouble(),
-        'long': (storeLocation[0] as num).toDouble(),
+        'lat': (num.tryParse(storeLocation[1]?.toString() ?? '9.010498') ?? 9.010498).toDouble(),
+        'long': (num.tryParse(storeLocation[0]?.toString() ?? '38.761886') ?? 38.761886).toDouble(),
       };
     } else if (storeLocation is Map) {
       storeLocationMap = Map<String, dynamic>.from(storeLocation);
@@ -297,25 +297,26 @@ class _McpCartScreenState extends State<McpCartScreen> {
     // Ensure destination_address is mandatory and has valid coordinates
     Map<String, dynamic> destAddress;
     final rawDest = data?['destination_address'];
-    if (rawDest != null &&
-        rawDest is Map &&
-        rawDest['lat'] != null &&
-        (rawDest['lat'] as num) != 0) {
+    final rawDestLat = num.tryParse(rawDest is Map ? (rawDest['lat']?.toString() ?? '0') : '0') ?? 0.0;
+    final rawDestLong = num.tryParse(rawDest is Map ? (rawDest['long']?.toString() ?? '0') : '0') ?? 0.0;
+
+    if (rawDest != null && rawDest is Map && rawDestLat != 0.0) {
       destAddress = {
         'name': rawDest['name'] ?? 'Delivery Address',
-        'lat': (rawDest['lat'] as num).toDouble(),
-        'long': (rawDest['long'] as num).toDouble(),
+        'lat': rawDestLat.toDouble(),
+        'long': rawDestLong.toDouble(),
         'note': rawDest['note'] ?? '',
       };
     } else {
       final userLocation = await Service.read('location');
-      if (userLocation != null &&
-          userLocation is Map &&
-          userLocation['latitude'] != null) {
+      final userLat = num.tryParse(userLocation is Map ? (userLocation['latitude']?.toString() ?? '0') : '0') ?? 0.0;
+      final userLong = num.tryParse(userLocation is Map ? (userLocation['longitude']?.toString() ?? '0') : '0') ?? 0.0;
+
+      if (userLocation != null && userLocation is Map && userLat != 0.0) {
         destAddress = {
           'name': userLocation['address'] ?? 'My Location',
-          'lat': (userLocation['latitude'] as num).toDouble(),
-          'long': (userLocation['longitude'] as num).toDouble(),
+          'lat': userLat.toDouble(),
+          'long': userLong.toDouble(),
           'note': '',
         };
       } else {
