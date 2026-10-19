@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../cart/cart_screen.dart';
+import '../kifiya/kifiya_screen.dart';
 import '../login/login_screen.dart';
 import '../services/service.dart';
 import '../utils/constants.dart';
@@ -13,8 +14,9 @@ class McpCartScreen extends StatefulWidget {
   static const String routeName = '/mcp-cart';
 
   final String cartId;
+  final String? target;
 
-  const McpCartScreen({super.key, required this.cartId});
+  const McpCartScreen({super.key, required this.cartId, this.target});
 
   @override
   State<McpCartScreen> createState() => _McpCartScreenState();

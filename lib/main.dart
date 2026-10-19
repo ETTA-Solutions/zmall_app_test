@@ -124,16 +124,24 @@ class _MyAppState extends State<MyApp> {
       '╚═══════════════════════════════════════════════════════════\n',
     );
 
+    String? target =
+        uri.queryParameters['target'] ?? uri.queryParameters['flow'];
+    if (target == null && uri.queryParameters.containsKey('next')) {
+      final nextUri = Uri.tryParse(uri.queryParameters['next'] ?? '');
+      target = nextUri?.queryParameters['target'] ??
+          nextUri?.queryParameters['flow'];
+    }
+
     if (cartId != null && cartId.isNotEmpty) {
       debugPrint(
-        '[MCP DEEP LINK] Scheduling McpCartScreen navigation for cartId=$cartId',
+        '[MCP DEEP LINK] Scheduling McpCartScreen navigation for cartId=$cartId, target=$target',
       );
       isProcessingDeepLinkCart = true;
-      _scheduleCartNavigation(cartId);
+      _scheduleCartNavigation(cartId, target: target);
     }
   }
 
-  void _scheduleCartNavigation(String cartId) {
+  void _scheduleCartNavigation(String cartId, {String? target}) {
     _cartNavigationTimer?.cancel();
     _cartNavigationTimer = null;
     int attempts = 0;
@@ -168,9 +176,12 @@ class _MyAppState extends State<MyApp> {
         }
         try {
           debugPrint(
-            '[MCP DEEP LINK] Attempt $attempts: pushing McpCartScreen with cartId=$cartId',
+            '[MCP DEEP LINK] Attempt $attempts: pushing McpCartScreen with cartId=$cartId, target=$target',
           );
-          nav.pushNamed(McpCartScreen.routeName, arguments: {'cartId': cartId});
+          nav.pushNamed(
+            McpCartScreen.routeName,
+            arguments: {'cartId': cartId, 'target': target},
+          );
           pushed = true;
           timer.cancel();
           _cartNavigationTimer = null;

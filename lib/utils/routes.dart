@@ -78,8 +78,11 @@ final Map<String, WidgetBuilder> routes = {
   McpCartScreen.routeName: (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
     final cartId = (args is Map) ? args['cartId']?.toString() ?? '' : '';
-    debugPrint('[MCP CART ROUTE] McpCartScreen route invoked with cartId: $cartId');
-    return McpCartScreen(cartId: cartId);
+    final target = (args is Map) ? args['target']?.toString() : null;
+    debugPrint(
+      '[MCP CART ROUTE] McpCartScreen route invoked with cartId: $cartId, target: $target',
+    );
+    return McpCartScreen(cartId: cartId, target: target);
   },
   ServiceLogsScreen.routeName: (context) => ServiceLogsScreen(),
   // SupportChatScreen.routeName: (context) => SupportChatScreen(),
