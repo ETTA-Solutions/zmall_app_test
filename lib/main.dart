@@ -52,6 +52,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final AppLinks appLinks = AppLinks();
   StreamSubscription<Uri>? _deepLinkSub;
+  Timer? _cartDelayTimer;
   Timer? _cartNavigationTimer;
   String? _lastHandledDeepLink;
   DateTime? _lastHandledDeepLinkAt;
@@ -62,7 +63,7 @@ class _MyAppState extends State<MyApp> {
 
     if (_lastHandledDeepLink == uriText &&
         _lastHandledDeepLinkAt != null &&
-        now.difference(_lastHandledDeepLinkAt!) < const Duration(seconds: 2)) {
+        now.difference(_lastHandledDeepLinkAt!) < const Duration(seconds: 10)) {
       return true;
     }
 
@@ -156,6 +157,8 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _scheduleCartNavigation(String cartId, {String? target}) {
+    _cartDelayTimer?.cancel();
+    _cartDelayTimer = null;
     _cartNavigationTimer?.cancel();
     _cartNavigationTimer = null;
     int attempts = 0;
@@ -168,7 +171,7 @@ class _MyAppState extends State<MyApp> {
     debugPrint(
       '[MCP DEEP LINK] Starting 3s delay before McpCartScreen navigation attempts...',
     );
-    Future.delayed(const Duration(seconds: 3), () {
+    _cartDelayTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted || pushed) return;
       _cartNavigationTimer = Timer.periodic(const Duration(milliseconds: 500), (
         timer,
@@ -192,17 +195,18 @@ class _MyAppState extends State<MyApp> {
           debugPrint(
             '[MCP DEEP LINK] Attempt $attempts: pushing McpCartScreen with cartId=$cartId, target=$target',
           );
+          pushed = true;
+          timer.cancel();
+          _cartNavigationTimer = null;
           nav.pushNamed(
             McpCartScreen.routeName,
             arguments: {'cartId': cartId, 'target': target},
           );
-          pushed = true;
-          timer.cancel();
-          _cartNavigationTimer = null;
           debugPrint(
             '[MCP DEEP LINK] Successfully navigated to McpCartScreen on attempt $attempts',
           );
         } catch (e) {
+          pushed = false;
           debugPrint('[MCP DEEP LINK] Attempt $attempts navigation failed: $e');
         }
       });
@@ -259,6 +263,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     _deepLinkSub?.cancel();
+    _cartDelayTimer?.cancel();
     _cartNavigationTimer?.cancel();
     super.dispose();
   }

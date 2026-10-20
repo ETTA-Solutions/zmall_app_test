@@ -126,19 +126,23 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   }
 
   void _getStoreDetail() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getStoreDetail();
-    if (data != null && data['success']) {
+    if (!mounted) return;
+    if (data != null && data['success'] == true) {
       setState(() {
         storeDetail = data;
         cart!.isLaundryService =
-            storeDetail['store']['is_provide_laundry_service'];
-        storeLocations = storeDetail['store']['location'];
-        storeName = storeDetail['store']['name'];
+            storeDetail['store']?['is_provide_laundry_service'];
+        storeLocations = storeDetail['store']?['location'];
+        storeName = storeDetail['store']?['name'];
         if (aliexpressCart?.cart != null &&
-            cart!.storeId == aliexpressCart!.cart.storeId) {
+            cart!.storeId == aliexpressCart!.cart.storeId &&
+            storeLocations != null &&
+            storeLocations.length >= 2) {
           cart!.storeLocation = aliexpressCart!.cart.storeLocation =
               StoreLocation(long: storeLocations[1], lat: storeLocations[0]);
         }
@@ -146,32 +150,35 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       Service.save('cart', cart!.toJson());
       Service.save('aliexpressCart', aliexpressCart?.toJson());
     } else {
+      final err = data != null ? errorCodes['${data['error_code']}'] : null;
       Service.showMessage(
         context: context,
-        title: "${errorCodes['${data['error_code']}']}!",
+        title: "${err ?? 'Store details unavailable'}!",
         error: true,
       );
     }
-    setState(() {
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 
   void _requestLocationPermission() async {
     // First, check if location services are enabled
     bool isLocationServicesEnabled = await FlLocation.isLocationServicesEnabled;
-    // debugPrint( ">>>>\n is location on in permition $isLocationServicesEnabled");
+    if (!mounted) return;
 
     if (isLocationServicesEnabled == true) {
       // Then check permissions
       _permissionStatus = await FlLocation.checkLocationPermission();
+      if (!mounted) return;
       if (_permissionStatus == LocationPermission.always ||
           _permissionStatus == LocationPermission.whileInUse) {
         // Location permission granted, continue with location-related tasks
         getLocation();
       } else {
         // Handle permission denial
-
         Service.showMessage(
           context: context,
           title: "Location permission denied. Please enable and try again",
@@ -293,12 +300,14 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
 
   //////////////////////////////////////////////////////////////////newly added
   void _getStoreExtraItemList() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getStoreExtraItemList();
+    if (!mounted) return;
 
-    if (data != null && data['success']) {
+    if (data != null && data['success'] == true) {
       extraItems = data['items'];
       if (cart != null && cart!.items != null && extraItems is List) {
         List<String> unavailableItemNames = [];
@@ -321,7 +330,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           );
         }
       }
-    } else {
+    }
+    if (mounted) {
       setState(() {
         _loading = false;
       });
