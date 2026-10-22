@@ -1,5 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:zmall/models/metadata.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
@@ -188,34 +191,8 @@ class _StoreRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Logo avatar
-            Container(
-              width: getProportionateScreenWidth(44),
-              height: getProportionateScreenWidth(44),
-              decoration: BoxDecoration(
-                color: store.themeColor,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: store.themeColor.withValues(alpha: 0.25),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              padding: EdgeInsets.all(getProportionateScreenWidth(3)),
-              child: Text(
-                logoText,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: getProportionateScreenWidth(8),
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                ),
-              ),
-            ),
+            // Logo / Image avatar
+            _buildStoreAvatar(context, logoText),
 
             SizedBox(width: getProportionateScreenWidth(12)),
 
@@ -310,6 +287,61 @@ class _StoreRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStoreAvatar(BuildContext context, String logoText) {
+    final hasImage = store.imageUrl.isNotEmpty;
+    final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    final fullImageUrl = hasImage
+        ? (store.imageUrl.startsWith('http')
+            ? store.imageUrl
+            : '$baseUrl/${store.imageUrl}')
+        : '';
+
+    Widget fallbackAvatar() => Container(
+          width: getProportionateScreenWidth(44),
+          height: getProportionateScreenWidth(44),
+          decoration: BoxDecoration(
+            color: store.themeColor,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: store.themeColor.withValues(alpha: 0.25),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          padding: EdgeInsets.all(getProportionateScreenWidth(3)),
+          child: Text(
+            logoText,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: getProportionateScreenWidth(8),
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+        );
+
+    if (!hasImage) return fallbackAvatar();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: getProportionateScreenWidth(44),
+        height: getProportionateScreenWidth(44),
+        color: const Color(0xFFF1F5F9),
+        child: CachedNetworkImage(
+          imageUrl: fullImageUrl,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => fallbackAvatar(),
+          errorWidget: (_, __, ___) => fallbackAvatar(),
+        ),
+      ),
     );
   }
 }

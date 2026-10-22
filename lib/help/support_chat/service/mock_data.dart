@@ -461,6 +461,7 @@ class MockStore {
   final double deliveryFee;
   final String logoText;
   final Color themeColor;
+  final String imageUrl;
 
   const MockStore({
     required this.id,
@@ -473,6 +474,7 @@ class MockStore {
     required this.deliveryFee,
     this.logoText = '',
     this.themeColor = const Color(0xFF237249),
+    this.imageUrl = '',
   });
 }
 
@@ -968,6 +970,61 @@ List<MockProduct> parseBackendBrowseResults(
           description: '',
           imageUrl: '',
           localImageAsset: kMenuChatFallbackImage, // Use the fallback image
+        ),
+      );
+    } catch (_) {
+      continue;
+    }
+  }
+
+  return results;
+}
+
+List<MockStore> parseBackendStoreResults(dynamic storesData) {
+  if (storesData is! List) return const [];
+  final results = <MockStore>[];
+
+  for (final item in storesData) {
+    if (item is! Map) continue;
+    try {
+      final name = item['store_name']?.toString() ??
+          item['name']?.toString() ??
+          item['company_name']?.toString() ??
+          '';
+      if (name.trim().isEmpty) continue;
+
+      final id = item['store_id']?.toString() ??
+          item['id']?.toString() ??
+          item['_id']?.toString() ??
+          'backend_${name.hashCode}';
+
+      final imageUrl = item['image_url']?.toString() ??
+          item['logo']?.toString() ??
+          item['image']?.toString() ??
+          '';
+
+      final distance = item['distance']?.toString() ?? '';
+      final category = item['category']?.toString() ?? 'Restaurant';
+      final hasRating = item['rating'] != null;
+      final rating = double.tryParse(item['rating']?.toString() ?? '0') ?? 0.0;
+      final deliveryTime =
+          item['delivery_time']?.toString() ?? 'Delivery available';
+      final deliveryFee =
+          double.tryParse(item['delivery_fee']?.toString() ?? '0') ?? 0.0;
+
+      results.add(
+        MockStore(
+          id: id,
+          name: name,
+          category: category,
+          location: distance.isNotEmpty ? '$distance away' : 'Available',
+          rating: rating,
+          hasRating: hasRating,
+          deliveryTime: deliveryTime,
+          deliveryFee: deliveryFee,
+          logoText: name.substring(0, name.length.clamp(0, 8)),
+          themeColor: const Color(0xFF237249),
+          imageUrl: imageUrl,
         ),
       );
     } catch (_) {

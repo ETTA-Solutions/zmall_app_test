@@ -32,7 +32,25 @@ Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
   final embedded = _extractEmbeddedJson(text);
   if (embedded != null) {
     _mergeStructured(result, embedded);
-    text = embedded['message']?.toString() ?? _stripJsonBlock(text);
+    text = embedded['message']?.toString() ??
+        embedded['reply']?.toString() ??
+        embedded['response']?.toString() ??
+        _stripJsonBlock(text);
+  }
+
+  // If browse_results has stores, mirror to result['stores'] for easy access
+  final browse = result['browse_results'];
+  if (browse is Map) {
+    final type = browse['type']?.toString().toLowerCase();
+    final results = browse['results'];
+    if (results is List &&
+        (type == 'stores' ||
+            (results.isNotEmpty &&
+                results.first is Map &&
+                (results.first['store_name'] != null ||
+                    results.first['store_id'] != null)))) {
+      result['stores'] = results;
+    }
   }
 
   if (!_hasStructuredData(result) && text.isNotEmpty) {
@@ -54,6 +72,16 @@ Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
       if (stores.isNotEmpty) {
         result['stores'] = stores;
         text = _introText(text) ?? '';
+      }
+    }
+  }
+
+  if (text.trim().isEmpty) {
+    for (final key in const ['reply', 'response', 'answer', 'text']) {
+      final val = result[key]?.toString().trim();
+      if (val != null && val.isNotEmpty && !val.startsWith('{')) {
+        text = val;
+        break;
       }
     }
   }
@@ -88,6 +116,7 @@ void _mergeStructured(
 ) {
   for (final key in const [
     'message',
+    'reply',
     'browse_results',
     'products',
     'items',

@@ -169,7 +169,10 @@ class _ChatBubbleState extends State<ChatBubble> {
                   widget.matchedStore != null ||
                   widget.matchedStores != null)) ...[
             SizedBox(height: getProportionateScreenHeight(6)),
-            if (widget.isStoreOnly)
+            if (widget.isStoreOnly ||
+                (widget.matchedStores != null &&
+                    widget.matchedStores!.isNotEmpty &&
+                    widget.matchedProducts.isEmpty))
               // Store query → vertical scrollable list of all stores inline
               StoreCarousel(
                 stores: widget.matchedStores, // Use backend stores if available

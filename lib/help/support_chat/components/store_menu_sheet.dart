@@ -1,8 +1,11 @@
 import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:zmall/models/metadata.dart';
 import 'package:zmall/help/support_chat/components/product_detail_sheet.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/utils/constants.dart';
@@ -114,34 +117,8 @@ class _StoreMenuSheetState extends State<_StoreMenuSheet> {
                 ),
                 child: Row(
                   children: [
-                    // Logo
-                    Container(
-                      width: getProportionateScreenWidth(48),
-                      height: getProportionateScreenWidth(48),
-                      decoration: BoxDecoration(
-                        color: store.themeColor,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: store.themeColor.withValues(alpha: 0.28),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      padding: EdgeInsets.all(getProportionateScreenWidth(4)),
-                      child: Text(
-                        logoText,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: getProportionateScreenWidth(8.5),
-                          fontWeight: FontWeight.w800,
-                          height: 1.1,
-                        ),
-                      ),
-                    ),
+                    // Logo / Image
+                    _buildHeaderAvatar(context, logoText),
 
                     SizedBox(width: getProportionateScreenWidth(14)),
 
@@ -307,6 +284,61 @@ class _StoreMenuSheetState extends State<_StoreMenuSheet> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderAvatar(BuildContext context, String logoText) {
+    final hasImage = widget.store.imageUrl.isNotEmpty;
+    final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    final fullImageUrl = hasImage
+        ? (widget.store.imageUrl.startsWith('http')
+            ? widget.store.imageUrl
+            : '$baseUrl/${widget.store.imageUrl}')
+        : '';
+
+    Widget fallback() => Container(
+          width: getProportionateScreenWidth(48),
+          height: getProportionateScreenWidth(48),
+          decoration: BoxDecoration(
+            color: widget.store.themeColor,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: widget.store.themeColor.withValues(alpha: 0.28),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          padding: EdgeInsets.all(getProportionateScreenWidth(4)),
+          child: Text(
+            logoText,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: getProportionateScreenWidth(8.5),
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+        );
+
+    if (!hasImage) return fallback();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: getProportionateScreenWidth(48),
+        height: getProportionateScreenWidth(48),
+        color: const Color(0xFFF1F5F9),
+        child: CachedNetworkImage(
+          imageUrl: fullImageUrl,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => fallback(),
+          errorWidget: (_, __, ___) => fallback(),
         ),
       ),
     );

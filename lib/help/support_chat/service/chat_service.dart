@@ -30,7 +30,7 @@ class ChatService {
   }) async {
     // Get base URL from metadata provider
     final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
-    final url = "$baseUrl/chat_test";
+    final url = "$baseUrl/api/chatbot/chat_web";
 
     debugPrint("🚀 [CHAT DEBUG] Base URL: $baseUrl");
     debugPrint("🚀 [CHAT DEBUG] Full URL: $url");

@@ -383,13 +383,44 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
         debugPrint("🚀 [CHAT SCREEN] Bot message: $botMessage");
 
-        // Check if backend returned product data in a structured format.
-        // Support the real backend contract used by /chat_test:
-        //   response['browse_results'] = { 'type': 'items', 'store_name': 'SAVOR', 'results': [...] }
+        // Check if backend returned structured browse_results
         final browseResults = response['browse_results'];
         if (browseResults is Map && browseResults['results'] is List) {
           final typedBrowseResults = Map<String, dynamic>.from(browseResults);
-          final parsedProducts = parseBackendBrowseResults(typedBrowseResults);
+          final browseType =
+              typedBrowseResults['type']?.toString().toLowerCase();
+          final rawResults = typedBrowseResults['results'] as List;
+
+          // Check if browse_results contains stores
+          final isStores = browseType == 'stores' ||
+              (rawResults.isNotEmpty &&
+                  rawResults.first is Map &&
+                  (rawResults.first['store_name'] != null ||
+                      rawResults.first['store_id'] != null));
+
+          if (isStores) {
+            final mockStores = parseBackendStoreResults(rawResults);
+            if (mockStores.isNotEmpty) {
+              debugPrint(
+                "🚀 [CHAT SCREEN] Backend browse_results returned ${mockStores.length} stores",
+              );
+              final displayMessage = botMessage.isNotEmpty
+                  ? botMessage
+                  : "Here are some open stores near you:";
+
+              _addBotMessage(
+                displayMessage,
+                storeMatches: mockStores,
+                showCartAction: _shouldShowCartAction(displayMessage),
+              );
+              if (mounted) setState(() => _isLoading = false);
+              return;
+            }
+          }
+
+          // Otherwise check if browse_results contains items/products
+          final parsedProducts =
+              parseBackendBrowseResults(typedBrowseResults);
           if (parsedProducts.isNotEmpty) {
             debugPrint(
               "🚀 [CHAT SCREEN] Backend browse_results returned ${parsedProducts.length} products",
@@ -414,7 +445,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             );
 
             // Use a clean, short message instead of the unformatted backend response
-            final cleanMessage = "Here's the menu for $storeName:";
+            final cleanMessage =
+                botMessage.isNotEmpty && !botMessage.contains('{')
+                    ? botMessage
+                    : "Here's the menu for $storeName:";
 
             _addBotMessage(
               cleanMessage,
@@ -456,38 +490,20 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         // Check if backend returned store data in structured format
         if (response['stores'] != null || response['companies'] != null) {
           final backendStores = response['stores'] ?? response['companies'];
-          if (backendStores is List && backendStores.isNotEmpty) {
+          final mockStores = parseBackendStoreResults(backendStores);
+          if (mockStores.isNotEmpty) {
             debugPrint(
-              "🚀 [CHAT SCREEN] Backend returned ${backendStores.length} stores",
+              "🚀 [CHAT SCREEN] Backend returned ${mockStores.length} stores",
             );
 
-            // Convert backend stores to MockStore objects
-            final mockStores = backendStores.map((store) {
-              final name =
-                  store['name']?.toString() ??
-                  store['company_name']?.toString() ??
-                  '';
-              final distance = store['distance']?.toString() ?? '';
-              return MockStore(
-                id: 'backend_${name.hashCode}',
-                name: name,
-                category: 'Restaurant',
-                location: distance.isNotEmpty ? '$distance away' : 'Available',
-                rating: 0.0,
-                hasRating: false,
-                deliveryTime: 'Delivery available',
-                deliveryFee: 0.0,
-                logoText: name.substring(0, name.length.clamp(0, 8)),
-                themeColor: const Color(0xFF237249),
-              );
-            }).toList();
+            final displayMessage = botMessage.isNotEmpty
+                ? botMessage
+                : "Here are some open stores near you:";
 
             _addBotMessage(
-              "Here are some open stores near you:",
+              displayMessage,
               storeMatches: mockStores,
-              showCartAction: _shouldShowCartAction(
-                "Here are some open stores near you:",
-              ),
+              showCartAction: _shouldShowCartAction(displayMessage),
             );
             if (mounted) setState(() => _isLoading = false);
             return;
@@ -824,6 +840,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                     matchedStores:
                                         _messageStoreLists[message
                                             .id], // Use stored store lists from backend
+                                    isStoreOnly: isStoreOnly,
+                                    showProducts: showProducts,
                                     imageUrl:
                                         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imageUrl",
                                     onLongPress: message.isUser
@@ -849,8 +867,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                           ? storeProducts
                                           : null,
                                     ),
-                                    showProducts: showProducts,
-                                    isStoreOnly: isStoreOnly,
                                   ),
                                 ),
                               ],
