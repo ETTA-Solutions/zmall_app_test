@@ -953,7 +953,11 @@ List<MockProduct> parseBackendBrowseResults(
           item['item_id']?.toString() ??
           item['id']?.toString() ??
           'backend_${name.hashCode}';
-      final storeId = browseResults['store_name']?.toString() ?? 'backend';
+      // Prefer the real store id so the item can be checked out from chat
+      final storeId = item['store_id']?.toString() ??
+          browseResults['store_id']?.toString() ??
+          browseResults['store_name']?.toString() ??
+          'backend';
 
       if (name.isEmpty || price <= 0) continue;
 

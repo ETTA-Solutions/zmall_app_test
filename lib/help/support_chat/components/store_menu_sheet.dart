@@ -17,13 +17,22 @@ import 'package:zmall/utils/size_config.dart';
 ///   StoreMenuSheet.show(context, store: store);
 ///   StoreMenuSheet.show(context, store: store, products: backendProducts);
 class StoreMenuSheet {
-  static void show(BuildContext context, {required MockStore store, List<MockProduct>? products}) {
+  static void show(
+    BuildContext context, {
+    required MockStore store,
+    List<MockProduct>? products,
+    Future<void> Function(MockProduct, int)? onOrderNow,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (_) => _StoreMenuSheet(store: store, products: products),
+      builder: (_) => _StoreMenuSheet(
+        store: store,
+        products: products,
+        onOrderNow: onOrderNow,
+      ),
     );
   }
 }
@@ -31,7 +40,8 @@ class StoreMenuSheet {
 class _StoreMenuSheet extends StatefulWidget {
   final MockStore store;
   final List<MockProduct>? products; // Optional backend products
-  const _StoreMenuSheet({required this.store, this.products});
+  final Future<void> Function(MockProduct, int)? onOrderNow;
+  const _StoreMenuSheet({required this.store, this.products, this.onOrderNow});
 
   @override
   State<_StoreMenuSheet> createState() => _StoreMenuSheetState();
@@ -60,10 +70,18 @@ class _StoreMenuSheetState extends State<_StoreMenuSheet> {
   }
 
   void _openProduct(MockProduct product) {
+    final onOrderNow = widget.onOrderNow;
     ProductDetailSheet.show(
       context,
       product: product,
       onAddToCart: _handleAddToCart,
+      onOrderNow: onOrderNow == null
+          ? null
+          : (product, qty) async {
+              // Close the menu too so the chat is visible while checking out
+              Navigator.pop(context);
+              await onOrderNow(product, qty);
+            },
     );
   }
 

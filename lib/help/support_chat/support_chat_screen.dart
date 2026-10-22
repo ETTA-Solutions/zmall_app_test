@@ -9,10 +9,12 @@ import 'package:zmall/help/support_chat/components/store_menu_sheet.dart';
 import 'package:zmall/models/chat_message.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/profile/components/profile_list_tile.dart';
+import 'package:zmall/help/support_chat/service/chat_checkout_service.dart';
 import 'package:zmall/help/support_chat/service/chat_service.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/cart/cart_screen.dart';
+import 'package:zmall/kifiya/kifiya_screen.dart';
 import 'package:zmall/help/support_chat/components/chat_bubble.dart';
 import 'package:zmall/help/support_chat/components/chat_input.dart';
 import 'package:zmall/help/support_chat/components/quick_replies.dart';
@@ -311,7 +313,61 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     MockStore store,
     List<MockProduct> products,
   ) {
-    StoreMenuSheet.show(context, store: store, products: products);
+    StoreMenuSheet.show(
+      context,
+      store: store,
+      products: products,
+      onOrderNow: _handleOrderNow,
+    );
+  }
+
+  /// Chat → payment: syncs the cart, picks a vehicle, generates the invoice
+  /// and opens [KifiyaScreen] (see CHATBOT_TO_PAYMENT_FLOW.md).
+  Future<void> _handleOrderNow(MockProduct product, int quantity) async {
+    if (_isLoading) return;
+    _addUserMessage('Order $quantity × ${product.name}');
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await ChatCheckoutService.checkout(
+        context: context,
+        product: product,
+        quantity: quantity,
+      );
+      if (!mounted) return;
+
+      _addBotMessage(
+        'Your order is ready 🎉\n'
+        'Total: ${result.price.toStringAsFixed(2)} ETB (incl. delivery)\n'
+        'Choose a payment method to complete it.',
+      );
+      setState(() => _isLoading = false);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => KifiyaScreen(
+            price: result.price,
+            orderPaymentId: result.orderPaymentId,
+            orderPaymentUniqueId: result.orderPaymentUniqueId,
+            vehicleId: result.vehicleId,
+            onlyCashless: result.onlyCashless,
+            userpickupWithSchedule: false,
+          ),
+        ),
+      );
+    } on ChatCheckoutException catch (e) {
+      if (mounted) _addBotMessage(e.message);
+    } catch (e) {
+      debugPrint("❌ [CHAT SCREEN] Checkout failed: $e");
+      if (mounted) {
+        _addBotMessage(
+          "I couldn't start the checkout. Please try again in a moment.",
+        );
+      }
+    } finally {
+      if (mounted && _isLoading) setState(() => _isLoading = false);
+    }
   }
 
   void _handleQuickReply(String reply) {
@@ -951,6 +1007,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           ),
         );
       },
+      onOrderNow: _handleOrderNow,
     );
   }
 

@@ -16,6 +16,7 @@ class ProductDetailSheet {
     BuildContext context, {
     required MockProduct product,
     required Future<void> Function(MockProduct, int) onAddToCart,
+    Future<void> Function(MockProduct, int)? onOrderNow,
   }) {
     showModalBottomSheet(
       context: context,
@@ -25,6 +26,7 @@ class ProductDetailSheet {
       builder: (_) => _ProductDetailSheet(
         product: product,
         onAddToCart: onAddToCart,
+        onOrderNow: onOrderNow,
       ),
     );
   }
@@ -34,9 +36,13 @@ class _ProductDetailSheet extends StatefulWidget {
   final MockProduct product;
   final Future<void> Function(MockProduct, int) onAddToCart;
 
+  /// Skips the cart and goes straight to payment (see ChatCheckoutService).
+  final Future<void> Function(MockProduct, int)? onOrderNow;
+
   const _ProductDetailSheet({
     required this.product,
     required this.onAddToCart,
+    this.onOrderNow,
   });
 
   @override
@@ -65,6 +71,15 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
     if (!mounted) return;
     setState(() => _adding = false);
     Navigator.pop(context);
+  }
+
+  void _handleOrderNow() {
+    if (_adding) return;
+    HapticFeedback.mediumImpact();
+    final qty = _qty;
+    // Close the sheet first; the chat shows progress and opens payment.
+    Navigator.pop(context);
+    widget.onOrderNow!(widget.product, qty);
   }
 
   @override
@@ -329,6 +344,45 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                         ),
                       ],
                     ),
+
+                    // ── Order Now → payment ────────────────────────
+                    if (widget.onOrderNow != null) ...[
+                      SizedBox(height: getProportionateScreenHeight(12)),
+                      GestureDetector(
+                        onTap: _adding ? null : _handleOrderNow,
+                        child: Container(
+                          height: getProportionateScreenHeight(52),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(50),
+                            border: Border.all(
+                              color: kSecondaryColor,
+                              width: 1.5,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                HeroiconsOutline.creditCard,
+                                color: kSecondaryColor,
+                                size: getProportionateScreenWidth(16),
+                              ),
+                              SizedBox(width: getProportionateScreenWidth(8)),
+                              Text(
+                                'Order Now · ${(product.price * _qty).toStringAsFixed(0)} ${product.currencySymbol}',
+                                style: TextStyle(
+                                  color: kSecondaryColor,
+                                  fontSize: getProportionateScreenWidth(15),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
