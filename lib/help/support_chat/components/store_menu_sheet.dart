@@ -23,6 +23,7 @@ class StoreMenuSheet {
     List<MockProduct>? products,
     Future<void> Function(MockProduct, int)? onOrderNow,
   }) {
+    debugPrint("🏪 [STORE MENU SHEET] Opening sheet for store: ${store.name} (id: ${store.id}), products count: ${products?.length ?? 0}");
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -54,22 +55,15 @@ class _StoreMenuSheetState extends State<_StoreMenuSheet> {
   int _qtyFor(String id) => _quantities[id] ?? 0;
 
   Future<void> _handleAddToCart(MockProduct product, int qty) async {
+    debugPrint("🛒 [STORE MENU SHEET] Added to cart: ${product.name} x $qty (store: ${widget.store.name})");
     final items = List<MockProduct>.filled(qty, product);
     await addMockProductsToCart(items);
     if (!mounted) return;
     setState(() => _quantities[product.id] = qty);
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$qty × ${product.name} added to cart'),
-        backgroundColor: kBlackColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
   }
 
   void _openProduct(MockProduct product) {
+    debugPrint("🔍 [STORE MENU SHEET] Opened product detail: ${product.name}");
     final onOrderNow = widget.onOrderNow;
     ProductDetailSheet.show(
       context,
@@ -78,6 +72,7 @@ class _StoreMenuSheetState extends State<_StoreMenuSheet> {
       onOrderNow: onOrderNow == null
           ? null
           : (product, qty) async {
+              debugPrint("⚡ [STORE MENU SHEET] Direct checkout from store menu: ${product.name} x $qty");
               // Close the menu too so the chat is visible while checking out
               Navigator.pop(context);
               await onOrderNow(product, qty);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zmall/help/support_chat/components/bot_avatar.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
@@ -32,21 +33,7 @@ class QuickReplies extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Divider(height: 1, color: kGreyColor.withValues(alpha: 0.15)),
-          SizedBox(height: getProportionateScreenHeight(8)),
-          Padding(
-            padding: EdgeInsets.only(left: getProportionateScreenWidth(16)),
-            child: Text(
-              'Suggested',
-              style: TextStyle(
-                fontSize: getProportionateScreenWidth(11),
-                fontWeight: FontWeight.w600,
-                color: kGreyColor,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-          SizedBox(height: getProportionateScreenHeight(8)),
+          SizedBox(height: getProportionateScreenHeight(6)),
           SizedBox(
             height: getProportionateScreenHeight(36),
             child: ListView.separated(
@@ -61,19 +48,19 @@ class QuickReplies extends StatelessWidget {
               itemBuilder: (context, i) {
                 final chip = _replies[i];
                 return GestureDetector(
-                  onTap: () => onReplyTap(_queryFrom(chip)),
+                  onTap: () {
+                    final query = _queryFrom(chip);
+                    debugPrint("⚡ [QUICK REPLIES] Chip tapped: \"$chip\" -> query: \"$query\"");
+                    onReplyTap(query);
+                  },
                   child: Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: getProportionateScreenWidth(14),
                       vertical: getProportionateScreenHeight(7),
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: kChatSurfaceColor,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: kGreyColor.withValues(alpha: 0.25),
-                        width: 1,
-                      ),
                     ),
                     child: Text(
                       chip,
@@ -88,7 +75,7 @@ class QuickReplies extends StatelessWidget {
               },
             ),
           ),
-          SizedBox(height: getProportionateScreenHeight(8)),
+          SizedBox(height: getProportionateScreenHeight(4)),
         ],
       ),
     );

@@ -12,17 +12,15 @@ import 'package:zmall/utils/size_config.dart';
 ///   • Product name (2 lines, regular weight)
 ///   • Unit / qty label (small gray)
 ///   • Full-width rounded Add button in kSecondaryColor
-///   • After tapping Add → − qty + stepper replaces the button
-///   • Cart badge top-right of image when qty > 0
+///   • Tapping the card or Add opens the product sheet (qty, Add to cart,
+///     Order now) — one place to pick a quantity
 class FoodRecommendationCard extends StatefulWidget {
   final MockProduct product;
-  final VoidCallback? onAddToCart;
   final VoidCallback? onProductTap;
 
   const FoodRecommendationCard({
     super.key,
     required this.product,
-    this.onAddToCart,
     this.onProductTap,
   });
 
@@ -32,7 +30,6 @@ class FoodRecommendationCard extends StatefulWidget {
 
 class _FoodRecommendationCardState extends State<FoodRecommendationCard>
     with SingleTickerProviderStateMixin {
-  int _qty = 0;
 
   late final AnimationController _pressController;
   late final Animation<double> _scaleAnim;
@@ -58,17 +55,6 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
     super.dispose();
   }
 
-  void _increment() {
-    HapticFeedback.selectionClick();
-    setState(() => _qty++);
-    widget.onAddToCart?.call();
-  }
-
-  void _decrement() {
-    HapticFeedback.selectionClick();
-    if (_qty > 0) setState(() => _qty--);
-  }
-
   @override
   Widget build(BuildContext context) {
     // Card is fixed 160 wide — two cards visible at a time
@@ -85,7 +71,11 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
         onTapDown: (_) => _pressController.forward(),
         onTapUp: (_) => _pressController.reverse(),
         onTapCancel: () => _pressController.reverse(),
-        onTap: widget.onProductTap,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          debugPrint("🍔 [FOOD CARD] Card tapped: '${widget.product.name}' (id: ${widget.product.id}, price: ${widget.product.price})");
+          widget.onProductTap?.call();
+        },
         child: Container(
           width: cardWidth,
           decoration: BoxDecoration(
@@ -143,80 +133,6 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
                     ),
                   ),
 
-                  // Cart badge — top-right, shows when qty > 0
-                  if (_qty > 0)
-                    Positioned(
-                      top: getProportionateScreenHeight(8),
-                      right: getProportionateScreenWidth(8),
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          ScaffoldMessenger.of(context).clearSnackBars();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '$_qty × ${widget.product.name} in cart',
-                              ),
-                              backgroundColor: kBlackColor,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(
-                            getProportionateScreenWidth(5),
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: kBlackColor.withValues(alpha: 0.12),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Icon(
-                                HeroiconsSolid.shoppingCart,
-                                size: getProportionateScreenWidth(15),
-                                color: kSecondaryColor,
-                              ),
-                              Positioned(
-                                top: -5,
-                                right: -5,
-                                child: Container(
-                                  width: getProportionateScreenWidth(13),
-                                  height: getProportionateScreenWidth(13),
-                                  decoration: BoxDecoration(
-                                    color: kSecondaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '$_qty',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: getProportionateScreenWidth(
-                                          7.5,
-                                        ),
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
 
@@ -290,11 +206,7 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
 
                     SizedBox(height: getProportionateScreenHeight(12)),
 
-                    // Add / stepper
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: _qty == 0 ? _buildAddButton() : _buildStepper(),
-                    ),
+                    _buildAddButton(),
                   ],
                 ),
               ),
@@ -305,97 +217,33 @@ class _FoodRecommendationCardState extends State<FoodRecommendationCard>
     );
   }
 
-  // Full-width kSecondaryColor "Add" pill
+  // Full-width kSecondaryColor "Add" pill — the card's tap opens the sheet
   Widget _buildAddButton() {
-    return GestureDetector(
-      key: const ValueKey('add'),
-      onTap: _increment,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(
-          vertical: getProportionateScreenHeight(10),
-        ),
-        decoration: BoxDecoration(
-          color: kSecondaryColor,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Center(
-          child: Text(
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        vertical: getProportionateScreenHeight(10),
+      ),
+      decoration: BoxDecoration(
+        color: kSecondaryColor,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            HeroiconsSolid.plus,
+            size: getProportionateScreenWidth(15),
+            color: Colors.white,
+          ),
+          SizedBox(width: getProportionateScreenWidth(4)),
+          Text(
             'Add',
             style: TextStyle(
               fontSize: getProportionateScreenWidth(13.5),
               fontWeight: FontWeight.w700,
               color: Colors.white,
               letterSpacing: 0.2,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Full-width kSecondaryColor − qty + stepper
-  Widget _buildStepper() {
-    return Container(
-      key: const ValueKey('stepper'),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: kSecondaryColor,
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        children: [
-          // − button
-          Expanded(
-            child: GestureDetector(
-              onTap: _decrement,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  vertical: getProportionateScreenHeight(10),
-                ),
-                child: Center(
-                  child: Text(
-                    '−',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: getProportionateScreenWidth(18),
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // count
-          Text(
-            '$_qty',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: getProportionateScreenWidth(14),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          // + button
-          Expanded(
-            child: GestureDetector(
-              onTap: _increment,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  vertical: getProportionateScreenHeight(10),
-                ),
-                child: Center(
-                  child: Text(
-                    '+',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: getProportionateScreenWidth(18),
-                      fontWeight: FontWeight.w600,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
             ),
           ),
         ],
@@ -452,7 +300,6 @@ class FoodRecommendationRow extends StatelessWidget {
             SizedBox(width: getProportionateScreenWidth(12)),
         itemBuilder: (context, i) => FoodRecommendationCard(
           product: products[i],
-          onAddToCart: () => onAddToCart?.call(products[i]),
           onProductTap: () => onProductTap?.call(products[i]),
         ),
       ),

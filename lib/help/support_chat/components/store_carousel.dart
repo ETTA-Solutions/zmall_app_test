@@ -173,6 +173,7 @@ class _StoreRow extends StatelessWidget {
 
     return InkWell(
       onTap: () {
+        debugPrint("🏪 [STORE CAROUSEL] Tapped store item: ${store.name} (id: ${store.id}, category: ${store.category}, location: ${store.location})");
         // If we have the callback with products, use it (for backend stores)
         if (onMenuRequestedWithProducts != null) {
           // For backend stores, we'll need to fetch products dynamically

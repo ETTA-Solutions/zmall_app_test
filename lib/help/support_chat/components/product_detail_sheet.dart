@@ -18,6 +18,7 @@ class ProductDetailSheet {
     required Future<void> Function(MockProduct, int) onAddToCart,
     Future<void> Function(MockProduct, int)? onOrderNow,
   }) {
+    debugPrint("🔍 [PRODUCT SHEET] Showing sheet for: ${product.name} (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})");
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -55,18 +56,25 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
 
   void _increment() {
     HapticFeedback.selectionClick();
-    if (_qty < 9) setState(() => _qty++);
+    if (_qty < 9) {
+      setState(() => _qty++);
+      debugPrint("🔢 [PRODUCT SHEET] Incremented quantity: $_qty for ${widget.product.name}");
+    }
   }
 
   void _decrement() {
     HapticFeedback.selectionClick();
-    if (_qty > 1) setState(() => _qty--);
+    if (_qty > 1) {
+      setState(() => _qty--);
+      debugPrint("🔢 [PRODUCT SHEET] Decremented quantity: $_qty for ${widget.product.name}");
+    }
   }
 
   Future<void> _handleAdd() async {
     if (_adding) return;
     setState(() => _adding = true);
     HapticFeedback.mediumImpact();
+    debugPrint("🛒 [PRODUCT SHEET] Adding to cart: ${widget.product.name} x $_qty");
     await widget.onAddToCart(widget.product, _qty);
     if (!mounted) return;
     setState(() => _adding = false);
@@ -77,6 +85,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
     if (_adding) return;
     HapticFeedback.mediumImpact();
     final qty = _qty;
+    debugPrint("⚡ [PRODUCT SHEET] Direct Order Now: ${widget.product.name} x $qty");
     // Close the sheet first; the chat shows progress and opens payment.
     Navigator.pop(context);
     widget.onOrderNow!(widget.product, qty);

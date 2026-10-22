@@ -759,6 +759,11 @@ IMPORTANT: Always return valid JSON. Never return raw markdown or plain text out
 Future<void> addMockProductsToCart(List<MockProduct> products) async {
   if (products.isEmpty) return;
 
+  debugPrint("🛒 [CHAT CART] Adding ${products.length} product(s) to local cart...");
+  for (final p in products) {
+    debugPrint("🛒 [CHAT CART] -> Product: ${p.name} (id: ${p.id}, storeId: ${p.storeId}, price: ${p.price})");
+  }
+
   try {
     final userData = await Service.read('user');
     final existingCartData = await Service.read('cart');
@@ -793,6 +798,7 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
     if (existingCartData != null) {
       try {
         cart = Cart.fromJson(existingCartData);
+        debugPrint("🛒 [CHAT CART] Existing cart found with ${cart.items?.length ?? 0} items for store: ${cart.storeId}");
       } catch (_) {
         cart = Cart(
           userId: userId,
@@ -810,6 +816,7 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
         );
       }
     } else {
+      debugPrint("🛒 [CHAT CART] No existing cart. Initializing fresh cart for store: $storeId");
       cart = Cart(
         userId: userId,
         serverToken: serverToken,
@@ -859,6 +866,7 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
         final currentQty = existingItem.quantity ?? 1;
         existingItem.quantity = currentQty + 1;
         existingItem.price = product.price * (currentQty + 1);
+        debugPrint("🛒 [CHAT CART] Updated existing item '${product.name}' quantity to ${existingItem.quantity}");
       } else {
         cart.items!.add(
           Item(
@@ -871,11 +879,16 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
             imageURL: product.imageUrl,
           ),
         );
+        debugPrint("🛒 [CHAT CART] Added new item '${product.name}' to cart");
       }
     }
 
     await Service.save('cart', cart.toJson());
-  } catch (_) {}
+    debugPrint("✅ [CHAT CART] Cart successfully saved. Total items: ${cart.items?.length ?? 0}");
+  } catch (e, stack) {
+    debugPrint("❌ [CHAT CART] Error saving cart: $e");
+    debugPrint("❌ [CHAT CART] Stack trace: $stack");
+  }
 }
 
 /// Simplified parser for backend responses that only contain basic product info

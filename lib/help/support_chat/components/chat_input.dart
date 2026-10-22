@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
+import 'package:zmall/help/support_chat/components/bot_avatar.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
 /// Clean input bar — ZMall brand theme.
-/// kWhiteColor border pill, + left, plain field, send circle right.
+/// Soft grey pill, + left, plain field, send circle right.
 class ChatInput extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
@@ -22,30 +23,38 @@ class ChatInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
       padding: EdgeInsets.fromLTRB(
         getProportionateScreenWidth(12),
-        getProportionateScreenHeight(6),
+        getProportionateScreenHeight(8),
         getProportionateScreenWidth(12),
         getProportionateScreenHeight(10),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: kBlackColor.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
         child: Container(
           decoration: BoxDecoration(
-            color: kWhiteColor,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: kGreyColor.withValues(alpha: 0.2),
-              width: 1.2,
-            ),
+            color: kChatSurfaceColor,
+            borderRadius: BorderRadius.circular(28),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // ── + button ──────────────────────────────────────────────
               GestureDetector(
-                onTap: onQuickRepliesToggle,
+                onTap: () {
+                  debugPrint("⌨️ [CHAT INPUT] (+) Quick replies toggle pressed");
+                  onQuickRepliesToggle?.call();
+                },
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     getProportionateScreenWidth(14),
@@ -70,9 +79,9 @@ class ChatInput extends StatelessWidget {
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _handleSend(),
                   decoration: InputDecoration(
-                    hintText: 'Ask anything',
+                    hintText: 'Ask ZMall AI anything…',
                     hintStyle: TextStyle(
-                      color: kGreyColor.withValues(alpha: 0.6),
+                      color: kGreyColor.withValues(alpha: 0.7),
                       fontSize: getProportionateScreenWidth(14),
                     ),
                     border: InputBorder.none,
@@ -88,7 +97,7 @@ class ChatInput extends StatelessWidget {
                 ),
               ),
 
-              // ── send / mic button ─────────────────────────────────────
+              // ── send button ─────────────────────────────────────
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   getProportionateScreenWidth(4),
@@ -102,18 +111,13 @@ class ChatInput extends StatelessWidget {
                     final hasText = controller.text.trim().isNotEmpty;
                     return GestureDetector(
                       onTap: isLoading ? null : _handleSend,
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
                         width: getProportionateScreenWidth(36),
                         height: getProportionateScreenWidth(36),
                         decoration: BoxDecoration(
-                          color: hasText ? kSecondaryColor : kWhiteColor,
+                          color: hasText ? kSecondaryColor : Colors.white,
                           shape: BoxShape.circle,
-                          border: hasText
-                              ? null
-                              : Border.all(
-                                  color: kGreyColor.withValues(alpha: 0.25),
-                                  width: 1,
-                                ),
                         ),
                         child: Center(
                           child: isLoading
@@ -128,10 +132,10 @@ class ChatInput extends StatelessWidget {
                                   ),
                                 )
                               : Icon(
-                                  hasText
-                                      ? HeroiconsSolid.paperAirplane
-                                      : HeroiconsOutline.microphone,
-                                  color: hasText ? Colors.white : kGreyColor,
+                                  HeroiconsSolid.arrowUp,
+                                  color: hasText
+                                      ? Colors.white
+                                      : kGreyColor.withValues(alpha: 0.5),
                                   size: getProportionateScreenWidth(16),
                                 ),
                         ),
@@ -148,8 +152,12 @@ class ChatInput extends StatelessWidget {
   }
 
   void _handleSend() {
-    if (controller.text.trim().isNotEmpty && !isLoading) {
+    final text = controller.text.trim();
+    if (text.isNotEmpty && !isLoading) {
+      debugPrint("⌨️ [CHAT INPUT] _handleSend triggered with text: \"$text\"");
       onSend();
+    } else {
+      debugPrint("⌨️ [CHAT INPUT] _handleSend ignored (hasText=${text.isNotEmpty}, isLoading=$isLoading)");
     }
   }
 }

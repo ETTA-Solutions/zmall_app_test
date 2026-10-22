@@ -15,6 +15,7 @@ import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/cart/cart_screen.dart';
 import 'package:zmall/kifiya/kifiya_screen.dart';
+import 'package:zmall/help/support_chat/components/bot_avatar.dart';
 import 'package:zmall/help/support_chat/components/chat_bubble.dart';
 import 'package:zmall/help/support_chat/components/chat_input.dart';
 import 'package:zmall/help/support_chat/components/quick_replies.dart';
@@ -83,15 +84,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint("📱 [CHAT SCREEN] initState: Initializing SupportChatScreen...");
     _getUser(); // Load user data (chat history will load after user data is available)
     _scrollController.addListener(_scrollListener);
     _messageController.addListener(_onTypingChanged);
     userLat = Provider.of<ZMetaData>(context, listen: false).latitude;
     userLng = Provider.of<ZMetaData>(context, listen: false).longitude;
     userLocation = ["$userLat", "$userLng"];
+    debugPrint("📱 [CHAT SCREEN] Location initialized: lat=$userLat, lng=$userLng, locationArray=$userLocation");
   }
 
   void _getUser() async {
+    debugPrint("📱 [CHAT SCREEN] _getUser: Reading user data from storage...");
     var data = await Service.read('user');
     if (data != null && mounted) {
       setState(() {
@@ -103,8 +107,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         }
       });
 
+      debugPrint("📱 [CHAT SCREEN] User loaded: userId=$userId, name=$userName, serverToken=${serverToken.isNotEmpty ? 'Present' : 'Empty'}");
+
+      if (userId.isNotEmpty && serverToken.isNotEmpty) {
+        debugPrint("📱 [CHAT SCREEN] Triggering background fetch of user orders...");
+        _getUserOrder(userId: userId, serverToken: serverToken);
+      }
+
       _loadChatHistory();
     } else {
+      debugPrint("📱 [CHAT SCREEN] No user data found in storage. Initializing guest/welcome chat...");
       _initializeChat();
     }
   }
@@ -125,6 +137,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _loadChatHistory() async {
+    debugPrint("📱 [CHAT SCREEN] _loadChatHistory: Checking storage keys: '$_chatStorageKey', '$_chatTimestampKey'...");
     try {
       final chatTimestamp = await Service.read(_chatTimestampKey);
       final chatData = await Service.read(_chatStorageKey);
@@ -134,14 +147,17 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         final savedTime = DateTime.fromMillisecondsSinceEpoch(chatTimestamp);
         final now = DateTime.now();
         final difference = now.difference(savedTime);
+        debugPrint("📱 [CHAT SCREEN] Found saved chat from $savedTime (${difference.inHours} hours ago, max allowed: $_chatExpirationHours h)");
 
         // If chat is older than expiration time, clear it
         if (difference.inHours >= _chatExpirationHours) {
+          debugPrint("📱 [CHAT SCREEN] Saved chat expired. Clearing history...");
           await _clearChatHistory();
           _initializeChat();
         } else {
           // Load saved messages
           final List<dynamic> messagesJson = chatData;
+          debugPrint("📱 [CHAT SCREEN] Restoring ${messagesJson.length} message(s) from storage...");
           setState(() {
             _messages.clear();
             _messages.addAll(
@@ -152,21 +168,22 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           _scrollToBottom();
         }
       } else {
-        // No saved chat, initialize fresh
+        debugPrint("📱 [CHAT SCREEN] No saved chat history found. Initializing fresh chat...");
         _initializeChat();
       }
-    } catch (e) {
-      // debugPrint("❌ Error loading chat history: $e");
+    } catch (e, stack) {
+      debugPrint("❌ [CHAT SCREEN] Error loading chat history: $e");
+      debugPrint("❌ [CHAT SCREEN] Stack: $stack");
       _initializeChat();
     }
   }
 
   void _initializeChat() {
-    // Add welcome message
+    debugPrint("📱 [CHAT SCREEN] _initializeChat: Scheduling welcome bot message...");
     Future.delayed(Duration(milliseconds: 500), () {
       if (mounted) {
         _addBotMessage(
-          "Hello! Welcome to ZMall Support. 👋\nHow can I help you today?",
+          "Hello! Welcome to ZMall Support.\nHow can I help you today?",
         );
       }
     });
@@ -174,31 +191,35 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   Future<void> _saveChatHistory() async {
     // Don't save if userId is not set yet (prevents saving to wrong user)
-    if (userId.isEmpty) return;
+    if (userId.isEmpty) {
+      debugPrint("📱 [CHAT SCREEN] Skipping saveChatHistory: userId is empty");
+      return;
+    }
 
     try {
-      // Save messages as JSON using Service
       final messagesJson = _messages
           .map((message) => message.toJson())
           .toList();
       await Service.save(_chatStorageKey, messagesJson);
-
-      // Save current timestamp
       await Service.save(
         _chatTimestampKey,
         DateTime.now().millisecondsSinceEpoch,
       );
-    } catch (e) {
-      // debugPrint("❌ Error saving chat history: $e");
+      debugPrint("💾 [CHAT SCREEN] Saved ${_messages.length} message(s) to '$_chatStorageKey'");
+    } catch (e, stack) {
+      debugPrint("❌ [CHAT SCREEN] Error saving chat history: $e");
+      debugPrint("❌ [CHAT SCREEN] Stack: $stack");
     }
   }
 
   Future<void> _clearChatHistory() async {
+    debugPrint("🧹 [CHAT SCREEN] _clearChatHistory: Removing stored chat for user '$userId'...");
     try {
       await Service.remove(_chatStorageKey);
       await Service.remove(_chatTimestampKey);
+      debugPrint("✅ [CHAT SCREEN] Chat history cleared from storage");
     } catch (e) {
-      // debugPrint("❌ Error clearing chat history: $e");
+      debugPrint("❌ [CHAT SCREEN] Error clearing chat history: $e");
     }
   }
 
@@ -210,6 +231,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     List<MockStore>? storeMatches, // Multiple stores from backend
   }) {
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    debugPrint("🤖 [CHAT SCREEN] _addBotMessage: id=$messageId, text=\"${message.replaceAll('\n', ' ')}\", cartAction=$showCartAction, products=${productMatches?.length ?? 0}, store=${storeMatch?.name ?? 'none'}, storeMatches=${storeMatches?.length ?? 0}");
 
     if (productMatches != null) {
       _messageProducts[messageId] = productMatches;
@@ -239,7 +262,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   /// The backend sometimes returns raw error texts like "Something went
-  /// wrong". Replace those with the friendly daily-token message so users
+  /// wrong". Replace those with the friendly daily-limit message so users
   /// never see a raw backend failure in the chat.
   String _sanitizeBotMessage(String message) {
     final lower = message.toLowerCase();
@@ -259,7 +282,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         lower.contains('error occurred') ||
         lower.contains('internal server') ||
         lower.contains('failed to get response')) {
-      return 'You finished your daily token.';
+      return "You've reached today's chat limit 😊\n"
+          'Come back tomorrow and I\'ll be happy to help again. '
+          'You can still browse stores and order from the app anytime!';
     }
 
     // Replace old raw timeout string with the friendly variant
@@ -271,10 +296,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _addUserMessage(String message) {
+    final messageId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint("👤 [CHAT SCREEN] _addUserMessage: id=$messageId, text=\"$message\"");
     setState(() {
       _messages.add(
         ChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: messageId,
           message: message,
           isUser: true,
           timestamp: DateTime.now(),
@@ -288,23 +315,24 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   void _handleSendMessage() {
     final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    if (message.isEmpty) {
+      debugPrint("📱 [CHAT SCREEN] _handleSendMessage ignored: input is empty");
+      return;
+    }
 
-    debugPrint("🚀 [CHAT SCREEN] _handleSendMessage called with: $message");
-    debugPrint("🚀 [CHAT SCREEN] Current userId: $userId");
-    debugPrint(
-      "🚀 [CHAT SCREEN] Current serverToken: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}",
-    );
+    debugPrint("🚀 [CHAT SCREEN] _handleSendMessage called with: \"$message\"");
+    debugPrint("🚀 [CHAT SCREEN] Current userId: $userId, serverToken: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}");
 
     _addUserMessage(message);
     _messageController.clear();
 
     // Fetch bot response from backend
-    debugPrint("🚀 [CHAT SCREEN] Calling _fetchBotResponse");
+    debugPrint("🚀 [CHAT SCREEN] Calling _fetchBotResponse for message: \"$message\"");
     _fetchBotResponse(message);
   }
 
   void _handleStoreMenuRequest(MockStore store) {
+    debugPrint("🏪 [CHAT SCREEN] _handleStoreMenuRequest: Requesting menu for store: ${store.name} (id: ${store.id})");
     _messageController.text = 'Show me the menu for ${store.name}';
     _handleSendMessage();
   }
@@ -313,6 +341,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     MockStore store,
     List<MockProduct> products,
   ) {
+    debugPrint("🏪 [CHAT SCREEN] _handleStoreMenuRequestWithProducts: Store=${store.name}, Products=${products.length}");
     StoreMenuSheet.show(
       context,
       store: store,
@@ -324,7 +353,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   /// Chat → payment: syncs the cart, picks a vehicle, generates the invoice
   /// and opens [KifiyaScreen] (see CHATBOT_TO_PAYMENT_FLOW.md).
   Future<void> _handleOrderNow(MockProduct product, int quantity) async {
-    if (_isLoading) return;
+    if (_isLoading) {
+      debugPrint("⏳ [CHAT SCREEN] _handleOrderNow ignored: already loading");
+      return;
+    }
+    debugPrint("🛒 [CHAT SCREEN] _handleOrderNow triggered: ${product.name} (id: ${product.id}, storeId: ${product.storeId}) x $quantity");
     _addUserMessage('Order $quantity × ${product.name}');
     setState(() => _isLoading = true);
 
@@ -336,6 +369,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       );
       if (!mounted) return;
 
+      debugPrint("🎉 [CHAT SCREEN] Checkout succeeded! Price=${result.price}, paymentId=${result.orderPaymentId}, uniqueId=${result.orderPaymentUniqueId}, vehicleId=${result.vehicleId}");
+
       _addBotMessage(
         'Your order is ready 🎉\n'
         'Total: ${result.price.toStringAsFixed(2)} ETB (incl. delivery)\n'
@@ -343,6 +378,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       );
       setState(() => _isLoading = false);
 
+      debugPrint("📱 [CHAT SCREEN] Navigating to KifiyaScreen for payment...");
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -357,9 +393,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         ),
       );
     } on ChatCheckoutException catch (e) {
+      debugPrint("⚠️ [CHAT SCREEN] ChatCheckoutException: ${e.message}");
       if (mounted) _addBotMessage(e.message);
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint("❌ [CHAT SCREEN] Checkout failed: $e");
+      debugPrint("❌ [CHAT SCREEN] Stack: $stack");
       if (mounted) {
         _addBotMessage(
           "I couldn't start the checkout. Please try again in a moment.",
@@ -371,6 +409,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _handleQuickReply(String reply) {
+    debugPrint("⚡ [CHAT SCREEN] Quick reply tapped: \"$reply\"");
     _addUserMessage(reply);
     setState(() {
       _showQuickReplies = false;
@@ -382,6 +421,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     setState(() {
       _showQuickReplies = !_showQuickReplies;
     });
+    debugPrint("⚡ [CHAT SCREEN] Quick replies toggled. Visible: $_showQuickReplies");
   }
 
   Future<void> _fetchBotResponse(String userMessage) async {
@@ -389,17 +429,21 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _isLoading = true;
     });
 
-    debugPrint("🚀 [CHAT SCREEN] _fetchBotResponse called");
+    debugPrint("═══════════════════════════════════════════════════════════════");
+    debugPrint("🚀 [CHAT SCREEN] >>> START _fetchBotResponse");
     debugPrint("🚀 [CHAT SCREEN] User ID: $userId");
     debugPrint(
       "🚀 [CHAT SCREEN] Server Token: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}",
     );
-    debugPrint("🚀 [CHAT SCREEN] User Message: $userMessage");
+    debugPrint("🚀 [CHAT SCREEN] User Location: $userLocation");
+    debugPrint("🚀 [CHAT SCREEN] Last Order ID: $userLastOrderId, Order Status: $userOrderStatus");
+    debugPrint("🚀 [CHAT SCREEN] Current Session ID: ${_sessionId ?? 'none'}");
+    debugPrint("🚀 [CHAT SCREEN] User Message: \"$userMessage\"");
 
     try {
       if (userId.isEmpty || serverToken.isEmpty) {
         debugPrint(
-          "⚠️ [CHAT SCREEN] Missing credentials - userId: $userId, serverToken: $serverToken",
+          "⚠️ [CHAT SCREEN] Missing credentials - userId: '$userId', serverToken: '${serverToken.isNotEmpty ? 'Present' : 'Empty'}'",
         );
         if (mounted) {
           _addBotMessage(
@@ -420,14 +464,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         sessionId: _sessionId,
       );
 
-      debugPrint("🚀 [CHAT SCREEN] Backend response received: $response");
+      debugPrint("🚀 [CHAT SCREEN] Backend response returned. Map keys: ${response?.keys.toList()}");
 
-      if (!mounted) return;
+      if (!mounted) {
+        debugPrint("📱 [CHAT SCREEN] Widget not mounted after API response. Discarding render.");
+        return;
+      }
 
       if (response != null && response['error'] != true) {
         // Update session ID if provided by backend
         if (response['session_id'] != null) {
           _sessionId = response['session_id'].toString();
+          debugPrint("🔑 [CHAT SCREEN] Updated conversation session_id: $_sessionId");
         }
 
         // ChatService has already normalized the reply into JSON
@@ -437,7 +485,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             ? rawMessage
             : "I'm here to help with your ZMall orders, menus, and deliveries! 😊";
 
-        debugPrint("🚀 [CHAT SCREEN] Bot message: $botMessage");
+        debugPrint("🚀 [CHAT SCREEN] Bot reply message: \"$botMessage\"");
 
         // Check if backend returned structured browse_results
         final browseResults = response['browse_results'];
@@ -446,6 +494,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           final browseType =
               typedBrowseResults['type']?.toString().toLowerCase();
           final rawResults = typedBrowseResults['results'] as List;
+
+          debugPrint("🔍 [CHAT SCREEN] Found browse_results: type=$browseType, resultsCount=${rawResults.length}");
 
           // Check if browse_results contains stores
           final isStores = browseType == 'stores' ||
@@ -456,10 +506,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
           if (isStores) {
             final mockStores = parseBackendStoreResults(rawResults);
+            debugPrint(
+              "🏪 [CHAT SCREEN] Parsed ${mockStores.length} stores from browse_results",
+            );
             if (mockStores.isNotEmpty) {
-              debugPrint(
-                "🚀 [CHAT SCREEN] Backend browse_results returned ${mockStores.length} stores",
-              );
               final displayMessage = botMessage.isNotEmpty
                   ? botMessage
                   : "Here are some open stores near you:";
@@ -477,11 +527,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           // Otherwise check if browse_results contains items/products
           final parsedProducts =
               parseBackendBrowseResults(typedBrowseResults);
+          debugPrint(
+            "🍔 [CHAT SCREEN] Parsed ${parsedProducts.length} products from browse_results",
+          );
           if (parsedProducts.isNotEmpty) {
-            debugPrint(
-              "🚀 [CHAT SCREEN] Backend browse_results returned ${parsedProducts.length} products",
-            );
-
             final productMatches = parsedProducts;
             final storeName =
                 browseResults['store_name']?.toString() ?? 'Unknown Store';
@@ -523,13 +572,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             response['menu'] != null) {
           final backendProducts =
               response['products'] ?? response['items'] ?? response['menu'];
+          debugPrint("🍔 [CHAT SCREEN] Found simple products/items/menu array: length=${backendProducts is List ? backendProducts.length : 0}");
           if (backendProducts is List && backendProducts.isNotEmpty) {
-            debugPrint(
-              "🚀 [CHAT SCREEN] Backend returned ${backendProducts.length} products",
-            );
             final parsedProducts = parseSimpleBackendProducts(backendProducts);
+            debugPrint(
+              "🍔 [CHAT SCREEN] Parsed ${parsedProducts.length} simple products",
+            );
             if (parsedProducts.isNotEmpty) {
-              // Use a clean message instead of the unformatted backend response
               final cleanMessage = "Here are some items for you:";
 
               _addBotMessage(
@@ -546,10 +595,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         // Check if backend returned store data in structured format
         if (response['stores'] != null || response['companies'] != null) {
           final backendStores = response['stores'] ?? response['companies'];
+          debugPrint("🏪 [CHAT SCREEN] Found simple stores/companies array: length=${backendStores is List ? backendStores.length : 0}");
           final mockStores = parseBackendStoreResults(backendStores);
           if (mockStores.isNotEmpty) {
             debugPrint(
-              "🚀 [CHAT SCREEN] Backend returned ${mockStores.length} stores",
+              "🏪 [CHAT SCREEN] Parsed ${mockStores.length} stores",
             );
 
             final displayMessage = botMessage.isNotEmpty
@@ -566,6 +616,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           }
         }
 
+        debugPrint("💬 [CHAT SCREEN] Rendering text-only bot message: \"$botMessage\"");
         _addBotMessage(
           botMessage,
           showCartAction: _shouldShowCartAction(botMessage),
@@ -573,15 +624,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       } else {
         final errorMessage =
             response?['message'] ?? "Something went wrong. Please try again.";
-        debugPrint("⚠️ [CHAT SCREEN] Backend error: $errorMessage");
+        debugPrint("⚠️ [CHAT SCREEN] Backend returned error: $errorMessage");
         _addBotMessage(errorMessage);
       }
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint("❌ [CHAT SCREEN] Error calling chat API: $e");
+      debugPrint("❌ [CHAT SCREEN] Stack: $stack");
       if (mounted) {
         _addBotMessage("Connection timed out. Please try again.");
       }
     } finally {
+      debugPrint("🏁 [CHAT SCREEN] >>> END _fetchBotResponse");
+      debugPrint("═══════════════════════════════════════════════════════════════");
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -591,25 +645,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _handleAddProductToCart(MockProduct product) async {
+    debugPrint("🛒 [CHAT SCREEN] _handleAddProductToCart: ${product.name} (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})");
     await addMockProductsToCart([product]);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${product.name} added to cart'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          action: SnackBarAction(
-            label: 'View Cart',
-            onPressed: () => Navigator.pushNamed(context, CartScreen.routeName),
-          ),
-        ),
-      );
-    }
   }
 
   Future<void> _handleViewCartForMessage(int messageIndex) async {
+    debugPrint("🛒 [CHAT SCREEN] _handleViewCartForMessage tapped for message at index $messageIndex");
     final message = _messages[messageIndex];
     List<MockProduct> products = _messageProducts[message.id] ?? const [];
     if (products.isEmpty && messageIndex > 0) {
@@ -617,6 +658,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       products = _messageProducts[prevMessage.id] ?? const [];
     }
 
+    debugPrint("🛒 [CHAT SCREEN] Attaching ${products.length} product(s) to cart before navigation");
     if (products.isNotEmpty) {
       await addMockProductsToCart(products);
     }
@@ -653,6 +695,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   @override
   void dispose() {
+    debugPrint("📱 [CHAT SCREEN] dispose: Disposing SupportChatScreen and saving state...");
     _saveChatHistory(); // Save chat when leaving screen
     _messageController.removeListener(_onTypingChanged);
     _messageController.dispose();
@@ -666,6 +709,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       setState(() {
         _isTyping = typing;
       });
+      debugPrint("⌨️ [CHAT SCREEN] Typing state changed: isTyping=$_isTyping (length: ${_messageController.text.length})");
     }
   }
 
@@ -674,7 +718,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     required String userId,
     required String serverToken,
   }) async {
-    // Fetch orders silently in background - no loading indicator needed
+    debugPrint("📦 [CHAT SCREEN] _getUserOrder started for userId: $userId");
     try {
       var data = await ChatService.getOrders(
         userId: userId,
@@ -682,20 +726,19 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         context: context,
       );
 
+      debugPrint("📦 [CHAT SCREEN] Orders API raw result: success=${data?['success']}, listLength=${data?['order_list']?.length ?? 0}");
+
       if (data != null &&
-          data['success'] &&
+          data['success'] == true &&
           data['order_list'] != null &&
           data['order_list'].isNotEmpty) {
         if (mounted) {
           var userLastOrder = data['order_list'][0];
           setState(() {
-            // Convert unique_id to String (API returns int)
             userLastOrderId = userLastOrder['unique_id']?.toString() ?? '';
-            // userLastOrder['_id']?.toString() ?? '';
             userOrderStatus = userLastOrder['order_status'];
-            // debugPrint("✅ Last Order ID: $userLastOrderId");
-            // debugPrint("✅ Order Status: $userOrderStatus");
           });
+          debugPrint("✅ [CHAT SCREEN] User latest order loaded -> ID: $userLastOrderId, Status: $userOrderStatus");
         }
       } else {
         if (mounted) {
@@ -703,10 +746,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             userLastOrderId = null; // No order found
           });
         }
-        // debugPrint("⚠️ No orders found for user");
+        debugPrint("⚠️ [CHAT SCREEN] No orders found for user $userId");
       }
-    } catch (e) {
-      // debugPrint("❌ Error fetching orders: $e");
+    } catch (e, stack) {
+      debugPrint("❌ [CHAT SCREEN] Error fetching user orders: $e");
+      debugPrint("❌ [CHAT SCREEN] Stack: $stack");
       if (mounted) {
         setState(() {
           userLastOrderId = null;
@@ -737,24 +781,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: getProportionateScreenWidth(34),
-              height: getProportionateScreenWidth(34),
-              decoration: BoxDecoration(
-                color: kSecondaryColor,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  'Z',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: getProportionateScreenWidth(15),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
+            const BotAvatar(size: 36),
             SizedBox(width: getProportionateScreenWidth(10)),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -779,7 +806,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                     ),
                     SizedBox(width: getProportionateScreenWidth(5)),
                     Text(
-                      'Online',
+                      'Online · replies instantly',
                       style: TextStyle(
                         fontSize: getProportionateScreenWidth(11),
                         color: kGreyColor,
@@ -982,30 +1009,14 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   /// Opens the product detail bottom sheet — no page navigation.
   void _openMockProduct(MockProduct product, {List<MockProduct>? products}) {
+    debugPrint("🔍 [CHAT SCREEN] _openMockProduct: Opening sheet for '${product.name}' (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})");
     ProductDetailSheet.show(
       context,
       product: product,
       onAddToCart: (p, qty) async {
+        debugPrint("🛒 [CHAT SCREEN] ProductDetailSheet -> Add to Cart: ${p.name} x $qty");
         final items = List<MockProduct>.filled(qty, p);
         await addMockProductsToCart(items);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$qty × ${p.name} added to cart'),
-            backgroundColor: kBlackColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            action: SnackBarAction(
-              label: 'View Cart',
-              textColor: kSecondaryColor,
-              onPressed: () =>
-                  Navigator.pushNamed(context, CartScreen.routeName),
-            ),
-          ),
-        );
       },
       onOrderNow: _handleOrderNow,
     );
@@ -1097,62 +1108,27 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.symmetric(
         horizontal: getProportionateScreenWidth(20),
-        vertical: getProportionateScreenHeight(28),
+        vertical: getProportionateScreenHeight(36),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── ZMall AI identity ──────────────────────────────────────
-          Row(
-            children: [
-              Container(
-                width: getProportionateScreenWidth(44),
-                height: getProportionateScreenWidth(44),
-                decoration: BoxDecoration(
-                  color: kSecondaryColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    'Z',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: getProportionateScreenWidth(20),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(12)),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ZMall AI',
-                    style: TextStyle(
-                      fontSize: getProportionateScreenWidth(15),
-                      fontWeight: FontWeight.w700,
-                      color: kBlackColor,
-                    ),
-                  ),
-                  Text(
-                    'Your food & order assistant',
-                    style: TextStyle(
-                      fontSize: getProportionateScreenWidth(11.5),
-                      color: kGreyColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          Container(
+            padding: EdgeInsets.all(getProportionateScreenWidth(6)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: kSecondaryColor.withValues(alpha: 0.08),
+            ),
+            child: const BotAvatar(size: 64),
           ),
-          SizedBox(height: getProportionateScreenHeight(28)),
+          SizedBox(height: getProportionateScreenHeight(18)),
 
           // ── Heading ──────────────────────────────────────────────────
           Text(
-            'How can I help\nyou today?',
+            'Hi! How can I help?',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: getProportionateScreenWidth(26),
+              fontSize: getProportionateScreenWidth(24),
               fontWeight: FontWeight.w800,
               color: kBlackColor,
               height: 1.2,
@@ -1160,70 +1136,66 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           ),
           SizedBox(height: getProportionateScreenHeight(8)),
           Text(
-            'Ask me about food, orders, delivery, or payments.',
+            'Find food, order in a tap, and track\nyour delivery — all in one chat.',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: getProportionateScreenWidth(13.5),
               color: kGreyColor,
-              height: 1.4,
+              height: 1.45,
             ),
           ),
-          SizedBox(height: getProportionateScreenHeight(28)),
+          SizedBox(height: getProportionateScreenHeight(30)),
 
-          // ── Section label ─────────────────────────────────────────────
-          Text(
-            'Suggestions',
-            style: TextStyle(
-              fontSize: getProportionateScreenWidth(11.5),
-              fontWeight: FontWeight.w600,
-              color: kGreyColor,
-              letterSpacing: 0.3,
-            ),
-          ),
-          SizedBox(height: getProportionateScreenHeight(12)),
-
-          // ── Suggestion chips ──────────────────────────────────────────
-          Wrap(
-            spacing: getProportionateScreenWidth(8),
-            runSpacing: getProportionateScreenHeight(10),
-            children: suggestions.map((s) {
-              return GestureDetector(
-                onTap: () => _handleQuickReply(s['query']!),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: getProportionateScreenWidth(14),
-                    vertical: getProportionateScreenHeight(9),
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: kGreyColor.withValues(alpha: 0.25),
-                      width: 1,
+          // ── Suggestion tiles (2 per row) ─────────────────────────────
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final spacing = getProportionateScreenWidth(10);
+              final tileWidth = (constraints.maxWidth - spacing) / 2;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: suggestions.map((s) {
+                  return Material(
+                    color: kChatSurfaceColor,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _handleQuickReply(s['query']!),
+                      child: Container(
+                        width: tileWidth,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: getProportionateScreenWidth(14),
+                          vertical: getProportionateScreenHeight(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              s['emoji']!,
+                              style: TextStyle(
+                                fontSize: getProportionateScreenWidth(18),
+                              ),
+                            ),
+                            SizedBox(width: getProportionateScreenWidth(10)),
+                            Expanded(
+                              child: Text(
+                                s['label']!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: getProportionateScreenWidth(13),
+                                  fontWeight: FontWeight.w600,
+                                  color: kBlackColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        s['emoji']!,
-                        style: TextStyle(
-                          fontSize: getProportionateScreenWidth(14),
-                        ),
-                      ),
-                      SizedBox(width: getProportionateScreenWidth(6)),
-                      Text(
-                        s['label']!,
-                        style: TextStyle(
-                          fontSize: getProportionateScreenWidth(13),
-                          fontWeight: FontWeight.w500,
-                          color: kBlackColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                  );
+                }).toList(),
               );
-            }).toList(),
+            },
           ),
           SizedBox(height: getProportionateScreenHeight(20)),
         ],
@@ -1243,31 +1215,14 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: getProportionateScreenWidth(18),
-                height: getProportionateScreenWidth(18),
-                decoration: BoxDecoration(
-                  color: kSecondaryColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    'Z',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: getProportionateScreenWidth(9),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: getProportionateScreenWidth(6)),
+              const BotAvatar(size: 20),
+              SizedBox(width: getProportionateScreenWidth(7)),
               Text(
                 'ZMall AI',
                 style: TextStyle(
-                  fontSize: getProportionateScreenWidth(11.5),
-                  fontWeight: FontWeight.w600,
-                  color: kGreyColor,
+                  fontSize: getProportionateScreenWidth(12),
+                  fontWeight: FontWeight.w700,
+                  color: kBlackColor,
                 ),
               ),
             ],
@@ -1279,16 +1234,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               vertical: getProportionateScreenHeight(13),
             ),
             decoration: BoxDecoration(
-              color: kWhiteColor,
+              color: kChatSurfaceColor,
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(18),
-              ),
-              border: Border.all(
-                color: kGreyColor.withValues(alpha: 0.12),
-                width: 1,
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
             ),
             child: const _TypingDots(),
@@ -1370,6 +1321,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _resendMessage(String message) {
+    debugPrint("🔄 [CHAT SCREEN] _resendMessage: \"$message\"");
     _addUserMessage(message);
     _fetchBotResponse(message);
 
@@ -1383,6 +1335,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _copyMessage(String message) {
+    debugPrint("📋 [CHAT SCREEN] _copyMessage: \"$message\"");
     Clipboard.setData(ClipboardData(text: message));
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1395,6 +1348,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _deleteMessage(ChatMessage message) {
+    debugPrint("🗑️ [CHAT SCREEN] _deleteMessage: id=${message.id}, text=\"${message.message}\"");
     setState(() {
       _messages.removeWhere((msg) => msg.id == message.id);
     });
@@ -1409,6 +1363,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           label: "Undo",
           textColor: kPrimaryColor,
           onPressed: () {
+            debugPrint("↩️ [CHAT SCREEN] Undo delete message: id=${message.id}");
             setState(() {
               _messages.add(message);
               _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -1421,6 +1376,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _showOptionsMenu(BuildContext context) {
+    debugPrint("⚙️ [CHAT SCREEN] _showOptionsMenu opened");
     showModalBottomSheet(
       context: context,
       backgroundColor: kPrimaryColor,
@@ -1443,6 +1399,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               icon: Icon(HeroiconsOutline.trash, color: kBlackColor),
               title: "Clear Chat",
               onTap: () {
+                debugPrint("🧹 [CHAT SCREEN] Options Menu -> Clear Chat tapped");
                 Navigator.pop(context);
                 setState(() {
                   _messages.clear();
@@ -1459,6 +1416,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               title: "Call Support",
               subtitle: Text("+251 96 757 5757"),
               onTap: () {
+                debugPrint("📞 [CHAT SCREEN] Options Menu -> Call Support tapped (+251967575757)");
                 launchUrl(Uri(scheme: 'tel', path: '+251967575757'));
               },
             ),
@@ -1469,6 +1427,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               title: "Email Support",
               subtitle: Text("info@zmallshop.com"),
               onTap: () {
+                debugPrint("✉️ [CHAT SCREEN] Options Menu -> Email Support tapped (info@zmallshop.com)");
                 launchUrl(Uri(scheme: 'mailto', path: "info@zmallshop.com"));
                 // launch("mailto:info@zmallshop.com");
               },

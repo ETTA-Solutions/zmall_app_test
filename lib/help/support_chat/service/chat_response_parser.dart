@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 /// Converts a raw /chat_test response into the structured JSON contract the
 /// chat UI renders (the same shape the mock data uses):
@@ -11,12 +12,16 @@ import 'dart:convert';
 /// lists, or JSON wrapped in ```json fences) instead of real JSON. This
 /// normalizer extracts that data so products and stores render as cards.
 Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
+  debugPrint("🧩 [CHAT PARSER] === START normalizeChatResponse ===");
+  debugPrint("🧩 [CHAT PARSER] Incoming raw map keys: ${raw.keys.toList()}");
+
   final result = Map<String, dynamic>.from(raw);
 
   String text = '';
   for (final key in const ['message', 'response', 'reply', 'answer', 'text']) {
     final value = raw[key];
     if (value is Map) {
+      debugPrint("🧩 [CHAT PARSER] Found nested Map inside '$key', merging into structured payload");
       // Structured payload nested inside the reply field
       _mergeStructured(result, Map<String, dynamic>.from(value));
       text = result['message']?.toString() ?? '';
@@ -24,6 +29,7 @@ Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
     }
     if (value != null && value.toString().trim().isNotEmpty) {
       text = value.toString();
+      debugPrint("🧩 [CHAT PARSER] Extracted raw text from field '$key' (${text.length} chars)");
       break;
     }
   }
@@ -31,11 +37,14 @@ Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
   // JSON embedded in the reply text (raw or inside a ```json fence)
   final embedded = _extractEmbeddedJson(text);
   if (embedded != null) {
+    debugPrint("🧩 [CHAT PARSER] Successfully extracted embedded JSON! Keys: ${embedded.keys.toList()}");
     _mergeStructured(result, embedded);
     text = embedded['message']?.toString() ??
         embedded['reply']?.toString() ??
         embedded['response']?.toString() ??
         _stripJsonBlock(text);
+  } else {
+    debugPrint("🧩 [CHAT PARSER] No embedded JSON block found in reply text");
   }
 
   // If browse_results has stores, mirror to result['stores'] for easy access
@@ -43,20 +52,24 @@ Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
   if (browse is Map) {
     final type = browse['type']?.toString().toLowerCase();
     final results = browse['results'];
+    debugPrint("🧩 [CHAT PARSER] Existing browse_results present (type: $type, items: ${results is List ? results.length : 0})");
     if (results is List &&
         (type == 'stores' ||
             (results.isNotEmpty &&
                 results.first is Map &&
                 (results.first['store_name'] != null ||
                     results.first['store_id'] != null)))) {
+      debugPrint("🧩 [CHAT PARSER] Mirroring store results to result['stores'] (${results.length} stores)");
       result['stores'] = results;
     }
   }
 
   if (!_hasStructuredData(result) && text.isNotEmpty) {
+    debugPrint("🧩 [CHAT PARSER] No structured data present yet. Attempting markdown parsing on text...");
     final items = _parseMarkdownItems(text);
     if (items.isNotEmpty) {
       final storeName = _parseMenuStoreName(text);
+      debugPrint("🧩 [CHAT PARSER] Extracted ${items.length} markdown items! Store name: '$storeName'");
       if (storeName != null) {
         result['browse_results'] = {
           'type': 'items',
@@ -70,8 +83,11 @@ Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
     } else {
       final stores = _parseMarkdownStores(text);
       if (stores.isNotEmpty) {
+        debugPrint("🧩 [CHAT PARSER] Extracted ${stores.length} markdown stores!");
         result['stores'] = stores;
         text = _introText(text) ?? '';
+      } else {
+        debugPrint("🧩 [CHAT PARSER] Text did not contain markdown menu items or stores");
       }
     }
   }
@@ -87,6 +103,9 @@ Map<String, dynamic> normalizeChatResponse(Map<String, dynamic> raw) {
   }
 
   result['message'] = text.trim();
+  debugPrint("🧩 [CHAT PARSER] Final sanitized message: \"${result['message']}\"");
+  debugPrint("🧩 [CHAT PARSER] Output keys: ${result.keys.toList()}");
+  debugPrint("🧩 [CHAT PARSER] === END normalizeChatResponse ===");
   return result;
 }
 
