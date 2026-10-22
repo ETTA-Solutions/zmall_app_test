@@ -94,7 +94,7 @@ class _SubscriptionPaymentUssdState extends State<SubscriptionPaymentUssd> {
                 ],
               ),
               Image.asset(
-                "images/telebirr.png",
+                "images/payment/telebirr.png",
                 height: getProportionateScreenHeight(kDefaultPadding * 10),
                 width: getProportionateScreenWidth(kDefaultPadding * 10),
               ),
@@ -120,10 +120,13 @@ class _SubscriptionPaymentUssdState extends State<SubscriptionPaymentUssd> {
     // });
     var url = widget.url;
 
-    //New configuration
+    final cleanTraceNo =
+        widget.traceNo.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     Map data = {
-      "traceNo": widget.traceNo,
-      "amount": widget.amount,
+      "traceNo": cleanTraceNo.isNotEmpty
+          ? cleanTraceNo
+          : "ZM${DateTime.now().millisecondsSinceEpoch}",
+      "amount": 1, // test 1 birr
       "phone": "251${widget.phone}",
       "payerId": "22",
       "appId": "4321",

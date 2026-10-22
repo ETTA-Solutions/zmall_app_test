@@ -191,9 +191,11 @@ class _SubscriptionPaymentState extends State<SubscriptionPaymentInApp> {
   @override
   void initState() {
     super.initState();
+    final cleanTraceNo =
+        widget.traceNo.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     getRreceiveCode(
-        amount: "${widget.amount}",
-        traceNo: widget.traceNo,
+        amount: "1",
+        traceNo: cleanTraceNo.isNotEmpty ? cleanTraceNo : "ZM${DateTime.now().millisecondsSinceEpoch}",
         phone: widget.phone,
         description: "ZMall_Telebirr_InApp");
   }
@@ -227,7 +229,7 @@ class _SubscriptionPaymentState extends State<SubscriptionPaymentInApp> {
                 ],
               ),
               Image.asset(
-                "images/telebirr.png",
+                "images/payment/telebirr.png",
                 height: getProportionateScreenHeight(kDefaultPadding * 10),
                 width: getProportionateScreenWidth(kDefaultPadding * 10),
               ),
@@ -295,10 +297,14 @@ class _SubscriptionPaymentState extends State<SubscriptionPaymentInApp> {
     final deviceType = Platform.isIOS ? "iOS" : "android";
     var responseData;
     var url = "https://pgw.shekla.app/telebirrInapp/create_order";
+    final cleanTraceNo =
+        traceNo.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     Map data = {
-      "traceNo": traceNo, // "traceNo": "1234567890",
+      "traceNo": cleanTraceNo.isNotEmpty
+          ? cleanTraceNo
+          : "ZM${DateTime.now().millisecondsSinceEpoch}",
       "phone": phone,
-      "amount": amount,
+      "amount": "1", // test 1 birr
       "description": description,
       "isInapp": true,
       "is_test": true,

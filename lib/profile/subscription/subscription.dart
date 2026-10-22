@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import 'package:zmall/utils/constants.dart';
@@ -9,6 +8,51 @@ import 'package:zmall/widgets/custom_back_button.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:flutter/cupertino.dart';
+
+/// Compatibility helper to provide inter text styles without external package dependency
+class GoogleFonts {
+  static TextStyle inter({
+    TextStyle? textStyle,
+    Color? color,
+    Color? backgroundColor,
+    double? fontSize,
+    FontWeight? fontWeight,
+    FontStyle? fontStyle,
+    double? letterSpacing,
+    double? wordSpacing,
+    TextBaseline? textBaseline,
+    double? height,
+    Locale? locale,
+    Paint? foreground,
+    Paint? background,
+    List<Shadow>? shadows,
+    dynamic fontFeatures,
+    TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
+    double? decorationThickness,
+  }) {
+    return TextStyle(
+      color: color,
+      backgroundColor: backgroundColor,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      letterSpacing: letterSpacing,
+      wordSpacing: wordSpacing,
+      textBaseline: textBaseline,
+      height: height,
+      locale: locale,
+      foreground: foreground,
+      background: background,
+      shadows: shadows,
+      decoration: decoration,
+      decorationColor: decorationColor,
+      decorationStyle: decorationStyle,
+      decorationThickness: decorationThickness,
+    );
+  }
+}
 
 class SubscriptionScreen extends StatefulWidget {
   static String routeName = '/subscription';
@@ -26,7 +70,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
   // ── Subscription state from /api/user/get_subscription_detail ──
   bool _subscriptionEnabled = true; // show UI while loading
-  num _subscriptionPrice = 0;
+  num _subscriptionPrice = 1; // test 1 birr
   int _subscriptionDurationDays = 30;
   bool _isActive = false;
   DateTime? _subscriptionExpiry;
@@ -126,8 +170,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
     if (!mounted) return;
 
+    debugPrint("subscription detail response: $data");
     if (data != null && data['success'] == true) {
-      final bool enabled = data['is_subscription_enabled'] == true;
+      final bool enabled = true;
       final bool active = data['is_active'] == true;
       final DateTime? expiry = data['subscription_expiry'] != null
           ? DateTime.tryParse(data['subscription_expiry'])
@@ -135,7 +180,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
       setState(() {
         _subscriptionEnabled = enabled;
-        _subscriptionPrice = (data['subscription_price'] ?? 0) as num;
+        _subscriptionPrice = 1; // test 1 birr
         _subscriptionDurationDays =
             (data['subscription_duration_days'] ?? 30) as int;
         _isActive = active;
@@ -168,7 +213,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     if (mounted) {
       setState(() {
         _subscriptionEnabled = true;
-        _subscriptionPrice = amount;
+        _subscriptionPrice = 1; // test 1 birr
         _subscriptionDurationDays = planDay;
         _isActive = isSubscribed && !isExpired;
         _subscriptionExpiry = expiry;
@@ -322,7 +367,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     final Color color = Color(0xFF6A52B8);
 
     return SliverAppBar(
-      expandedHeight: 280.0,
+      expandedHeight: 310.0,
       floating: false,
       pinned: true,
       stretch: true,
@@ -345,16 +390,26 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
             ),
           ),
         ),
-        background: isActive
-            ? PremiumStatusCard(
-                amount: _subscriptionPrice.toInt(),
-                color: color,
-                daysLeft: daysLeft,
-                planDay: _subscriptionDurationDays,
-                planType: "Monthly",
-                isLatestPlan: true,
-              )
-            : _buildHeroSection(_isSubscribed, _subscriptionPrice.toInt()),
+        background: ClipRect(
+          child: OverflowBox(
+            minHeight: 0.0,
+            maxHeight: 330.0,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              height: 310,
+              child: isActive
+                  ? PremiumStatusCard(
+                      amount: _subscriptionPrice.toInt(),
+                      color: color,
+                      daysLeft: daysLeft,
+                      planDay: _subscriptionDurationDays,
+                      planType: "Monthly",
+                      isLatestPlan: true,
+                    )
+                  : _buildHeroSection(_isSubscribed, _subscriptionPrice.toInt()),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -458,16 +513,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       ),
                       child: ElevatedButton(
                         onPressed: () {
-                          ShowPaymentOption(
-                            price:
-                                _subscriptionPlans[isSubscribed
-                                    ? (amount == 100 ? 1 : 0)
-                                    : 1]['price'],
-                            plan:
-                                _subscriptionPlans[isSubscribed
-                                    ? (amount == 100 ? 1 : 0)
-                                    : 1],
-                          );
+                          final plan = _subscriptionPlans.isNotEmpty
+                              ? _subscriptionPlans[0]
+                              : null;
+                          if (plan != null) {
+                            ShowPaymentOption(
+                              price: (plan['price'] as num).toDouble(),
+                              plan: plan,
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
@@ -519,10 +573,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }) {
     final isActive = daysLeft > 0;
     final buttonText = isLatestPlan ? "Manage Subscription" : "Upgrade";
-    final progress = isActive ? (daysLeft / planDay) : 0.0;
+    final progress =
+        (planDay > 0 && isActive) ? (daysLeft / planDay).clamp(0.0, 1.0) : 0.0;
 
     return Container(
-      margin: EdgeInsets.all(20),
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: amount == 100
@@ -531,29 +586,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: Offset(0, 10),
+            blurRadius: 16,
+            offset: Offset(0, 8),
           ),
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.verified, size: 40, color: Colors.white),
+              child: Icon(Icons.verified, size: 32, color: Colors.white),
             ),
-            SizedBox(height: 16),
+            SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -561,43 +617,43 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   'Premium Member',
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 12),
+                SizedBox(width: 8),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     isActive ? "Active" : "Expired",
                     style: GoogleFonts.inter(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 6),
             Text(
               '$planType Plan (ETB ${amount.toStringAsFixed(2)})',
               style: GoogleFonts.inter(
                 color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 12),
             Container(
-              height: 8,
+              height: 6,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(3),
               ),
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
@@ -605,28 +661,29 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 12),
+            SizedBox(height: 8),
             Text(
               isActive ? '$daysLeft days remaining' : 'Subscription expired',
               style: GoogleFonts.inter(
                 color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
             if (isActive) ...[
-              SizedBox(height: 20),
+              SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () {
-                  if (!isLatestPlan) {
+                  if (!isLatestPlan && _subscriptionPlans.isNotEmpty) {
+                    final plan = _subscriptionPlans[0];
                     ShowPaymentOption(
-                      price: _subscriptionPlans[1]['price'],
-                      plan: _subscriptionPlans[1],
+                      price: (plan['price'] as num).toDouble(),
+                      plan: plan,
                     );
                   } else {
                     _showManageSubscriptionSheet(
@@ -642,13 +699,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
                 child: Text(
                   buttonText,
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -1036,18 +1093,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     final currentDate = DateTime.now();
     final dateOfSubscription =
         subscription != null && subscription['date_of_subscription'] != null
-        ? DateTime.parse(subscription['date_of_subscription'])
+        ? DateTime.tryParse(subscription['date_of_subscription'].toString()) ?? DateTime.now()
         : DateTime.now();
     final amount = subscription != null
         ? subscription['subscription_amount'] ?? 0
         : 0;
-    final planDay = amount == 100 ? 30 : 7;
-    final endDate = dateOfSubscription.add(Duration(days: planDay));
-    final isSubscribed =
-        subscription != null && subscription['is_user_subscribed'] == true;
-    final isExpired = currentDate.isAfter(endDate);
-    final isActive = isSubscribed && !isExpired;
-    final currentPlanPrice = isActive ? amount.toDouble() : null;
+    final planDay = _subscriptionDurationDays;
+    final endDate = _subscriptionExpiry ?? dateOfSubscription.add(Duration(days: planDay));
+    final isSubscribed = _isSubscribed;
+    final isExpired = _subscriptionExpiry != null
+        ? currentDate.isAfter(_subscriptionExpiry!)
+        : currentDate.isAfter(endDate);
+    final isActive = _isActive && isSubscribed && !isExpired;
+    final currentPlanPrice = isActive ? _subscriptionPrice.toDouble() : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1287,14 +1345,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                       ],
                               ),
                               child: ElevatedButton(
-                                onPressed: isCurrentPlan
-                                    ? null
-                                    : () {
-                                        ShowPaymentOption(
-                                          price: plan['price'],
-                                          plan: plan,
-                                        );
-                                      },
+                                onPressed: () {
+                                  ShowPaymentOption(
+                                    price: (plan['price'] as num).toDouble(),
+                                    plan: plan,
+                                  );
+                                },
                                 style: ElevatedButton.styleFrom(
                                   foregroundColor: isPopular
                                       ? plan['accentColor']
@@ -1310,10 +1366,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  disabledForegroundColor: Colors.grey
-                                      .withValues(alpha: 0.5),
-                                  disabledBackgroundColor: Colors.grey
-                                      .withValues(alpha: 0.3),
                                 ),
                                 child: Text(
                                   isCurrentPlan ? 'Subscribed' : 'Subscribe',
@@ -1502,10 +1554,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 if (!isActive || daysLeft <= 7)
                   ElevatedButton.icon(
                     onPressed: () {
-                      ShowPaymentOption(
-                        price: _subscriptionPlans[planIndex]['price'],
-                        plan: _subscriptionPlans[planIndex],
-                      );
+                      final plan = _subscriptionPlans.isNotEmpty
+                          ? (planIndex < _subscriptionPlans.length
+                              ? _subscriptionPlans[planIndex]
+                              : _subscriptionPlans[0])
+                          : null;
+                      if (plan != null) {
+                        ShowPaymentOption(
+                          price: (plan['price'] as num).toDouble(),
+                          plan: plan,
+                        );
+                      }
                     },
                     icon: Icon(Icons.refresh),
                     label: Text(
@@ -1527,10 +1586,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 if (isActive && !isLatestPlan)
                   ElevatedButton.icon(
                     onPressed: () {
-                      ShowPaymentOption(
-                        price: _subscriptionPlans[1]['price'],
-                        plan: _subscriptionPlans[1],
-                      );
+                      final plan = _subscriptionPlans.isNotEmpty
+                          ? _subscriptionPlans[0]
+                          : null;
+                      if (plan != null) {
+                        ShowPaymentOption(
+                          price: (plan['price'] as num).toDouble(),
+                          plan: plan,
+                        );
+                      }
                     },
                     icon: Icon(Icons.upgrade_outlined),
                     label: Text(
@@ -1593,9 +1657,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
                 crossAxisCount: 2,
-                crossAxisSpacing: 15,
-                mainAxisSpacing: 15,
-                childAspectRatio: 1.4,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.1,
                 children: _subscriptionPlans[planIndex]['benefits'].map<Widget>(
                   (benefit) {
                     bool doesContainValue(string) {
@@ -1604,9 +1668,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
                     return _buildBenefitCard(
                       color: color,
-                      icon: doesContainValue("free deliveries")
+                      icon: doesContainValue("free deliveries") || doesContainValue("free delivery")
                           ? Icons.local_shipping_outlined
-                          : doesContainValue("% off")
+                          : doesContainValue("% off") || doesContainValue("discount")
                           ? Icons.price_check_outlined
                           : doesContainValue("exclusive")
                           ? Icons.discount_outlined
@@ -1656,7 +1720,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     Color? color,
   }) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1671,33 +1735,43 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 28, color: color ?? Color(0xFF4A3298)),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 4),
-          Text(
-            description ?? '',
-            style: GoogleFonts.inter(
-              color: Colors.grey[600],
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
+          Icon(icon, size: 24, color: color ?? Color(0xFF4A3298)),
+          SizedBox(height: 6),
+          Flexible(
+            child: Text(
+              title,
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
           ),
+          if (description != null && description.isNotEmpty) ...[
+            SizedBox(height: 2),
+            Text(
+              description,
+              style: GoogleFonts.inter(
+                color: Colors.grey[600],
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
   }
 
   ShowPaymentOption({
-    required double price,
+    required num price,
     required Map<String, dynamic> plan,
   }) {
+    final double numericPrice = price.toDouble();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1709,7 +1783,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       ),
       builder: (BuildContext context) {
         var uuid = Uuid();
-        String uniqueId = uuid.v4().substring(0, 10);
+        String uniqueId = uuid
+            .v4()
+            .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+            .substring(0, 10);
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return Container(
@@ -1847,14 +1924,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   _buildPaymentContainer(
                     title: "Telebirr InApp",
                     subtitle: "Pay with mobile app",
-                    imageUrl: "images/telebirr.png",
+                    imageUrl: "images/payment/telebirr.png",
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) {
                             return SubscriptionPaymentInApp(
-                              amount: price,
+                              amount: numericPrice,
                               context: context,
                               traceNo: uniqueId,
                               phone: userData['user']['phone'],
@@ -1884,14 +1961,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   _buildPaymentContainer(
                     title: "Telebirr USSD",
                     subtitle: "Pay with USSD code",
-                    imageUrl: "images/telebirr.png",
+                    imageUrl: "images/payment/telebirr.png",
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) {
                             return SubscriptionPaymentUssd(
-                              amount: price,
+                              amount: numericPrice,
                               traceNo: uniqueId,
                               phone: userData['user']['phone'],
                               userId: userData['user']['_id'],
