@@ -23,6 +23,7 @@ import 'package:zmall/orders/components/order_history_detail.dart';
 import 'package:zmall/orders/components/order_rating.dart';
 import 'package:zmall/product/product_screen.dart';
 import 'package:zmall/profile/components/subscribe.dart';
+import 'package:zmall/profile/subscription/subscription.dart';
 import 'package:zmall/profile/profile_screen.dart';
 import 'package:zmall/register/register_screen.dart';
 import 'package:zmall/report/report_screen.dart';
@@ -65,6 +66,10 @@ final Map<String, WidgetBuilder> routes = {
   GlobalDelivery.routeName: (context) => GlobalDelivery(),
   EventsScreen.routeName: (context) => EventsScreen(),
   SubscribeScreen.routeName: (context) => SubscribeScreen(),
+  SubscriptionScreen.routeName: (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    return SubscriptionScreen(userData: args);
+  },
   McpCartScreen.routeName: (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
     final cartId = (args is Map) ? args['cartId']?.toString() ?? '' : '';
