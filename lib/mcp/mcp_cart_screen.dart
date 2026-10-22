@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fl_location/fl_location.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
@@ -70,11 +71,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
       debugPrint('[MCP CART] User authenticated: userId=$userId');
 
-      if (mounted) {
-        setState(() {
-          statusText = 'Fetching your cart...';
-        });
-      }
+      statusText = 'Fetching your cart...';
 
       final uri = Uri.parse('$BASE_URL/api/ai/cart/${widget.cartId}');
 
@@ -461,11 +458,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
     required dynamic storeLocation,
     Map? data,
   }) async {
-    if (mounted) {
-      setState(() {
-        statusText = 'Setting up your cart...';
-      });
-    }
+    statusText = 'Setting up your cart...';
 
     // Convert store_location from [lat, lng] array to {lat, long} map
     Map<String, dynamic> storeLocationMap;
@@ -496,7 +489,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
         data?['destination_address'] ??
         (data != null && data['cart'] is Map
             ? (data['cart']['destination'] ??
-                data['cart']['destination_address'])
+                  data['cart']['destination_address'])
             : null);
     final rawDestLat =
         num.tryParse(
@@ -507,17 +500,16 @@ class _McpCartScreenState extends State<McpCartScreen> {
         num.tryParse(
           rawDest is Map
               ? (rawDest['long']?.toString() ??
-                  rawDest['lng']?.toString() ??
-                  '0')
+                    rawDest['lng']?.toString() ??
+                    '0')
               : '0',
         ) ??
         0.0;
-    final rawDestName =
-        rawDest is Map
-            ? (rawDest['address']?.toString() ??
-                rawDest['name']?.toString() ??
-                'Delivery Address')
-            : 'Delivery Address';
+    final rawDestName = rawDest is Map
+        ? (rawDest['address']?.toString() ??
+              rawDest['name']?.toString() ??
+              'Delivery Address')
+        : 'Delivery Address';
 
     // Priority 2: destination_addresses array from the cart response
     // Format: [{"location": [lat, lng], "address": "..."}]
@@ -539,10 +531,12 @@ class _McpCartScreenState extends State<McpCartScreen> {
           dLat = (num.tryParse(loc['lat']?.toString() ?? '0') ?? 0).toDouble();
           dLng =
               (num.tryParse(
-                    loc['long']?.toString() ?? loc['lng']?.toString() ?? '0',
-                  ) ??
-                  0)
-              .toDouble();
+                        loc['long']?.toString() ??
+                            loc['lng']?.toString() ??
+                            '0',
+                      ) ??
+                      0)
+                  .toDouble();
         }
         // Skip if coords are zero or identical to the store (placeholder)
         if (dLat == 0.0 || dLng == 0.0) continue;
@@ -567,7 +561,9 @@ class _McpCartScreenState extends State<McpCartScreen> {
         'long': rawDestLong.toDouble(),
         'note': rawDest['note']?.toString() ?? '',
       };
-      debugPrint('[MCP DEST] Using Priority 1: explicit destination = $destAddress');
+      debugPrint(
+        '[MCP DEST] Using Priority 1: explicit destination = $destAddress',
+      );
     } else if (destFromCart != null) {
       // Priority 2: destination_addresses array from cart (non-placeholder entry)
       destAddress = destFromCart;
@@ -616,7 +612,9 @@ class _McpCartScreenState extends State<McpCartScreen> {
               if (a is! Map) continue;
               final aLat = num.tryParse(a['lat']?.toString() ?? '0') ?? 0.0;
               final aLng = num.tryParse(a['long']?.toString() ?? '0') ?? 0.0;
-              if (aLat != 0.0 && aLng != 0.0 && aLat != storeLocationMap['lat']) {
+              if (aLat != 0.0 &&
+                  aLng != 0.0 &&
+                  aLat != storeLocationMap['lat']) {
                 deliveryDest = {
                   'name': a['name']?.toString() ?? 'Saved Address',
                   'lat': aLat.toDouble(),
@@ -666,11 +664,15 @@ class _McpCartScreenState extends State<McpCartScreen> {
       if (gpsDest == null && deliveryDest == null && cartDest == null) {
         try {
           final sLat =
-              num.tryParse((await Service.read('latitude'))?.toString() ?? '0') ??
-                  0.0;
+              num.tryParse(
+                (await Service.read('latitude'))?.toString() ?? '0',
+              ) ??
+              0.0;
           final sLng =
-              num.tryParse((await Service.read('longitude'))?.toString() ?? '0') ??
-                  0.0;
+              num.tryParse(
+                (await Service.read('longitude'))?.toString() ?? '0',
+              ) ??
+              0.0;
           if (sLat != 0.0 && sLng != 0.0 && sLat != storeLocationMap['lat']) {
             savedCoordsDest = {
               'name': 'Saved Coordinates',
@@ -680,7 +682,9 @@ class _McpCartScreenState extends State<McpCartScreen> {
             };
           }
         } catch (_) {}
-        debugPrint('[MCP DEST] Priority 6 saved coords dest = $savedCoordsDest');
+        debugPrint(
+          '[MCP DEST] Priority 6 saved coords dest = $savedCoordsDest',
+        );
       }
 
       // Priority 7: app metadata default (ZMetaData - Bole: 9.004188, 38.768154)
@@ -748,8 +752,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
     // Sync resolved destination coordinates to app state (ZMetaData & storage)
     final finalDestLat =
-        (num.tryParse(destAddress['lat']?.toString() ?? '0') ?? 0.0)
-            .toDouble();
+        (num.tryParse(destAddress['lat']?.toString() ?? '0') ?? 0.0).toDouble();
     final finalDestLng =
         (num.tryParse(destAddress['long']?.toString() ?? '0') ?? 0.0)
             .toDouble();
@@ -894,11 +897,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
     required List items,
   }) async {
     try {
-      if (mounted) {
-        setState(() {
-          statusText = 'Preparing your order invoice...';
-        });
-      }
+      statusText = 'Preparing your order invoice...';
 
       // Step 1: Sync cart to backend database (/api/user/add_item_in_cart_new)
       debugPrint(
@@ -1154,11 +1153,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
         '╚═══════════════════════════════════════════════════════════\n',
       );
 
-      if (mounted) {
-        setState(() {
-          statusText = 'Generating payment invoice...';
-        });
-      }
+      statusText = 'Generating payment invoice...';
 
       final invoiceUri = Uri.parse('$BASE_URL/api/user/get_order_cart_invoice');
       final invoiceResponse = await http
@@ -1460,48 +1455,9 @@ class _McpCartScreenState extends State<McpCartScreen> {
         false;
   }
 
-  Widget _buildBrandMark({required Color accentColor, required Widget child}) {
-    return SizedBox(
-      width: 72,
-      height: 72,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            strokeWidth: 3.5,
-            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-            backgroundColor: accentColor.withValues(alpha: 0.12),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: accentColor.withValues(alpha: 0.12),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipOval(child: child),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusShell({
-    required Color accentColor,
-    required Widget icon,
-    required String title,
-    required String message,
-    required List<Widget> actions,
-    Color? backgroundTint,
-  }) {
+  Widget _buildErrorView({required bool isExpired}) {
     return Scaffold(
-      backgroundColor: backgroundTint ?? Colors.white,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -1515,7 +1471,7 @@ class _McpCartScreenState extends State<McpCartScreen> {
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: accentColor.withValues(alpha: 0.10),
+                    color: kSecondaryColor.withValues(alpha: 0.10),
                     blurRadius: 24,
                     offset: const Offset(0, 12),
                   ),
@@ -1524,10 +1480,25 @@ class _McpCartScreenState extends State<McpCartScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildBrandMark(accentColor: accentColor, child: icon),
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Image.asset(
+                        'images/zmall_sm.png',
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   Text(
-                    title,
+                    isExpired ? 'Order Link Expired' : 'Cart Unavailable',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
@@ -1536,12 +1507,60 @@ class _McpCartScreenState extends State<McpCartScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    message,
+                    isExpired
+                        ? 'This order link has expired or is no longer available. Please start a fresh order.'
+                        : error!,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 24),
-                  ...actions,
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kSecondaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        isProcessingDeepLinkCart = false;
+                        Navigator.pushReplacementNamed(context, '/home');
+                      },
+                      child: const Text(
+                        'Start Fresh Order',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: kBlackColor,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        isProcessingDeepLinkCart = false;
+                        Navigator.pushReplacementNamed(context, '/home');
+                      },
+                      child: const Text(
+                        'Go to Home',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1557,84 +1576,14 @@ class _McpCartScreenState extends State<McpCartScreen> {
       final isExpired =
           error!.toLowerCase().contains('expire') ||
           error!.toLowerCase().contains('not found');
-      return _buildStatusShell(
-        accentColor: kSecondaryColor,
-        backgroundTint: Colors.white,
-        icon: Image.asset(
-          'images/zmall_sm.png',
-          width: 40,
-          height: 40,
-          fit: BoxFit.cover,
-        ),
-        title: isExpired ? 'Order Link Expired' : 'Cart Unavailable',
-        message: isExpired
-            ? 'This order link has expired or is no longer available. Please start a fresh order.'
-            : error!,
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kSecondaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              onPressed: () {
-                isProcessingDeepLinkCart = false;
-                Navigator.pushReplacementNamed(context, '/home');
-              },
-              child: const Text(
-                'Start Fresh Order',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: kBlackColor,
-                side: BorderSide(color: Colors.grey.shade300),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              onPressed: () {
-                isProcessingDeepLinkCart = false;
-                Navigator.pushReplacementNamed(context, '/home');
-              },
-              child: const Text(
-                'Go to Home',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
-      );
+      return _buildErrorView(isExpired: isExpired);
     }
 
-    return _buildStatusShell(
-      accentColor: kSecondaryColor,
-      icon: Image.asset(
-        'images/zmall_sm.png',
-        width: 36,
-        height: 36,
-        fit: BoxFit.cover,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(child: SpinKitWave(color: kSecondaryColor, size: 36.0)),
       ),
-      title: statusText,
-      message: 'AI Cart Bridge',
-      actions: [
-        Text(
-          'Connecting your cart securely',
-          style: TextStyle(color: Colors.grey.shade500),
-        ),
-      ],
     );
   }
 }
