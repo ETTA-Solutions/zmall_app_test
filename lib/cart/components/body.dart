@@ -747,8 +747,11 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                           zmallClose.minute,
                                         );
 
-                                        if (now.isAfter(zmallOpen) &&
-                                            now.isBefore(zmallClose)) {
+                                        // BYPASS store closed-time check: always allow checkout regardless of
+                                        // open/close time. Original gate kept below for reference.
+                                        // if (now.isAfter(zmallOpen) &&
+                                        //     now.isBefore(zmallClose)) {
+                                        if (true) {
                                           Navigator.pushNamed(
                                             context,
                                             DeliveryScreen.routeName,

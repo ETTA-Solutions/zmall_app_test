@@ -119,7 +119,7 @@ class AbroadCart {
         ? null
         : DateTime.parse(json["schedule_start"]),
     isForOthers: json["delivery_for_other"],
-    isOpen: json['is_open'],
+    isOpen: true, // BYPASS store closed flag — was: json['is_open']
     isAbroad: json["is_abroad"],
     userName: json["username"],
     phone: json['phone'],
