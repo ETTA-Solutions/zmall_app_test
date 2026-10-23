@@ -48,7 +48,8 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
 
   void _initTelebirr() async {
     var data = await initTelebirr();
-    if (data != null && data['result']['success']) {
+    debugPrint("telebirr ussd send_sms: $data");
+    if (data != null && data['result']?['success'] == true) {
       Service.showMessage(
         context: context,
         title:
@@ -60,9 +61,17 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
     }
   }
 
+  int _verifyAttempts = 0;
+
   void _verifyPayment() async {
+    if (!mounted) return;
     var data = await verifyPayment();
-    if (data != null && data['success']) {
+    debugPrint("telebirr ussd check_paid_order #$_verifyAttempts: $data");
+    if (!mounted) return;
+    if (data != null && data['success'] == true) {
+      Navigator.pop(context);
+    } else if (++_verifyAttempts >= 90) {
+      // ~3 minutes; kifiya screen re-verifies on pop
       Navigator.pop(context);
     } else {
       await Future.delayed(

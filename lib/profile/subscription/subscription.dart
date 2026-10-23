@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import 'package:zmall/utils/constants.dart';
@@ -9,51 +12,6 @@ import 'package:zmall/services/service.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Compatibility helper to provide inter text styles without external package dependency
-class GoogleFonts {
-  static TextStyle inter({
-    TextStyle? textStyle,
-    Color? color,
-    Color? backgroundColor,
-    double? fontSize,
-    FontWeight? fontWeight,
-    FontStyle? fontStyle,
-    double? letterSpacing,
-    double? wordSpacing,
-    TextBaseline? textBaseline,
-    double? height,
-    Locale? locale,
-    Paint? foreground,
-    Paint? background,
-    List<Shadow>? shadows,
-    dynamic fontFeatures,
-    TextDecoration? decoration,
-    Color? decorationColor,
-    TextDecorationStyle? decorationStyle,
-    double? decorationThickness,
-  }) {
-    return TextStyle(
-      color: color,
-      backgroundColor: backgroundColor,
-      fontSize: fontSize,
-      fontWeight: fontWeight,
-      fontStyle: fontStyle,
-      letterSpacing: letterSpacing,
-      wordSpacing: wordSpacing,
-      textBaseline: textBaseline,
-      height: height,
-      locale: locale,
-      foreground: foreground,
-      background: background,
-      shadows: shadows,
-      decoration: decoration,
-      decorationColor: decorationColor,
-      decorationStyle: decorationStyle,
-      decorationThickness: decorationThickness,
-    );
-  }
-}
-
 /// Premium palette: ZMall brand red for action, deep ink for exclusivity,
 /// gold for the premium accent and green for trust/active states.
 class _Premium {
@@ -63,6 +21,14 @@ class _Premium {
   static const inkSoft = Color(0xFF1C2435);
   static const gold = Color(0xFFD4A64A);
   static const goldLight = Color(0xFFF2D58A);
+  static const goldDeep = Color(0xFFA8782A);
+  static const List<Color> goldMetal = [
+    Color(0xFFFFF1C1),
+    Color(0xFFF2D58A),
+    Color(0xFFD4A64A),
+    Color(0xFFA8782A),
+    Color(0xFFF2D58A),
+  ];
   static const trust = Color(0xFF12B76A);
   static const surface = Color(0xFFF6F7FB);
   static const border = Color(0xFFE7E9F0);
@@ -80,12 +46,12 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   var userData;
 
   // ── Subscription state from /api/user/get_subscription_detail ──
   bool _subscriptionEnabled = true; // show UI while loading
-  num _subscriptionPrice = 1; // test 1 birr
+  num _subscriptionPrice = 0;
   int _subscriptionDurationDays = 30;
   bool _isActive = false;
   DateTime? _subscriptionExpiry;
@@ -97,6 +63,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   static const double _expandedHeaderHeight = 340.0;
 
   late AnimationController _animationController;
+  // Drives the looping gold shimmer, badge ring and sparkles.
+  late AnimationController _shimmerController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _slideAnimation;
@@ -153,6 +121,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       ),
     );
 
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat();
+
     _scrollController = ScrollController()
       ..addListener(() {
         if (_scrollController.hasClients) {
@@ -176,6 +149,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _shimmerController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -195,7 +169,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
     debugPrint("subscription detail response: $data");
     if (data != null && data['success'] == true) {
-      final bool enabled = true;
+      final bool enabled = data['is_subscription_enabled'] == true;
       final bool active = data['is_active'] == true;
       final DateTime? expiry = data['subscription_expiry'] != null
           ? DateTime.tryParse(data['subscription_expiry'])
@@ -203,9 +177,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
       setState(() {
         _subscriptionEnabled = enabled;
-        _subscriptionPrice = 1; // test 1 birr
+        _subscriptionPrice = (data['subscription_price'] as num?) ?? 0;
         _subscriptionDurationDays =
-            (data['subscription_duration_days'] ?? 30) as int;
+            (data['subscription_duration_days'] as num?)?.toInt() ?? 30;
         _isActive = active;
         _subscriptionExpiry = expiry;
         _isSubscribed = active;
@@ -228,7 +202,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         ? DateTime.tryParse(sub['date_of_subscription']) ?? now
         : now;
     final amount = (sub != null ? sub['subscription_amount'] ?? 0 : 0) as num;
-    final planDay = amount == 100 ? 30 : 30; // default to 30
+    final planDay = _subscriptionDurationDays;
     final expiry = dateOfSub.add(Duration(days: planDay));
     final isSubscribed = sub != null && sub['is_user_subscribed'] == true;
     final isExpired = now.isAfter(expiry);
@@ -236,7 +210,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     if (mounted) {
       setState(() {
         _subscriptionEnabled = true;
-        _subscriptionPrice = 1; // test 1 birr
+        _subscriptionPrice = amount;
         _subscriptionDurationDays = planDay;
         _isActive = isSubscribed && !isExpired;
         _subscriptionExpiry = expiry;
@@ -330,45 +304,267 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     );
   }
 
-  Widget _goldBadge({IconData icon = Icons.workspace_premium_rounded, double size = 28}) {
+  /// Display face for headlines and numbers; Inter stays for body copy.
+  TextStyle _display({
+    double fontSize = 20,
+    FontWeight fontWeight = FontWeight.w700,
+    Color color = Colors.white,
+    double? height,
+    double letterSpacing = -0.4,
+  }) {
+    return GoogleFonts.outfit(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  /// Paints [child] with a brushed-gold gradient.
+  Widget _goldText(Widget child) {
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: _Premium.goldMetal,
+      ).createShader(bounds),
+      child: child,
+    );
+  }
+
+  /// "ZMALL Premium" wordmark: tracked caps over an italic serif in gold.
+  Widget _wordmark({double size = 34, bool center = true}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment:
+          center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ZMALL',
+          style: GoogleFonts.outfit(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: size * 0.32,
+            fontWeight: FontWeight.w600,
+            letterSpacing: size * 0.18,
+            height: 1,
+          ),
+        ),
+        _goldText(
+          Text(
+            'Premium',
+            style: GoogleFonts.playfairDisplay(
+              color: Colors.white,
+              fontSize: size,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Diagonal light sweep that passes over a card every few seconds.
+  Widget _shimmerOverlay({double intensity = 0.14}) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _shimmerController,
+          builder: (context, _) {
+            // Sweep during the first 45% of the loop, then rest.
+            final double s = (_shimmerController.value / 0.45).clamp(0.0, 1.0);
+            final double c = -0.2 + s * 1.4;
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: intensity),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                  stops: [
+                    (c - 0.12).clamp(0.0, 1.0),
+                    c.clamp(0.0, 1.0),
+                    (c + 0.12).clamp(0.0, 1.0),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Wraps [child] in a hairline metallic-gold frame.
+  Widget _goldFrame({
+    required Widget child,
+    double radius = 24,
+    List<BoxShadow>? shadows,
+  }) {
     return Container(
-      padding: EdgeInsets.all(size * 0.45),
+      padding: EdgeInsets.all(1.4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _Premium.goldLight,
+            _Premium.gold.withValues(alpha: 0.25),
+            _Premium.goldDeep.withValues(alpha: 0.4),
+            _Premium.goldLight,
+          ],
+        ),
+        boxShadow: shadows,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius - 1.4),
+        child: child,
+      ),
+    );
+  }
+
+  /// Twinkling star used to decorate the dark hero.
+  Widget _sparkle(double size, double phase) {
+    return AnimatedBuilder(
+      animation: _shimmerController,
+      builder: (context, _) {
+        final double t = math
+            .sin((_shimmerController.value + phase) * 2 * math.pi)
+            .abs();
+        return Opacity(
+          opacity: 0.25 + 0.75 * t,
+          child: Transform.scale(
+            scale: 0.8 + 0.3 * t,
+            child: Icon(Icons.auto_awesome, size: size, color: _Premium.goldLight),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Gold medallion. With [animated], a light ring orbits it and it glows.
+  Widget _goldBadge({
+    IconData icon = Icons.workspace_premium_rounded,
+    double size = 28,
+    bool animated = false,
+  }) {
+    final double medallion = size * 1.9;
+    final Widget coin = Container(
+      width: medallion,
+      height: medallion,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_Premium.goldLight, _Premium.gold],
+          colors: _Premium.goldMetal,
         ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
         boxShadow: [
           BoxShadow(
-            color: _Premium.gold.withValues(alpha: 0.4),
-            blurRadius: 24,
-            offset: Offset(0, 8),
+            color: _Premium.gold.withValues(alpha: 0.45),
+            blurRadius: size,
+            offset: Offset(0, size * 0.3),
           ),
         ],
       ),
-      child: Icon(icon, size: size, color: _Premium.ink),
+      child: Container(
+        margin: EdgeInsets.all(medallion * 0.09),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: _Premium.goldDeep.withValues(alpha: 0.45)),
+        ),
+        child: Icon(icon, size: size, color: _Premium.ink),
+      ),
+    );
+    if (!animated) return coin;
+
+    final double ring = medallion * 1.38;
+    return SizedBox(
+      width: ring,
+      height: ring,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          _glow(ring * 1.3, _Premium.gold.withValues(alpha: 0.28)),
+          RotationTransition(
+            turns: _shimmerController,
+            child: Container(
+              width: ring,
+              height: ring,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: SweepGradient(
+                  colors: [
+                    _Premium.goldLight.withValues(alpha: 0),
+                    _Premium.goldLight.withValues(alpha: 0.95),
+                    _Premium.goldLight.withValues(alpha: 0),
+                    _Premium.gold.withValues(alpha: 0),
+                    _Premium.gold.withValues(alpha: 0.5),
+                    _Premium.gold.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Mask the ring's centre so only a thin orbit line shows.
+          Container(
+            width: ring - 4,
+            height: ring - 4,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _Premium.ink,
+            ),
+          ),
+          coin,
+        ],
+      ),
     );
   }
 
-  Widget _premiumPill(String text) {
+  Widget _premiumPill(String text, {bool solid = false}) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: _Premium.gold.withValues(alpha: 0.12),
+        gradient: solid
+            ? LinearGradient(colors: [_Premium.goldLight, _Premium.gold])
+            : null,
+        color: solid ? null : _Premium.gold.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _Premium.gold.withValues(alpha: 0.55)),
+        border: solid
+            ? null
+            : Border.all(color: _Premium.gold.withValues(alpha: 0.55)),
+        boxShadow: solid
+            ? [
+                BoxShadow(
+                  color: _Premium.gold.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.auto_awesome, size: 12, color: _Premium.goldLight),
+          Icon(
+            Icons.auto_awesome,
+            size: 12,
+            color: solid ? _Premium.ink : _Premium.goldLight,
+          ),
           SizedBox(width: 6),
           Text(
             text,
-            style: GoogleFonts.inter(
-              color: _Premium.goldLight,
+            style: GoogleFonts.outfit(
+              color: solid ? _Premium.ink : _Premium.goldLight,
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.6,
@@ -454,10 +650,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 children: [
                   Text(
                     label,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                    style: _display(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       letterSpacing: 0.2,
                     ),
                   ),
@@ -504,11 +699,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       children: [
         Text(
           title,
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
+          style: _display(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
             color: _Premium.ink,
-            letterSpacing: -0.4,
+            letterSpacing: -0.5,
           ),
         ),
         if (subtitle != null) ...[
@@ -649,8 +844,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         duration: Duration(milliseconds: 150),
         child: Text(
           'ZMall Premium',
-          style: GoogleFonts.inter(
-            fontSize: 17,
+          style: _display(
+            fontSize: 18,
             fontWeight: FontWeight.w700,
             color: _Premium.ink,
           ),
@@ -687,21 +882,32 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_Premium.ink, _Premium.inkSoft, Color(0xFF2A1520)],
+          colors: [Color(0xFF0A0E19), _Premium.ink, Color(0xFF2A1520)],
+          stops: [0.0, 0.55, 1.0],
         ),
       ),
       child: Stack(
         children: [
           Positioned(
-            right: -80,
-            top: -60,
-            child: _glow(260, _Premium.red.withValues(alpha: 0.32)),
+            right: -90,
+            top: -70,
+            child: _glow(280, _Premium.red.withValues(alpha: 0.34)),
           ),
           Positioned(
-            left: -70,
-            bottom: -90,
-            child: _glow(240, _Premium.gold.withValues(alpha: 0.2)),
+            left: -80,
+            bottom: -100,
+            child: _glow(260, _Premium.gold.withValues(alpha: 0.22)),
           ),
+          Positioned(
+            left: 40,
+            top: 40,
+            child: _glow(120, Colors.white.withValues(alpha: 0.05)),
+          ),
+          Positioned(left: 34, top: 120, child: _sparkle(10, 0.0)),
+          Positioned(right: 42, top: 96, child: _sparkle(14, 0.35)),
+          Positioned(right: 70, bottom: 70, child: _sparkle(9, 0.7)),
+          Positioned(left: 64, bottom: 46, child: _sparkle(12, 0.55)),
+          _shimmerOverlay(intensity: 0.05),
           Positioned.fill(child: child),
         ],
       ),
@@ -712,50 +918,53 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     return _buildHeroBackground(
       child: SafeArea(
         bottom: false,
-        child: Center(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _goldBadge(size: 26),
-                    SizedBox(height: 14),
-                    _premiumPill('ZMALL PREMIUM'),
-                    SizedBox(height: 12),
-                    Text(
-                      isSubscribed
-                          ? "Welcome back"
-                          : "Free delivery on every order",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
+        child: Padding(
+          padding: EdgeInsets.only(top: kToolbarHeight * 0.35),
+          child: Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _goldBadge(size: 22, animated: true),
+                      SizedBox(height: 10),
+                      _wordmark(size: 34),
+                      SizedBox(height: 10),
+                      Text(
+                        isSubscribed
+                            ? "Welcome back"
+                            : "Free delivery on every order",
+                        textAlign: TextAlign.center,
+                        style: _display(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      isSubscribed
-                          ? "Your membership has ended. Renew to keep your perks."
-                          : "One simple plan · ETB ${_formatPrice(_subscriptionPrice)} for $_subscriptionDurationDays days",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.72),
-                        fontSize: 13.5,
-                        height: 1.4,
+                      SizedBox(height: 4),
+                      Text(
+                        isSubscribed
+                            ? "Your membership has ended. Renew to keep your perks."
+                            : "One simple plan · ETB ${_formatPrice(_subscriptionPrice)} for $_subscriptionDurationDays days",
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: Colors.white.withValues(alpha: 0.68),
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 20),
-                    _primaryButton(
-                      label: isSubscribed ? "Renew Membership" : "Become a Member",
-                      onPressed: _openCheckout,
-                    ),
-                  ],
+                      SizedBox(height: 16),
+                      _primaryButton(
+                        label:
+                            isSubscribed ? "Renew Membership" : "Become a Member",
+                        onPressed: _openCheckout,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -785,141 +994,171 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           child: Center(
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: Container(
-                padding: EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF26304A), Color(0xFF121826)],
+              child: _goldFrame(
+                radius: 24,
+                shadows: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    blurRadius: 30,
+                    offset: Offset(0, 14),
                   ),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: _Premium.gold.withValues(alpha: 0.4),
+                  BoxShadow(
+                    color: _Premium.gold.withValues(alpha: 0.18),
+                    blurRadius: 24,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 24,
-                      offset: Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+                child: Stack(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.workspace_premium_rounded,
-                          size: 20,
-                          color: _Premium.goldLight,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'ZMALL PREMIUM',
-                          style: GoogleFonts.inter(
-                            color: _Premium.goldLight,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.6,
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF2A3350), Color(0xFF121826)],
                           ),
-                        ),
-                        Spacer(),
-                        _statusPill(isActive),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$daysLeft',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 36,
-                            height: 1,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 3),
-                          child: Text(
-                            daysLeft == 1 ? 'day left' : 'days left',
-                            style: GoogleFonts.inter(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 14),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 6,
-                        backgroundColor: Colors.white.withValues(alpha: 0.12),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          _Premium.goldLight,
                         ),
                       ),
                     ),
-                    SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _subscriptionExpiry != null
-                                ? 'Renews manually · until ${DateFormat('MMM d, yyyy').format(_subscriptionExpiry!)}'
-                                : '$planType plan · ETB ${_formatPrice(amount)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              fontSize: 12,
-                            ),
+                    Positioned(
+                      right: -30,
+                      bottom: -36,
+                      child: Icon(
+                        Icons.workspace_premium_rounded,
+                        size: 150,
+                        color: _Premium.gold.withValues(alpha: 0.07),
+                      ),
+                    ),
+                    _shimmerOverlay(),
+                    Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _wordmark(size: 22, center: false),
+                              Spacer(),
+                              _statusPill(isActive),
+                            ],
                           ),
-                        ),
-                        if (isActive)
-                          InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () {
-                              if (!isLatestPlan) {
-                                _openCheckout();
-                              } else {
-                                _showManageSubscriptionSheet(
-                                  planType: planType,
-                                  amount: amount,
-                                  daysLeft: daysLeft,
-                                  endDate: _subscriptionExpiry,
-                                );
-                              }
-                            },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 7,
+                          SizedBox(height: 14),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              _goldText(
+                                Text(
+                                  '$daysLeft',
+                                  style: _display(
+                                    fontSize: 46,
+                                    height: 1,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -1.5,
+                                  ),
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
+                              SizedBox(width: 8),
+                              Padding(
+                                padding: EdgeInsets.only(bottom: 5),
+                                child: Text(
+                                  daysLeft == 1 ? 'day left' : 'days left',
+                                  style: _display(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
                               ),
-                              child: Text(
-                                isLatestPlan ? 'Manage' : 'Upgrade',
-                                style: GoogleFonts.inter(
-                                  color: _Premium.ink,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
+                            ],
+                          ),
+                          SizedBox(height: 14),
+                          Container(
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: progress,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  gradient: LinearGradient(
+                                    colors: [_Premium.gold, _Premium.goldLight],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _Premium.gold.withValues(alpha: 0.6),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                      ],
+                          SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _subscriptionExpiry != null
+                                      ? 'Renews manually · until ${DateFormat('MMM d, yyyy').format(_subscriptionExpiry!)}'
+                                      : '$planType plan · ETB ${_formatPrice(amount)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              if (isActive)
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: () {
+                                    if (!isLatestPlan) {
+                                      _openCheckout();
+                                    } else {
+                                      _showManageSubscriptionSheet(
+                                        planType: planType,
+                                        amount: amount,
+                                        daysLeft: daysLeft,
+                                        endDate: _subscriptionExpiry,
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          _Premium.goldLight,
+                                          _Premium.gold,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      isLatestPlan ? 'Manage' : 'Upgrade',
+                                      style: _display(
+                                        color: _Premium.ink,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1341,168 +1580,211 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
           return ScaleTransition(
             scale: _scaleAnimation,
-            child: Container(
-              margin: EdgeInsets.only(bottom: 20),
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  colors: plan['gradient'],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(
-                  color: _Premium.gold.withValues(alpha: 0.45),
-                ),
-                boxShadow: [
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 20),
+              child: _goldFrame(
+                radius: 26,
+                shadows: [
                   BoxShadow(
-                    color: _Premium.ink.withValues(alpha: 0.25),
-                    blurRadius: 28,
-                    offset: Offset(0, 14),
+                    color: _Premium.ink.withValues(alpha: 0.35),
+                    blurRadius: 32,
+                    offset: Offset(0, 16),
+                  ),
+                  BoxShadow(
+                    color: _Premium.gold.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: Offset(0, 4),
                   ),
                 ],
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    right: -60,
-                    top: -60,
-                    child: _glow(200, _Premium.red.withValues(alpha: 0.25)),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(22),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            if (isPopular) _premiumPill('BEST VALUE'),
-                            Spacer(),
-                            if (isCurrentPlan) _statusPill(true),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          plan['title'],
-                          style: GoogleFonts.inter(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: plan['gradient'],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                         ),
-                        if (plan['subtitle'] != null) ...[
-                          SizedBox(height: 4),
+                      ),
+                    ),
+                    Positioned(
+                      right: -60,
+                      top: -60,
+                      child: _glow(220, _Premium.red.withValues(alpha: 0.28)),
+                    ),
+                    Positioned(
+                      left: -50,
+                      bottom: -70,
+                      child: _glow(200, _Premium.gold.withValues(alpha: 0.14)),
+                    ),
+                    Positioned(
+                      right: -24,
+                      bottom: 70,
+                      child: Icon(
+                        Icons.workspace_premium_rounded,
+                        size: 170,
+                        color: _Premium.gold.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    _shimmerOverlay(),
+                    Padding(
+                      padding: EdgeInsets.all(22),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _wordmark(size: 26, center: false),
+                              Spacer(),
+                              if (isCurrentPlan)
+                                _statusPill(true)
+                              else if (isPopular)
+                                _premiumPill('BEST VALUE', solid: true),
+                            ],
+                          ),
+                          SizedBox(height: 20),
                           Text(
-                            plan['subtitle'],
-                            style: GoogleFonts.inter(
-                              fontSize: 13.5,
+                            plan['title'],
+                            style: _display(
+                              fontSize: 19,
                               fontWeight: FontWeight.w600,
-                              color: _Premium.goldLight,
+                              color: Colors.white,
+                              letterSpacing: -0.2,
                             ),
                           ),
-                        ],
-                        SizedBox(height: 18),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 6),
-                              child: Text(
-                                "${plan['currency']} ",
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withValues(alpha: 0.75),
-                                ),
-                              ),
-                            ),
+                          if (plan['subtitle'] != null) ...[
+                            SizedBox(height: 2),
                             Text(
-                              _formatPrice(plan['price'] as num),
+                              plan['subtitle'],
                               style: GoogleFonts.inter(
-                                fontSize: 42,
-                                height: 1,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 6),
-                              child: Text(
-                                ' / ${plan['interval']}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                ),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.65),
                               ),
                             ),
                           ],
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          plan['description'],
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5,
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 18),
-                          child: Divider(
-                            height: 1,
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        ...plan['benefits'].map<Widget>((benefit) {
-                          return Padding(
-                            padding: EdgeInsets.only(bottom: 12),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(3),
-                                  decoration: BoxDecoration(
-                                    color: _Premium.gold.withValues(alpha: 0.18),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.check_rounded,
+                          SizedBox(height: 18),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.only(bottom: 9),
+                                child: Text(
+                                  "${plan['currency']} ",
+                                  style: _display(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
                                     color: _Premium.goldLight,
-                                    size: 14,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    benefit,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white.withValues(alpha: 0.92),
+                              ),
+                              _goldText(
+                                Text(
+                                  _formatPrice(plan['price'] as num),
+                                  style: _display(
+                                    fontSize: 56,
+                                    height: 1,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -2,
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.only(bottom: 9),
+                                child: Text(
+                                  ' / ${plan['interval']}',
+                                  style: _display(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    letterSpacing: 0,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            plan['description'],
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              color: Colors.white.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(vertical: 18),
+                            child: Container(
+                              height: 1,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    _Premium.gold.withValues(alpha: 0.6),
+                                    _Premium.gold.withValues(alpha: 0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          ...plan['benefits'].map<Widget>((benefit) {
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          _Premium.goldLight,
+                                          _Premium.gold,
+                                        ],
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.check_rounded,
+                                      color: _Premium.ink,
+                                      size: 13,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        SizedBox(height: 10),
-                        _primaryButton(
-                          label: isCurrentPlan ? 'Subscribed' : 'Subscribe now',
-                          icon: isCurrentPlan
-                              ? Icons.check_circle_rounded
-                              : Icons.arrow_forward_rounded,
-                          expand: true,
-                          onPressed: () {
-                            ShowPaymentOption(
-                              price: (plan['price'] as num).toDouble(),
-                              plan: plan,
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      benefit,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white.withValues(alpha: 0.92),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
-                          },
-                        ),
-                      ],
+                          }).toList(),
+                          SizedBox(height: 10),
+                          _primaryButton(
+                            label: isCurrentPlan ? 'Subscribed' : 'Subscribe now',
+                            icon: isCurrentPlan
+                                ? Icons.check_circle_rounded
+                                : Icons.arrow_forward_rounded,
+                            expand: true,
+                            onPressed: () {
+                              ShowPaymentOption(
+                                price: (plan['price'] as num).toDouble(),
+                                plan: plan,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -2009,12 +2291,29 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                               traceNo: uniqueId,
                               phone: userData['user']['phone'],
                               userId: userData['user']['_id'],
+                              serverToken: userData['user']['server_token'],
                               url:
                                   "http://196.189.44.60:8069/telebirr/ussd/send_sms",
                             );
                           },
                         ),
-                      );
+                      ).then((value) {
+                        Navigator.of(context).pop();
+                        if (value != null && value == true) {
+                          _buyProduct(_subscriptionPlans.indexOf(plan));
+                        } else {
+                          Future.delayed(Duration(milliseconds: 100), () {
+                            if (mounted) {
+                              Service.showMessage(
+                                title:
+                                    "Payment not completed. Please choose your payment method.",
+                                error: true,
+                                context: context,
+                              );
+                            }
+                          });
+                        }
+                      });
                     },
                   ),
                   SizedBox(height: 20),

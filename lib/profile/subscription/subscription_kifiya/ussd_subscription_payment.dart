@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/services/core_services.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/widgets/custom_back_button.dart';
 
@@ -16,6 +17,7 @@ class SubscriptionPaymentUssd extends StatefulWidget {
     required this.traceNo,
     this.title = "Telebirr",
     required this.userId,
+    required this.serverToken,
   });
   final String url;
   final String title;
@@ -23,6 +25,7 @@ class SubscriptionPaymentUssd extends StatefulWidget {
   final String phone;
   final String traceNo;
   final String userId;
+  final String serverToken;
 
   @override
   _SubscriptionPaymentUssdState createState() =>
@@ -40,9 +43,24 @@ class _SubscriptionPaymentUssdState extends State<SubscriptionPaymentUssd> {
     _initTelebirr();
   }
 
+  // Expiry before payment, so a renewal (already active) isn't mistaken for success
+  String? _initialExpiry;
+  bool _initiallyActive = false;
+
   void _initTelebirr() async {
+    final before = await CoreServices.getSubscriptionDetail(
+      userId: widget.userId,
+      serverToken: widget.serverToken,
+      context: context,
+    );
+    if (before != null && before['success'] == true) {
+      _initialExpiry = before['subscription_expiry']?.toString();
+      _initiallyActive = before['is_active'] == true;
+    }
+
     var data = await initTelebirr();
-    if (data != null && data['result']['success']) {
+    if (!mounted) return;
+    if (data != null && data['result']?['success'] == true) {
       Service.showMessage(
         title:
             "${data['result']['message']}. Waiting for payment to be completed",
@@ -50,19 +68,40 @@ class _SubscriptionPaymentUssdState extends State<SubscriptionPaymentUssd> {
         duration: 6,
         context: context,
       );
-      // _verifyPayment();
+      _verifyPayment();
+    } else {
+      Navigator.pop(context, false);
     }
   }
 
-  // void _verifyPayment() async {
-  //   var data = await verifyPayment();
-  //   if (data != null && data['success']) {
-  //     Navigator.pop(context);
-  //   } else {
-  //     await Future.delayed(Duration(seconds: 2))
-  //         .then((value) => _verifyPayment());
-  //   }
-  // }
+  // Poll subscription detail until the backend activates/extends the subscription
+  void _verifyPayment() async {
+    const maxAttempts = 60;
+    const interval = Duration(seconds: 3);
+
+    for (int i = 0; i < maxAttempts; i++) {
+      await Future.delayed(interval);
+      if (!mounted) return;
+
+      final data = await CoreServices.getSubscriptionDetail(
+        userId: widget.userId,
+        serverToken: widget.serverToken,
+        context: context,
+      );
+      if (!mounted) return;
+      debugPrint("telebirr ussd subscription poll #$i (initial active=$_initiallyActive, expiry=$_initialExpiry): $data");
+
+      if (data != null && data['success'] == true && data['is_active'] == true) {
+        final expiry = data['subscription_expiry']?.toString();
+        if (!_initiallyActive || expiry != _initialExpiry) {
+          Navigator.pop(context, true);
+          return;
+        }
+      }
+    }
+
+    if (mounted) Navigator.pop(context, false);
+  }
 
   @override
   Widget build(BuildContext context) {
