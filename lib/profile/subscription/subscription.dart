@@ -56,6 +56,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   int _subscriptionDurationDays = 30;
   bool _isActive = false;
   DateTime? _subscriptionExpiry;
+  List<String> _subscriptionBenefits = [];
 
   // UI state
   bool _loading = true; // start true — we fetch before showing
@@ -78,11 +79,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       'subtitle': 'Free Delivery on every order',
       'description':
           'Pay once, enjoy free delivery for $_subscriptionDurationDays days',
-      'benefits': [
-        'Free delivery on all orders',
-        'Priority service',
-        'Exclusive member offers',
-      ],
+      'benefits': _subscriptionBenefits,
       'price': _subscriptionPrice,
       'currency': 'ETB',
       'interval': 'month',
@@ -185,6 +182,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
             (data['subscription_duration_days'] as num?)?.toInt() ?? 30;
         _isActive = active;
         _subscriptionExpiry = expiry;
+        _subscriptionBenefits = _parseBenefits(data['subscription_benefits']);
         _isSubscribed = active;
         _loading = false;
       });
@@ -194,6 +192,31 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       // Network error — show whatever we can from cached userData
       _fallbackToLegacyData();
     }
+  }
+
+  List<String> _parseBenefits(dynamic raw) {
+    if (raw is! List) return [];
+    return raw
+        .map((e) => e?.toString().trim() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  IconData _benefitIcon(String benefit) {
+    bool doesContainValue(String string) {
+      return benefit.toLowerCase().contains(string);
+    }
+
+    return doesContainValue("free deliveries") ||
+            doesContainValue("free delivery")
+        ? Icons.local_shipping_outlined
+        : doesContainValue("% off") || doesContainValue("discount")
+        ? Icons.price_check_outlined
+        : doesContainValue("exclusive") || doesContainValue("offer")
+        ? Icons.card_giftcard_outlined
+        : doesContainValue("support") || doesContainValue("priority")
+        ? Icons.support_agent_outlined
+        : Icons.star_outline_rounded;
   }
 
   /// Falls back to reading the old subscritption_data field when the new
@@ -1461,24 +1484,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   Widget _buildFeaturesList() {
-    final features = [
-      (
-        Icons.local_shipping_outlined,
-        'Free Express Delivery',
-        'Get your orders faster with priority delivery',
-      ),
-      (
-        Icons.discount_outlined,
-        'Exclusive Discounts',
-        'Save more on every purchase with member pricing',
-      ),
-
-      (
-        Icons.card_giftcard_outlined,
-        'Early Access Offers',
-        'Get special deals before anyone else',
-      ),
-    ];
+    final features = _subscriptionBenefits;
+    if (features.isEmpty) return SizedBox.shrink();
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -1497,9 +1504,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
             children: [
               for (int i = 0; i < features.length; i++) ...[
                 _buildBenefitItem(
-                  icon: features[i].$1,
-                  title: features[i].$2,
-                  subtitle: features[i].$3,
+                  icon: _benefitIcon(features[i]),
+                  title: features[i],
                 ),
                 if (i < features.length - 1)
                   Divider(height: 1, color: _Premium.border),
@@ -1514,7 +1520,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   Widget _buildBenefitItem({
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
   }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 14),
@@ -1542,15 +1548,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                     color: _Premium.ink,
                   ),
                 ),
-                SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    color: _Premium.textMuted,
-                    height: 1.35,
+                if (subtitle != null) ...[
+                  SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      color: _Premium.textMuted,
+                      height: 1.35,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -2021,7 +2029,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 );
               },
             ),
-          if (isActive) ...[
+          if (isActive && _subscriptionBenefits.isNotEmpty) ...[
             SizedBox(height: 28),
             _sectionTitle('Your active benefits'),
             SizedBox(height: 14),
@@ -2033,28 +2041,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               childAspectRatio: 1.15,
-              children: _subscriptionPlans[planIndex]['benefits'].map<Widget>((
-                benefit,
-              ) {
-                bool doesContainValue(string) {
-                  return benefit.toString().toLowerCase().contains(string);
-                }
-
+              children: _subscriptionBenefits.map<Widget>((benefit) {
                 return _buildBenefitCard(
                   color: _Premium.active,
-                  icon:
-                      doesContainValue("free deliveries") ||
-                          doesContainValue("free delivery")
-                      ? Icons.local_shipping_outlined
-                      : doesContainValue("% off") ||
-                            doesContainValue("discount")
-                      ? Icons.price_check_outlined
-                      : doesContainValue("exclusive")
-                      ? Icons.card_giftcard_outlined
-                      : doesContainValue("support") ||
-                            doesContainValue("priority")
-                      ? Icons.support_agent_outlined
-                      : Icons.star_outline_rounded,
+                  icon: _benefitIcon(benefit),
                   title: benefit,
                   description: 'Active',
                 );
