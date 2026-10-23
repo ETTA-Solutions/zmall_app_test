@@ -753,15 +753,18 @@ IMPORTANT: Always return valid JSON. Never return raw markdown or plain text out
 ''';
 }
 
-
 /// Adds mock products to the persistent cart storage so opening CartScreen
 /// shows the selected item instead of an empty basket.
 Future<void> addMockProductsToCart(List<MockProduct> products) async {
   if (products.isEmpty) return;
 
-  debugPrint("🛒 [CHAT CART] Adding ${products.length} product(s) to local cart...");
+  debugPrint(
+    "🛒 [CHAT CART] Adding ${products.length} product(s) to local cart...",
+  );
   for (final p in products) {
-    debugPrint("🛒 [CHAT CART] -> Product: ${p.name} (id: ${p.id}, storeId: ${p.storeId}, price: ${p.price})");
+    debugPrint(
+      "🛒 [CHAT CART] -> Product: ${p.name} (id: ${p.id}, storeId: ${p.storeId}, price: ${p.price})",
+    );
   }
 
   try {
@@ -798,7 +801,9 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
     if (existingCartData != null) {
       try {
         cart = Cart.fromJson(existingCartData);
-        debugPrint("🛒 [CHAT CART] Existing cart found with ${cart.items?.length ?? 0} items for store: ${cart.storeId}");
+        debugPrint(
+          "🛒 [CHAT CART] Existing cart found with ${cart.items?.length ?? 0} items for store: ${cart.storeId}",
+        );
       } catch (_) {
         cart = Cart(
           userId: userId,
@@ -816,7 +821,9 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
         );
       }
     } else {
-      debugPrint("🛒 [CHAT CART] No existing cart. Initializing fresh cart for store: $storeId");
+      debugPrint(
+        "🛒 [CHAT CART] No existing cart. Initializing fresh cart for store: $storeId",
+      );
       cart = Cart(
         userId: userId,
         serverToken: serverToken,
@@ -866,7 +873,9 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
         final currentQty = existingItem.quantity ?? 1;
         existingItem.quantity = currentQty + 1;
         existingItem.price = product.price * (currentQty + 1);
-        debugPrint("🛒 [CHAT CART] Updated existing item '${product.name}' quantity to ${existingItem.quantity}");
+        debugPrint(
+          "🛒 [CHAT CART] Updated existing item '${product.name}' quantity to ${existingItem.quantity}",
+        );
       } else {
         cart.items!.add(
           Item(
@@ -884,7 +893,9 @@ Future<void> addMockProductsToCart(List<MockProduct> products) async {
     }
 
     await Service.save('cart', cart.toJson());
-    debugPrint("✅ [CHAT CART] Cart successfully saved. Total items: ${cart.items?.length ?? 0}");
+    debugPrint(
+      "✅ [CHAT CART] Cart successfully saved. Total items: ${cart.items?.length ?? 0}",
+    );
   } catch (e, stack) {
     debugPrint("❌ [CHAT CART] Error saving cart: $e");
     debugPrint("❌ [CHAT CART] Stack trace: $stack");
@@ -967,25 +978,39 @@ List<MockProduct> parseBackendBrowseResults(
           item['id']?.toString() ??
           'backend_${name.hashCode}';
       // Prefer the real store id so the item can be checked out from chat
-      final storeId = item['store_id']?.toString() ??
+      final storeId =
+          item['store_id']?.toString() ??
           browseResults['store_id']?.toString() ??
           browseResults['store_name']?.toString() ??
           'backend';
 
       if (name.isEmpty || price <= 0) continue;
 
-      // Use the fallback image (menu_chat.jpeg) for all backend menu items
+      // Optional fields — drive the menu's category chips, descriptions and
+      // thumbnails when the backend sends them.
+      final category =
+          (item['category'] ?? item['category_name'] ?? item['product_name'])
+              ?.toString()
+              .trim();
+      final description =
+          (item['description'] ?? item['details'])?.toString().trim() ?? '';
+      final imageUrl = item['image_url'] is List
+          ? ((item['image_url'] as List).isNotEmpty
+                ? (item['image_url'] as List).first.toString()
+                : '')
+          : (item['image_url'] ?? item['image'])?.toString() ?? '';
+
       results.add(
         MockProduct(
           id: id,
           storeId: storeId,
           name: name,
           price: price,
-          category: 'Food', // Default category since not provided
+          category: (category == null || category.isEmpty) ? 'Food' : category,
           unit: '1 portion', // Default unit
           currencySymbol: 'ETB',
-          description: '',
-          imageUrl: '',
+          description: description,
+          imageUrl: imageUrl,
           localImageAsset: kMenuChatFallbackImage, // Use the fallback image
         ),
       );
@@ -1004,18 +1029,21 @@ List<MockStore> parseBackendStoreResults(dynamic storesData) {
   for (final item in storesData) {
     if (item is! Map) continue;
     try {
-      final name = item['store_name']?.toString() ??
+      final name =
+          item['store_name']?.toString() ??
           item['name']?.toString() ??
           item['company_name']?.toString() ??
           '';
       if (name.trim().isEmpty) continue;
 
-      final id = item['store_id']?.toString() ??
+      final id =
+          item['store_id']?.toString() ??
           item['id']?.toString() ??
           item['_id']?.toString() ??
           'backend_${name.hashCode}';
 
-      final imageUrl = item['image_url']?.toString() ??
+      final imageUrl =
+          item['image_url']?.toString() ??
           item['logo']?.toString() ??
           item['image']?.toString() ??
           '';

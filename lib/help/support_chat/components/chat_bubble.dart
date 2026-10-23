@@ -4,6 +4,9 @@ import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zmall/help/support_chat/components/bot_avatar.dart';
+import 'package:zmall/help/support_chat/components/chat_order_cards.dart';
+import 'package:zmall/help/support_chat/components/store_menu_sheet.dart';
+import 'package:zmall/help/support_chat/service/chat_basket.dart';
 import 'package:zmall/help/support_chat/components/food_recommendation_card.dart';
 import 'package:zmall/help/support_chat/components/store_carousel.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
@@ -29,6 +32,17 @@ class ChatBubble extends StatefulWidget {
   /// When false (food/item query) the horizontal product swipe cards are shown.
   final bool isStoreOnly;
 
+  /// Chat basket — when set, a store + its products render as the inline
+  /// web-style menu card instead of the horizontal product strip.
+  final ChatBasket? basket;
+
+  /// Checked-out basket → rendered as the "Complete Your Order" card.
+  final ChatOrderReady? order;
+  final void Function(MockStore, List<MockProduct>, String?)? onOpenMenu;
+  final VoidCallback? onAllRestaurants;
+  final ValueChanged<ChatOrderReady>? onProceedToPayment;
+  final Future<void> Function(MockProduct, int)? onOrderNow;
+
   const ChatBubble({
     super.key,
     required this.message,
@@ -44,6 +58,12 @@ class ChatBubble extends StatefulWidget {
     this.matchedStores,
     this.showProducts = true,
     this.isStoreOnly = false,
+    this.basket,
+    this.order,
+    this.onOpenMenu,
+    this.onAllRestaurants,
+    this.onProceedToPayment,
+    this.onOrderNow,
   });
 
   @override
@@ -54,7 +74,9 @@ class _ChatBubbleState extends State<ChatBubble> {
   bool _isCopied = false;
 
   void _copyToClipboard() {
-    debugPrint("📋 [CHAT BUBBLE] Copied message to clipboard: \"${widget.message.message}\"");
+    debugPrint(
+      "📋 [CHAT BUBBLE] Copied message to clipboard: \"${widget.message.message}\"",
+    );
     Clipboard.setData(ClipboardData(text: widget.message.message));
     setState(() => _isCopied = true);
     ScaffoldMessenger.of(context)
@@ -145,8 +167,42 @@ class _ChatBubbleState extends State<ChatBubble> {
             ],
           ),
 
+          // ── Order ready card ─────────────────────────────────────
+          if (!isUser && widget.order != null) ...[
+            SizedBox(height: getProportionateScreenHeight(8)),
+            OrderReadyCard(
+              order: widget.order!,
+              onProceed: () => widget.onProceedToPayment?.call(widget.order!),
+              onBrowseMore: () => widget.onAllRestaurants?.call(),
+            ),
+          ]
+          // ── Inline store menu card ───────────────────────────────
+          else if (!isUser &&
+              widget.basket != null &&
+              widget.matchedStore != null &&
+              widget.matchedProducts.isNotEmpty) ...[
+            SizedBox(height: getProportionateScreenHeight(8)),
+            StoreMenuCard(
+              store: widget.matchedStore!,
+              products: widget.matchedProducts,
+              basket: widget.basket!,
+              onOpenMenu: (category) => widget.onOpenMenu?.call(
+                widget.matchedStore!,
+                widget.matchedProducts,
+                category,
+              ),
+              onAllRestaurants: widget.onAllRestaurants,
+              onProductTap: (product) => openChatMenuProduct(
+                context,
+                basket: widget.basket!,
+                store: widget.matchedStore!,
+                product: product,
+                onOrderNow: widget.onOrderNow,
+              ),
+            ),
+          ]
           // ── Store card OR horizontal product cards ───────────────
-          if (!isUser &&
+          else if (!isUser &&
               (widget.matchedProducts.isNotEmpty ||
                   widget.matchedStore != null ||
                   widget.matchedStores != null)) ...[
@@ -235,7 +291,9 @@ class _ChatBubbleState extends State<ChatBubble> {
         vertical: getProportionateScreenHeight(11),
       ),
       decoration: BoxDecoration(
-        color: kChatSurfaceColor,
+        color: Colors.white,
+        border: Border.all(color: kChatBubbleBorderColor),
+        boxShadow: kChatBubbleShadow,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(6),
           topRight: Radius.circular(20),
@@ -285,7 +343,9 @@ class _ChatBubbleState extends State<ChatBubble> {
   Widget _buildCartActionButton() {
     return GestureDetector(
       onTap: () {
-        debugPrint("🛒 [CHAT BUBBLE] Checkout action button tapped for message: id=${widget.message.id}");
+        debugPrint(
+          "🛒 [CHAT BUBBLE] Checkout action button tapped for message: id=${widget.message.id}",
+        );
         widget.onViewCart?.call();
       },
       child: Container(
@@ -359,7 +419,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                   child: Text(
                     _strip(t.replaceAll(RegExp(r'^#+\s*'), '')),
                     style: TextStyle(
-                      fontSize: getProportionateScreenWidth(13.5),
+                      fontSize: getProportionateScreenWidth(15),
                       fontWeight: FontWeight.w700,
                       color: kBlackColor,
                     ),
@@ -487,7 +547,7 @@ class _ChatBubbleState extends State<ChatBubble> {
   Widget _buildRichSpan(String text) {
     final base = TextStyle(
       color: kBlackColor,
-      fontSize: getProportionateScreenWidth(13.5),
+      fontSize: getProportionateScreenWidth(15),
       height: 1.5,
     );
     final spans = <InlineSpan>[];
@@ -530,7 +590,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                 code,
                 style: TextStyle(
                   fontFamily: 'monospace',
-                  fontSize: getProportionateScreenWidth(11),
+                  fontSize: getProportionateScreenWidth(12),
                   fontWeight: FontWeight.w600,
                   color: kSecondaryColor,
                 ),
@@ -604,7 +664,7 @@ class _ChatBubbleState extends State<ChatBubble> {
           Text(
             text,
             style: base.copyWith(
-              fontSize: getProportionateScreenWidth(11),
+              fontSize: getProportionateScreenWidth(12),
               fontWeight: FontWeight.w700,
               color: kGreenColor,
             ),
@@ -641,7 +701,7 @@ class _ChatBubbleState extends State<ChatBubble> {
             Text(
               text,
               style: base.copyWith(
-                fontSize: getProportionateScreenWidth(11),
+                fontSize: getProportionateScreenWidth(12),
                 fontWeight: FontWeight.w700,
                 color: kSecondaryColor,
                 decoration: TextDecoration.underline,
@@ -677,7 +737,7 @@ class _ChatBubbleState extends State<ChatBubble> {
             Text(
               'Open Link',
               style: base.copyWith(
-                fontSize: getProportionateScreenWidth(11),
+                fontSize: getProportionateScreenWidth(12),
                 fontWeight: FontWeight.w600,
                 color: kSecondaryColor,
               ),

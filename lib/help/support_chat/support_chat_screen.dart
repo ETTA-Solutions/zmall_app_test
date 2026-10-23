@@ -16,6 +16,8 @@ import 'package:zmall/services/service.dart';
 import 'package:zmall/cart/cart_screen.dart';
 import 'package:zmall/kifiya/kifiya_screen.dart';
 import 'package:zmall/help/support_chat/components/bot_avatar.dart';
+import 'package:zmall/help/support_chat/components/chat_basket_view.dart';
+import 'package:zmall/help/support_chat/service/chat_basket.dart';
 import 'package:zmall/help/support_chat/components/chat_bubble.dart';
 import 'package:zmall/help/support_chat/components/chat_input.dart';
 import 'package:zmall/help/support_chat/components/quick_replies.dart';
@@ -43,6 +45,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   final Map<String, MockStore?> _messageStores = {};
   final Map<String, List<MockStore>> _messageStoreLists =
       {}; // Store lists from backend
+  final Map<String, ChatOrderReady> _messageOrders = {};
+
+  /// Basket shared by the inline menu cards, the menu sheet and the bar
+  /// above the input.
+  final ChatBasket _basket = ChatBasket();
+
+  /// Store the user last tapped in a restaurant list — reused for the menu
+  /// reply so its logo and rating carry over.
+  MockStore? _pendingMenuStore;
+  ModalRoute<dynamic>? _route;
   bool _isLoading = false;
   bool _showQuickReplies = true;
   bool _showScrollToBottom = false;
@@ -91,7 +103,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     userLat = Provider.of<ZMetaData>(context, listen: false).latitude;
     userLng = Provider.of<ZMetaData>(context, listen: false).longitude;
     userLocation = ["$userLat", "$userLng"];
-    debugPrint("📱 [CHAT SCREEN] Location initialized: lat=$userLat, lng=$userLng, locationArray=$userLocation");
+    debugPrint(
+      "📱 [CHAT SCREEN] Location initialized: lat=$userLat, lng=$userLng, locationArray=$userLocation",
+    );
   }
 
   void _getUser() async {
@@ -107,16 +121,22 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         }
       });
 
-      debugPrint("📱 [CHAT SCREEN] User loaded: userId=$userId, name=$userName, serverToken=${serverToken.isNotEmpty ? 'Present' : 'Empty'}");
+      debugPrint(
+        "📱 [CHAT SCREEN] User loaded: userId=$userId, name=$userName, serverToken=${serverToken.isNotEmpty ? 'Present' : 'Empty'}",
+      );
 
       if (userId.isNotEmpty && serverToken.isNotEmpty) {
-        debugPrint("📱 [CHAT SCREEN] Triggering background fetch of user orders...");
+        debugPrint(
+          "📱 [CHAT SCREEN] Triggering background fetch of user orders...",
+        );
         _getUserOrder(userId: userId, serverToken: serverToken);
       }
 
       _loadChatHistory();
     } else {
-      debugPrint("📱 [CHAT SCREEN] No user data found in storage. Initializing guest/welcome chat...");
+      debugPrint(
+        "📱 [CHAT SCREEN] No user data found in storage. Initializing guest/welcome chat...",
+      );
       _initializeChat();
     }
   }
@@ -137,7 +157,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _loadChatHistory() async {
-    debugPrint("📱 [CHAT SCREEN] _loadChatHistory: Checking storage keys: '$_chatStorageKey', '$_chatTimestampKey'...");
+    debugPrint(
+      "📱 [CHAT SCREEN] _loadChatHistory: Checking storage keys: '$_chatStorageKey', '$_chatTimestampKey'...",
+    );
     try {
       final chatTimestamp = await Service.read(_chatTimestampKey);
       final chatData = await Service.read(_chatStorageKey);
@@ -147,17 +169,23 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         final savedTime = DateTime.fromMillisecondsSinceEpoch(chatTimestamp);
         final now = DateTime.now();
         final difference = now.difference(savedTime);
-        debugPrint("📱 [CHAT SCREEN] Found saved chat from $savedTime (${difference.inHours} hours ago, max allowed: $_chatExpirationHours h)");
+        debugPrint(
+          "📱 [CHAT SCREEN] Found saved chat from $savedTime (${difference.inHours} hours ago, max allowed: $_chatExpirationHours h)",
+        );
 
         // If chat is older than expiration time, clear it
         if (difference.inHours >= _chatExpirationHours) {
-          debugPrint("📱 [CHAT SCREEN] Saved chat expired. Clearing history...");
+          debugPrint(
+            "📱 [CHAT SCREEN] Saved chat expired. Clearing history...",
+          );
           await _clearChatHistory();
           _initializeChat();
         } else {
           // Load saved messages
           final List<dynamic> messagesJson = chatData;
-          debugPrint("📱 [CHAT SCREEN] Restoring ${messagesJson.length} message(s) from storage...");
+          debugPrint(
+            "📱 [CHAT SCREEN] Restoring ${messagesJson.length} message(s) from storage...",
+          );
           setState(() {
             _messages.clear();
             _messages.addAll(
@@ -168,7 +196,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           _scrollToBottom();
         }
       } else {
-        debugPrint("📱 [CHAT SCREEN] No saved chat history found. Initializing fresh chat...");
+        debugPrint(
+          "📱 [CHAT SCREEN] No saved chat history found. Initializing fresh chat...",
+        );
         _initializeChat();
       }
     } catch (e, stack) {
@@ -179,7 +209,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _initializeChat() {
-    debugPrint("📱 [CHAT SCREEN] _initializeChat: Scheduling welcome bot message...");
+    debugPrint(
+      "📱 [CHAT SCREEN] _initializeChat: Scheduling welcome bot message...",
+    );
     Future.delayed(Duration(milliseconds: 500), () {
       if (mounted) {
         _addBotMessage(
@@ -205,7 +237,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         _chatTimestampKey,
         DateTime.now().millisecondsSinceEpoch,
       );
-      debugPrint("💾 [CHAT SCREEN] Saved ${_messages.length} message(s) to '$_chatStorageKey'");
+      debugPrint(
+        "💾 [CHAT SCREEN] Saved ${_messages.length} message(s) to '$_chatStorageKey'",
+      );
     } catch (e, stack) {
       debugPrint("❌ [CHAT SCREEN] Error saving chat history: $e");
       debugPrint("❌ [CHAT SCREEN] Stack: $stack");
@@ -213,7 +247,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _clearChatHistory() async {
-    debugPrint("🧹 [CHAT SCREEN] _clearChatHistory: Removing stored chat for user '$userId'...");
+    debugPrint(
+      "🧹 [CHAT SCREEN] _clearChatHistory: Removing stored chat for user '$userId'...",
+    );
     try {
       await Service.remove(_chatStorageKey);
       await Service.remove(_chatTimestampKey);
@@ -229,10 +265,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     List<MockProduct>? productMatches,
     MockStore? storeMatch,
     List<MockStore>? storeMatches, // Multiple stores from backend
+    ChatOrderReady? order,
   }) {
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
 
-    debugPrint("🤖 [CHAT SCREEN] _addBotMessage: id=$messageId, text=\"${message.replaceAll('\n', ' ')}\", cartAction=$showCartAction, products=${productMatches?.length ?? 0}, store=${storeMatch?.name ?? 'none'}, storeMatches=${storeMatches?.length ?? 0}");
+    debugPrint(
+      "🤖 [CHAT SCREEN] _addBotMessage: id=$messageId, text=\"${message.replaceAll('\n', ' ')}\", cartAction=$showCartAction, products=${productMatches?.length ?? 0}, store=${storeMatch?.name ?? 'none'}, storeMatches=${storeMatches?.length ?? 0}",
+    );
 
     if (productMatches != null) {
       _messageProducts[messageId] = productMatches;
@@ -244,6 +283,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _messageStores[messageId] =
           storeMatches.first; // Store first for backward compatibility
       _messageStoreLists[messageId] = storeMatches; // Store all stores
+    }
+    if (order != null) {
+      _messageOrders[messageId] = order;
     }
 
     setState(() {
@@ -297,7 +339,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   void _addUserMessage(String message) {
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
-    debugPrint("👤 [CHAT SCREEN] _addUserMessage: id=$messageId, text=\"$message\"");
+    debugPrint(
+      "👤 [CHAT SCREEN] _addUserMessage: id=$messageId, text=\"$message\"",
+    );
     setState(() {
       _messages.add(
         ChatMessage(
@@ -321,32 +365,148 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     }
 
     debugPrint("🚀 [CHAT SCREEN] _handleSendMessage called with: \"$message\"");
-    debugPrint("🚀 [CHAT SCREEN] Current userId: $userId, serverToken: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}");
+    debugPrint(
+      "🚀 [CHAT SCREEN] Current userId: $userId, serverToken: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}",
+    );
 
     _addUserMessage(message);
     _messageController.clear();
 
     // Fetch bot response from backend
-    debugPrint("🚀 [CHAT SCREEN] Calling _fetchBotResponse for message: \"$message\"");
+    debugPrint(
+      "🚀 [CHAT SCREEN] Calling _fetchBotResponse for message: \"$message\"",
+    );
     _fetchBotResponse(message);
   }
 
   void _handleStoreMenuRequest(MockStore store) {
-    debugPrint("🏪 [CHAT SCREEN] _handleStoreMenuRequest: Requesting menu for store: ${store.name} (id: ${store.id})");
+    debugPrint(
+      "🏪 [CHAT SCREEN] _handleStoreMenuRequest: Requesting menu for store: ${store.name} (id: ${store.id})",
+    );
+    _pendingMenuStore = store;
     _messageController.text = 'Show me the menu for ${store.name}';
     _handleSendMessage();
   }
 
-  void _handleStoreMenuRequestWithProducts(
+  void _openStoreMenu(
     MockStore store,
-    List<MockProduct> products,
-  ) {
-    debugPrint("🏪 [CHAT SCREEN] _handleStoreMenuRequestWithProducts: Store=${store.name}, Products=${products.length}");
+    List<MockProduct> products, [
+    String? category,
+  ]) {
+    debugPrint(
+      "🏪 [CHAT SCREEN] _openStoreMenu: Store=${store.name}, Products=${products.length}, category=$category",
+    );
     StoreMenuSheet.show(
       context,
       store: store,
       products: products,
-      onOrderNow: _handleOrderNow,
+      basket: _basket,
+      initialCategory: category,
+      onCheckout: _checkoutBasket,
+      onAllRestaurants: _showAllRestaurants,
+      onOrderNow: (product, qty) async {
+        // Close the menu so the chat is visible while checking out
+        _closeSheets();
+        await _handleOrderNow(product, qty);
+      },
+    );
+  }
+
+  void _showAllRestaurants() {
+    if (_isLoading) return;
+    _handleQuickReply('Stores near me');
+  }
+
+  void _reviewBasket() {
+    ChatBasketSheet.show(context, basket: _basket, onCheckout: _checkoutBasket);
+  }
+
+  /// Closes any menu / basket sheet stacked on top of the chat.
+  void _closeSheets() {
+    final route = _route;
+    if (route == null || !mounted) return;
+    Navigator.of(context).popUntil((r) => r == route);
+  }
+
+  /// Instant Checkout: invoice the basket, then post the "Complete Your
+  /// Order" card — payment opens from its button.
+  Future<void> _checkoutBasket() async {
+    if (_isLoading || _basket.isEmpty) return;
+    final store = _basket.store!;
+    final lines = [
+      for (final l in _basket.lines)
+        ChatBasketLine(product: l.product, quantity: l.quantity),
+    ];
+    final itemsTotal = _basket.subtotal;
+    debugPrint(
+      "🧺 [CHAT SCREEN] _checkoutBasket: ${lines.length} line(s) from ${store.name}, $itemsTotal ETB",
+    );
+    setState(() => _isLoading = true);
+
+    try {
+      final address = (await loadChatDeliveryAddress())?.name ?? '';
+      if (!mounted) return;
+      final result = await ChatCheckoutService.checkoutBasket(
+        context: context,
+        lines: lines,
+      );
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      _closeSheets();
+      _basket.clear();
+      final order = ChatOrderReady(
+        storeName: store.name,
+        lines: lines,
+        itemsTotal: itemsTotal,
+        price: result.price,
+        deliveryAddress: address,
+        orderPaymentId: result.orderPaymentId,
+        orderPaymentUniqueId: result.orderPaymentUniqueId,
+        vehicleId: result.vehicleId,
+        onlyCashless: result.onlyCashless,
+      );
+      // The card stays in the chat so the user can reopen payment later.
+      _addBotMessage(
+        'Your basket from ${store.name} is ready 🎉',
+        order: order,
+      );
+      _proceedToPayment(order);
+    } on ChatCheckoutException catch (e) {
+      debugPrint("⚠️ [CHAT SCREEN] Basket checkout failed: ${e.message}");
+      if (mounted) {
+        _closeSheets();
+        _addBotMessage(e.message);
+      }
+    } catch (e, stack) {
+      debugPrint("❌ [CHAT SCREEN] Basket checkout failed: $e");
+      debugPrint("❌ [CHAT SCREEN] Stack: $stack");
+      if (mounted) {
+        _closeSheets();
+        _addBotMessage(
+          "I couldn't start the checkout. Please try again in a moment.",
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _proceedToPayment(ChatOrderReady order) {
+    debugPrint(
+      "💳 [CHAT SCREEN] Proceed to payment: ${order.price} ETB (paymentId: ${order.orderPaymentId})",
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => KifiyaScreen(
+          price: order.price,
+          orderPaymentId: order.orderPaymentId,
+          orderPaymentUniqueId: order.orderPaymentUniqueId,
+          vehicleId: order.vehicleId,
+          onlyCashless: order.onlyCashless,
+          userpickupWithSchedule: false,
+        ),
+      ),
     );
   }
 
@@ -357,7 +517,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       debugPrint("⏳ [CHAT SCREEN] _handleOrderNow ignored: already loading");
       return;
     }
-    debugPrint("🛒 [CHAT SCREEN] _handleOrderNow triggered: ${product.name} (id: ${product.id}, storeId: ${product.storeId}) x $quantity");
+    debugPrint(
+      "🛒 [CHAT SCREEN] _handleOrderNow triggered: ${product.name} (id: ${product.id}, storeId: ${product.storeId}) x $quantity",
+    );
     _addUserMessage('Order $quantity × ${product.name}');
     setState(() => _isLoading = true);
 
@@ -369,7 +531,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       );
       if (!mounted) return;
 
-      debugPrint("🎉 [CHAT SCREEN] Checkout succeeded! Price=${result.price}, paymentId=${result.orderPaymentId}, uniqueId=${result.orderPaymentUniqueId}, vehicleId=${result.vehicleId}");
+      debugPrint(
+        "🎉 [CHAT SCREEN] Checkout succeeded! Price=${result.price}, paymentId=${result.orderPaymentId}, uniqueId=${result.orderPaymentUniqueId}, vehicleId=${result.vehicleId}",
+      );
 
       _addBotMessage(
         'Your order is ready 🎉\n'
@@ -421,7 +585,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     setState(() {
       _showQuickReplies = !_showQuickReplies;
     });
-    debugPrint("⚡ [CHAT SCREEN] Quick replies toggled. Visible: $_showQuickReplies");
+    debugPrint(
+      "⚡ [CHAT SCREEN] Quick replies toggled. Visible: $_showQuickReplies",
+    );
   }
 
   Future<void> _fetchBotResponse(String userMessage) async {
@@ -429,14 +595,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       _isLoading = true;
     });
 
-    debugPrint("═══════════════════════════════════════════════════════════════");
+    debugPrint(
+      "═══════════════════════════════════════════════════════════════",
+    );
     debugPrint("🚀 [CHAT SCREEN] >>> START _fetchBotResponse");
     debugPrint("🚀 [CHAT SCREEN] User ID: $userId");
     debugPrint(
       "🚀 [CHAT SCREEN] Server Token: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}",
     );
     debugPrint("🚀 [CHAT SCREEN] User Location: $userLocation");
-    debugPrint("🚀 [CHAT SCREEN] Last Order ID: $userLastOrderId, Order Status: $userOrderStatus");
+    debugPrint(
+      "🚀 [CHAT SCREEN] Last Order ID: $userLastOrderId, Order Status: $userOrderStatus",
+    );
     debugPrint("🚀 [CHAT SCREEN] Current Session ID: ${_sessionId ?? 'none'}");
     debugPrint("🚀 [CHAT SCREEN] User Message: \"$userMessage\"");
 
@@ -464,10 +634,14 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         sessionId: _sessionId,
       );
 
-      debugPrint("🚀 [CHAT SCREEN] Backend response returned. Map keys: ${response?.keys.toList()}");
+      debugPrint(
+        "🚀 [CHAT SCREEN] Backend response returned. Map keys: ${response?.keys.toList()}",
+      );
 
       if (!mounted) {
-        debugPrint("📱 [CHAT SCREEN] Widget not mounted after API response. Discarding render.");
+        debugPrint(
+          "📱 [CHAT SCREEN] Widget not mounted after API response. Discarding render.",
+        );
         return;
       }
 
@@ -475,7 +649,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         // Update session ID if provided by backend
         if (response['session_id'] != null) {
           _sessionId = response['session_id'].toString();
-          debugPrint("🔑 [CHAT SCREEN] Updated conversation session_id: $_sessionId");
+          debugPrint(
+            "🔑 [CHAT SCREEN] Updated conversation session_id: $_sessionId",
+          );
         }
 
         // ChatService has already normalized the reply into JSON
@@ -491,14 +667,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         final browseResults = response['browse_results'];
         if (browseResults is Map && browseResults['results'] is List) {
           final typedBrowseResults = Map<String, dynamic>.from(browseResults);
-          final browseType =
-              typedBrowseResults['type']?.toString().toLowerCase();
+          final browseType = typedBrowseResults['type']
+              ?.toString()
+              .toLowerCase();
           final rawResults = typedBrowseResults['results'] as List;
 
-          debugPrint("🔍 [CHAT SCREEN] Found browse_results: type=$browseType, resultsCount=${rawResults.length}");
+          debugPrint(
+            "🔍 [CHAT SCREEN] Found browse_results: type=$browseType, resultsCount=${rawResults.length}",
+          );
 
           // Check if browse_results contains stores
-          final isStores = browseType == 'stores' ||
+          final isStores =
+              browseType == 'stores' ||
               (rawResults.isNotEmpty &&
                   rawResults.first is Map &&
                   (rawResults.first['store_name'] != null ||
@@ -525,8 +705,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           }
 
           // Otherwise check if browse_results contains items/products
-          final parsedProducts =
-              parseBackendBrowseResults(typedBrowseResults);
+          final parsedProducts = parseBackendBrowseResults(typedBrowseResults);
           debugPrint(
             "🍔 [CHAT SCREEN] Parsed ${parsedProducts.length} products from browse_results",
           );
@@ -535,25 +714,40 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             final storeName =
                 browseResults['store_name']?.toString() ?? 'Unknown Store';
 
-            // Create a MockStore for the menu display
-            final menuStore = MockStore(
-              id: 'backend_${storeName.hashCode}',
-              name: storeName,
-              category: 'Restaurant',
-              location: 'Available now',
-              rating: 0.0,
-              hasRating: false,
-              deliveryTime: 'Delivery available',
-              deliveryFee: 0.0,
-              logoText: storeName.substring(0, storeName.length.clamp(0, 8)),
-              themeColor: const Color(0xFF237249),
-            );
+            // Reuse the tapped store (logo, rating) when the menu is for it,
+            // else build one from the reply.
+            final pending = _pendingMenuStore;
+            _pendingMenuStore = null;
+            final menuStore =
+                pending != null &&
+                    pending.name.trim().toLowerCase() ==
+                        storeName.trim().toLowerCase()
+                ? pending
+                : MockStore(
+                    id: 'backend_${storeName.hashCode}',
+                    name: storeName,
+                    category: 'Restaurant',
+                    location: 'Available now',
+                    rating: 0.0,
+                    hasRating: false,
+                    deliveryTime: 'Delivery available',
+                    deliveryFee: 0.0,
+                    logoText: storeName.substring(
+                      0,
+                      storeName.length.clamp(0, 8),
+                    ),
+                    themeColor: const Color(0xFF237249),
+                    imageUrl:
+                        browseResults['store_image']?.toString() ??
+                        browseResults['image_url']?.toString() ??
+                        '',
+                  );
 
             // Use a clean, short message instead of the unformatted backend response
             final cleanMessage =
                 botMessage.isNotEmpty && !botMessage.contains('{')
-                    ? botMessage
-                    : "Here's the menu for $storeName:";
+                ? botMessage
+                : "Here's the menu for $storeName:";
 
             _addBotMessage(
               cleanMessage,
@@ -572,7 +766,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             response['menu'] != null) {
           final backendProducts =
               response['products'] ?? response['items'] ?? response['menu'];
-          debugPrint("🍔 [CHAT SCREEN] Found simple products/items/menu array: length=${backendProducts is List ? backendProducts.length : 0}");
+          debugPrint(
+            "🍔 [CHAT SCREEN] Found simple products/items/menu array: length=${backendProducts is List ? backendProducts.length : 0}",
+          );
           if (backendProducts is List && backendProducts.isNotEmpty) {
             final parsedProducts = parseSimpleBackendProducts(backendProducts);
             debugPrint(
@@ -595,12 +791,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         // Check if backend returned store data in structured format
         if (response['stores'] != null || response['companies'] != null) {
           final backendStores = response['stores'] ?? response['companies'];
-          debugPrint("🏪 [CHAT SCREEN] Found simple stores/companies array: length=${backendStores is List ? backendStores.length : 0}");
+          debugPrint(
+            "🏪 [CHAT SCREEN] Found simple stores/companies array: length=${backendStores is List ? backendStores.length : 0}",
+          );
           final mockStores = parseBackendStoreResults(backendStores);
           if (mockStores.isNotEmpty) {
-            debugPrint(
-              "🏪 [CHAT SCREEN] Parsed ${mockStores.length} stores",
-            );
+            debugPrint("🏪 [CHAT SCREEN] Parsed ${mockStores.length} stores");
 
             final displayMessage = botMessage.isNotEmpty
                 ? botMessage
@@ -616,7 +812,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           }
         }
 
-        debugPrint("💬 [CHAT SCREEN] Rendering text-only bot message: \"$botMessage\"");
+        debugPrint(
+          "💬 [CHAT SCREEN] Rendering text-only bot message: \"$botMessage\"",
+        );
         _addBotMessage(
           botMessage,
           showCartAction: _shouldShowCartAction(botMessage),
@@ -635,7 +833,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       }
     } finally {
       debugPrint("🏁 [CHAT SCREEN] >>> END _fetchBotResponse");
-      debugPrint("═══════════════════════════════════════════════════════════════");
+      debugPrint(
+        "═══════════════════════════════════════════════════════════════",
+      );
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -645,12 +845,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _handleAddProductToCart(MockProduct product) async {
-    debugPrint("🛒 [CHAT SCREEN] _handleAddProductToCart: ${product.name} (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})");
+    debugPrint(
+      "🛒 [CHAT SCREEN] _handleAddProductToCart: ${product.name} (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})",
+    );
     await addMockProductsToCart([product]);
   }
 
   Future<void> _handleViewCartForMessage(int messageIndex) async {
-    debugPrint("🛒 [CHAT SCREEN] _handleViewCartForMessage tapped for message at index $messageIndex");
+    debugPrint(
+      "🛒 [CHAT SCREEN] _handleViewCartForMessage tapped for message at index $messageIndex",
+    );
     final message = _messages[messageIndex];
     List<MockProduct> products = _messageProducts[message.id] ?? const [];
     if (products.isEmpty && messageIndex > 0) {
@@ -658,7 +862,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       products = _messageProducts[prevMessage.id] ?? const [];
     }
 
-    debugPrint("🛒 [CHAT SCREEN] Attaching ${products.length} product(s) to cart before navigation");
+    debugPrint(
+      "🛒 [CHAT SCREEN] Attaching ${products.length} product(s) to cart before navigation",
+    );
     if (products.isNotEmpty) {
       await addMockProductsToCart(products);
     }
@@ -695,10 +901,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   @override
   void dispose() {
-    debugPrint("📱 [CHAT SCREEN] dispose: Disposing SupportChatScreen and saving state...");
+    debugPrint(
+      "📱 [CHAT SCREEN] dispose: Disposing SupportChatScreen and saving state...",
+    );
     _saveChatHistory(); // Save chat when leaving screen
     _messageController.removeListener(_onTypingChanged);
     _messageController.dispose();
+    _basket.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -709,7 +918,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       setState(() {
         _isTyping = typing;
       });
-      debugPrint("⌨️ [CHAT SCREEN] Typing state changed: isTyping=$_isTyping (length: ${_messageController.text.length})");
+      debugPrint(
+        "⌨️ [CHAT SCREEN] Typing state changed: isTyping=$_isTyping (length: ${_messageController.text.length})",
+      );
     }
   }
 
@@ -726,7 +937,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         context: context,
       );
 
-      debugPrint("📦 [CHAT SCREEN] Orders API raw result: success=${data?['success']}, listLength=${data?['order_list']?.length ?? 0}");
+      debugPrint(
+        "📦 [CHAT SCREEN] Orders API raw result: success=${data?['success']}, listLength=${data?['order_list']?.length ?? 0}",
+      );
 
       if (data != null &&
           data['success'] == true &&
@@ -738,7 +951,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             userLastOrderId = userLastOrder['unique_id']?.toString() ?? '';
             userOrderStatus = userLastOrder['order_status'];
           });
-          debugPrint("✅ [CHAT SCREEN] User latest order loaded -> ID: $userLastOrderId, Status: $userOrderStatus");
+          debugPrint(
+            "✅ [CHAT SCREEN] User latest order loaded -> ID: $userLastOrderId, Status: $userOrderStatus",
+          );
         }
       } else {
         if (mounted) {
@@ -760,6 +975,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   ///
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _route ??= ModalRoute.of(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -843,178 +1064,187 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         ],
       ),
       body: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: _messages.length <= 1
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: EdgeInsets.only(
-                            top: getProportionateScreenHeight(kDefaultPadding),
-                            bottom: getProportionateScreenHeight(
-                              kDefaultPadding,
-                            ),
-                          ),
-                          itemCount: _messages.length + (_isLoading ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == _messages.length && _isLoading) {
-                              return _AnimatedMessage(
-                                child: _buildTypingIndicator(),
-                              );
-                            }
-                            final message = _messages[index];
-                            final previous = index > 0
-                                ? _messages[index - 1]
-                                : null;
-                            final dayHeader = _buildDaySeparator(
-                              message,
-                              previous,
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: _messages.length <= 1
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: EdgeInsets.only(
+                          top: getProportionateScreenHeight(kDefaultPadding),
+                          bottom: getProportionateScreenHeight(kDefaultPadding),
+                        ),
+                        itemCount: _messages.length + (_isLoading ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == _messages.length && _isLoading) {
+                            return _AnimatedMessage(
+                              child: _buildTypingIndicator(),
                             );
-                            // Products explicitly attached to this message by the backend
-                            final messageProducts =
-                                !message.isUser &&
-                                    _messageProducts.containsKey(message.id)
-                                ? _messageProducts[message.id] ??
-                                      const <MockProduct>[]
-                                : <MockProduct>[];
+                          }
+                          final message = _messages[index];
+                          final previous = index > 0
+                              ? _messages[index - 1]
+                              : null;
+                          final dayHeader = _buildDaySeparator(
+                            message,
+                            previous,
+                          );
+                          // Products explicitly attached to this message by the backend
+                          final messageProducts =
+                              !message.isUser &&
+                                  _messageProducts.containsKey(message.id)
+                              ? _messageProducts[message.id] ??
+                                    const <MockProduct>[]
+                              : <MockProduct>[];
 
-                            // Store explicitly attached to this message by the backend
-                            final messageStore =
-                                !message.isUser &&
-                                    _messageStores.containsKey(message.id)
-                                ? _messageStores[message.id]
-                                : null;
+                          // Store explicitly attached to this message by the backend
+                          final messageStore =
+                              !message.isUser &&
+                                  _messageStores.containsKey(message.id)
+                              ? _messageStores[message.id]
+                              : null;
 
-                            // Only use real backend-attached products — no mock fallback
-                            final matchedProducts = messageProducts;
+                          // Only use real backend-attached products — no mock fallback
+                          final matchedProducts = messageProducts;
 
-                            // isStoreReply: message has a real backend store attached
-                            final isStoreReply =
-                                !message.isUser && messageStore != null;
+                          // isStoreReply: message has a real backend store attached
+                          final isStoreReply =
+                              !message.isUser && messageStore != null;
 
-                            // Only use real backend-attached store — no mock fallback
-                            final matchedStore = messageStore;
+                          // Only use real backend-attached store — no mock fallback
+                          final matchedStore = messageStore;
 
-                            // Show store carousel if we have backend store list data
-                            final hasBackendStores =
-                                _messageStoreLists[message.id] != null &&
-                                _messageStoreLists[message.id]!.isNotEmpty;
-                            final isStoreOnly =
-                                (isStoreReply && matchedProducts.isEmpty) ||
-                                hasBackendStores;
+                          // Show store carousel if we have backend store list data
+                          final hasBackendStores =
+                              _messageStoreLists[message.id] != null &&
+                              _messageStoreLists[message.id]!.isNotEmpty;
+                          final isStoreOnly =
+                              (isStoreReply && matchedProducts.isEmpty) ||
+                              hasBackendStores;
 
-                            final storeProducts = isStoreOnly
-                                ? <MockProduct>[]
-                                : matchedProducts;
-                            final showProducts =
-                                !isStoreReply || matchedProducts.isNotEmpty;
+                          final storeProducts = isStoreOnly
+                              ? <MockProduct>[]
+                              : matchedProducts;
+                          final showProducts =
+                              !isStoreReply || matchedProducts.isNotEmpty;
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (dayHeader != null) dayHeader,
-                                _AnimatedMessage(
-                                  child: ChatBubble(
-                                    message: message,
-                                    matchedProducts: storeProducts,
-                                    matchedStore: matchedStore,
-                                    matchedStores:
-                                        _messageStoreLists[message
-                                            .id], // Use stored store lists from backend
-                                    isStoreOnly: isStoreOnly,
-                                    showProducts: showProducts,
-                                    imageUrl:
-                                        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imageUrl",
-                                    onLongPress: message.isUser
-                                        ? () => _showMessageOptions(
-                                            context,
-                                            message,
-                                          )
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (dayHeader != null) dayHeader,
+                              _AnimatedMessage(
+                                child: ChatBubble(
+                                  message: message,
+                                  matchedProducts: storeProducts,
+                                  matchedStore: matchedStore,
+                                  matchedStores:
+                                      _messageStoreLists[message
+                                          .id], // Use stored store lists from backend
+                                  isStoreOnly: isStoreOnly,
+                                  showProducts: showProducts,
+                                  imageUrl:
+                                      "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/$imageUrl",
+                                  onLongPress: message.isUser
+                                      ? () => _showMessageOptions(
+                                          context,
+                                          message,
+                                        )
+                                      : null,
+                                  onViewCart: () =>
+                                      _handleViewCartForMessage(index),
+                                  onAddToCart: _handleAddProductToCart,
+                                  onMenuRequested: _handleStoreMenuRequest,
+                                  onMenuRequestedWithProducts: _openStoreMenu,
+                                  basket: _basket,
+                                  order: _messageOrders[message.id],
+                                  onOpenMenu: _openStoreMenu,
+                                  onAllRestaurants: _showAllRestaurants,
+                                  onProceedToPayment: _proceedToPayment,
+                                  onOrderNow: _handleOrderNow,
+                                  onProductTap: (product) => _openMockProduct(
+                                    product,
+                                    products: storeProducts.isNotEmpty
+                                        ? storeProducts
                                         : null,
-                                    onViewCart: () =>
-                                        _handleViewCartForMessage(index),
-                                    onAddToCart: _handleAddProductToCart,
-                                    onMenuRequested: _handleStoreMenuRequest,
-                                    onMenuRequestedWithProducts:
-                                        (store, products) {
-                                          _handleStoreMenuRequestWithProducts(
-                                            store,
-                                            products,
-                                          );
-                                        },
-                                    onProductTap: (product) => _openMockProduct(
-                                      product,
-                                      products: storeProducts.isNotEmpty
-                                          ? storeProducts
-                                          : null,
-                                    ),
                                   ),
                                 ),
-                              ],
-                            );
-                          },
-                        ),
-                ),
-                if (_showQuickReplies && _messages.length > 1)
-                  QuickReplies(onReplyTap: _handleQuickReply),
-                ChatInput(
-                  controller: _messageController,
-                  onSend: _handleSendMessage,
-                  isLoading: _isLoading,
-                  onQuickRepliesToggle: _messages.length > 1
-                      ? _toggleQuickReplies
-                      : null,
-                ),
-              ],
-            ),
-            // Scroll to bottom button
-            if (_showScrollToBottom)
-              Positioned(
-                bottom: getProportionateScreenHeight(
-                  _showQuickReplies ? 200 : 100,
-                ),
-                right: getProportionateScreenWidth(kDefaultPadding),
-                child: Material(
-                  elevation: 4,
-                  shape: const CircleBorder(),
-                  color: kSecondaryColor,
-                  child: InkWell(
-                    onTap: () {
-                      _scrollController.animateTo(
-                        _scrollController.position.maxScrollExtent,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
-                    },
-                    customBorder: const CircleBorder(),
-                    child: Container(
-                      width: getProportionateScreenWidth(38),
-                      height: getProportionateScreenWidth(38),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        HeroiconsSolid.chevronDown,
-                        color: kPrimaryColor,
-                        size: getProportionateScreenWidth(22),
+                              ),
+                            ],
+                          );
+                        },
                       ),
+              ),
+              // Basket follows the user through the chat
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: getProportionateScreenWidth(12),
+                ),
+                child: ChatBasketBar(basket: _basket, onAction: _reviewBasket),
+              ),
+              if (_showQuickReplies && _messages.length > 1)
+                QuickReplies(onReplyTap: _handleQuickReply),
+              ChatInput(
+                controller: _messageController,
+                onSend: _handleSendMessage,
+                isLoading: _isLoading,
+                onQuickRepliesToggle: _messages.length > 1
+                    ? _toggleQuickReplies
+                    : null,
+              ),
+            ],
+          ),
+          // Scroll to bottom button
+          if (_showScrollToBottom)
+            Positioned(
+              bottom: getProportionateScreenHeight(
+                _showQuickReplies ? 200 : 100,
+              ),
+              right: getProportionateScreenWidth(kDefaultPadding),
+              child: Material(
+                elevation: 4,
+                shape: const CircleBorder(),
+                color: kSecondaryColor,
+                child: InkWell(
+                  onTap: () {
+                    _scrollController.animateTo(
+                      _scrollController.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  },
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: getProportionateScreenWidth(38),
+                    height: getProportionateScreenWidth(38),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      HeroiconsSolid.chevronDown,
+                      color: kPrimaryColor,
+                      size: getProportionateScreenWidth(22),
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
+      ),
     );
   }
 
   /// Opens the product detail bottom sheet — no page navigation.
   void _openMockProduct(MockProduct product, {List<MockProduct>? products}) {
-    debugPrint("🔍 [CHAT SCREEN] _openMockProduct: Opening sheet for '${product.name}' (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})");
+    debugPrint(
+      "🔍 [CHAT SCREEN] _openMockProduct: Opening sheet for '${product.name}' (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})",
+    );
     ProductDetailSheet.show(
       context,
       product: product,
       onAddToCart: (p, qty) async {
-        debugPrint("🛒 [CHAT SCREEN] ProductDetailSheet -> Add to Cart: ${p.name} x $qty");
+        debugPrint(
+          "🛒 [CHAT SCREEN] ProductDetailSheet -> Add to Cart: ${p.name} x $qty",
+        );
         final items = List<MockProduct>.filled(qty, p);
         await addMockProductsToCart(items);
       },
@@ -1234,7 +1464,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               vertical: getProportionateScreenHeight(13),
             ),
             decoration: BoxDecoration(
-              color: kChatSurfaceColor,
+              color: Colors.white,
+              border: Border.all(color: kChatBubbleBorderColor),
+              boxShadow: kChatBubbleShadow,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(6),
                 topRight: Radius.circular(20),
@@ -1348,7 +1580,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void _deleteMessage(ChatMessage message) {
-    debugPrint("🗑️ [CHAT SCREEN] _deleteMessage: id=${message.id}, text=\"${message.message}\"");
+    debugPrint(
+      "🗑️ [CHAT SCREEN] _deleteMessage: id=${message.id}, text=\"${message.message}\"",
+    );
     setState(() {
       _messages.removeWhere((msg) => msg.id == message.id);
     });
@@ -1363,7 +1597,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           label: "Undo",
           textColor: kPrimaryColor,
           onPressed: () {
-            debugPrint("↩️ [CHAT SCREEN] Undo delete message: id=${message.id}");
+            debugPrint(
+              "↩️ [CHAT SCREEN] Undo delete message: id=${message.id}",
+            );
             setState(() {
               _messages.add(message);
               _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -1399,7 +1635,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               icon: Icon(HeroiconsOutline.trash, color: kBlackColor),
               title: "Clear Chat",
               onTap: () {
-                debugPrint("🧹 [CHAT SCREEN] Options Menu -> Clear Chat tapped");
+                debugPrint(
+                  "🧹 [CHAT SCREEN] Options Menu -> Clear Chat tapped",
+                );
                 Navigator.pop(context);
                 setState(() {
                   _messages.clear();
@@ -1416,7 +1654,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               title: "Call Support",
               subtitle: Text("+251 96 757 5757"),
               onTap: () {
-                debugPrint("📞 [CHAT SCREEN] Options Menu -> Call Support tapped (+251967575757)");
+                debugPrint(
+                  "📞 [CHAT SCREEN] Options Menu -> Call Support tapped (+251967575757)",
+                );
                 launchUrl(Uri(scheme: 'tel', path: '+251967575757'));
               },
             ),
@@ -1427,7 +1667,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               title: "Email Support",
               subtitle: Text("info@zmallshop.com"),
               onTap: () {
-                debugPrint("✉️ [CHAT SCREEN] Options Menu -> Email Support tapped (info@zmallshop.com)");
+                debugPrint(
+                  "✉️ [CHAT SCREEN] Options Menu -> Email Support tapped (info@zmallshop.com)",
+                );
                 launchUrl(Uri(scheme: 'mailto', path: "info@zmallshop.com"));
                 // launch("mailto:info@zmallshop.com");
               },

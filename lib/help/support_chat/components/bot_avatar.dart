@@ -38,3 +38,9 @@ class BotAvatar extends StatelessWidget {
 
 /// Soft fill used by bot bubbles, chips and the input bar.
 const kChatSurfaceColor = Color(0xFFF4F5F7);
+
+/// Bot bubbles: white with a hairline border and a soft lift.
+const kChatBubbleBorderColor = Color(0xFFEAECEF);
+const kChatBubbleShadow = [
+  BoxShadow(color: Color(0x0D101828), blurRadius: 10, offset: Offset(0, 3)),
+];

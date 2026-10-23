@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:zmall/help/support_chat/service/chat_basket.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/models/metadata.dart';
@@ -50,18 +51,50 @@ class ChatCheckoutService {
     "Accept": "application/json",
   };
 
+  /// Single product "Order now" — merged into the local cart when it is
+  /// from the same store.
   static Future<ChatCheckoutResult> checkout({
     required BuildContext context,
     required MockProduct product,
     required int quantity,
+  }) {
+    return _checkoutLines(
+      context: context,
+      lines: [ChatBasketLine(product: product, quantity: quantity)],
+      mergeWithCart: true,
+    );
+  }
+
+  /// Chat basket "Instant Checkout" — the cart becomes exactly [lines], so
+  /// the invoice matches the basket the user reviewed.
+  static Future<ChatCheckoutResult> checkoutBasket({
+    required BuildContext context,
+    required List<ChatBasketLine> lines,
+  }) {
+    if (lines.isEmpty) {
+      throw const ChatCheckoutException('Your basket is empty.');
+    }
+    return _checkoutLines(context: context, lines: lines, mergeWithCart: false);
+  }
+
+  static Future<ChatCheckoutResult> _checkoutLines({
+    required BuildContext context,
+    required List<ChatBasketLine> lines,
+    required bool mergeWithCart,
   }) async {
     final metaData = Provider.of<ZMetaData>(context, listen: false);
     final baseUrl = metaData.baseUrl;
+    final product = lines.first.product;
 
     debugPrint("🛒 [CHAT CHECKOUT] ========================================");
-    debugPrint("🛒 [CHAT CHECKOUT] Starting checkout process");
-    debugPrint("🛒 [CHAT CHECKOUT] Product: ${product.name} (id: ${product.id}, storeId: ${product.storeId})");
-    debugPrint("🛒 [CHAT CHECKOUT] Unit price: ${product.price} ETB, Quantity: $quantity, Total: ${product.price * quantity} ETB");
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] Starting checkout process (${lines.length} line(s), merge: $mergeWithCart)",
+    );
+    for (final l in lines) {
+      debugPrint(
+        "🛒 [CHAT CHECKOUT] Line: ${l.product.name} (id: ${l.product.id}, storeId: ${l.product.storeId}) × ${l.quantity} = ${l.total} ETB",
+      );
+    }
 
     // 1. User session
     debugPrint("🛒 [CHAT CHECKOUT] Step 1: Validating user session...");
@@ -73,49 +106,69 @@ class ChatCheckoutService {
     final String userId = userData['user']['_id'] ?? '';
     final String serverToken = userData['user']['server_token'] ?? '';
     if (userId.isEmpty || serverToken.isEmpty) {
-      debugPrint("❌ [CHAT CHECKOUT] Step 1 failed: Empty userId or serverToken");
+      debugPrint(
+        "❌ [CHAT CHECKOUT] Step 1 failed: Empty userId or serverToken",
+      );
       throw const ChatCheckoutException('Please log in to place an order.');
     }
-    debugPrint("✅ [CHAT CHECKOUT] Step 1 passed: userId: $userId, serverToken present");
+    debugPrint(
+      "✅ [CHAT CHECKOUT] Step 1 passed: userId: $userId, serverToken present",
+    );
 
     // Chat menus sometimes carry the store name instead of its id; look the
     // item up globally to recover the real store id.
     var storeId = product.storeId;
     if (_looksLikeObjectId(product.id) && !_looksLikeObjectId(storeId)) {
-      debugPrint("🛒 [CHAT CHECKOUT] storeId '$storeId' is not an ObjectId, resolving via search_item_global...");
+      debugPrint(
+        "🛒 [CHAT CHECKOUT] storeId '$storeId' is not an ObjectId, resolving via search_item_global...",
+      );
       storeId = await _resolveStoreId(baseUrl, product) ?? storeId;
     }
-    if (!_looksLikeObjectId(product.id) || !_looksLikeObjectId(storeId)) {
-      debugPrint("⚠️ [CHAT CHECKOUT] Product or Store ID is not a MongoDB ObjectId: productId='${product.id}', storeId='$storeId'");
-      throw ChatCheckoutException(
-        "I can't order ${product.name} directly from chat yet. "
-        'Please open the store and add it from there.',
-      );
+    for (final l in lines) {
+      if (!_looksLikeObjectId(l.product.id) || !_looksLikeObjectId(storeId)) {
+        debugPrint(
+          "⚠️ [CHAT CHECKOUT] Product or Store ID is not a MongoDB ObjectId: productId='${l.product.id}', storeId='$storeId'",
+        );
+        throw ChatCheckoutException(
+          "I can't order ${l.product.name} directly from chat yet. "
+          'Please open the store and add it from there.',
+        );
+      }
     }
 
     // 2. Store detail → store location + payment restrictions
-    debugPrint("🛒 [CHAT CHECKOUT] Step 2: Fetching store details for storeId: $storeId...");
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] Step 2: Fetching store details for storeId: $storeId...",
+    );
     final storeDetail = await _post(
       '$baseUrl/api/user/user_get_store_product_item_list',
       {"store_id": storeId},
       timeout: 20,
     );
     final store = storeDetail?['store'];
-    if (storeDetail == null || storeDetail['success'] != true || store == null) {
-      debugPrint("❌ [CHAT CHECKOUT] Step 2 failed: storeDetail success=${storeDetail?['success']}");
+    if (storeDetail == null ||
+        storeDetail['success'] != true ||
+        store == null) {
+      debugPrint(
+        "❌ [CHAT CHECKOUT] Step 2 failed: storeDetail success=${storeDetail?['success']}",
+      );
       throw const ChatCheckoutException(
         "Couldn't load the store details. Please try again.",
       );
     }
     final storeLocation = _parseStoreLocation(store['location']);
     if (storeLocation == null) {
-      debugPrint("❌ [CHAT CHECKOUT] Step 2 failed: Unable to parse store location: ${store['location']}");
+      debugPrint(
+        "❌ [CHAT CHECKOUT] Step 2 failed: Unable to parse store location: ${store['location']}",
+      );
       throw const ChatCheckoutException(
         "Couldn't find the store location. Please try again.",
       );
     }
     final bool onlyCashless = store['accept_only_cashless_payment'] == true;
-    debugPrint("✅ [CHAT CHECKOUT] Step 2 passed: Store '${store['name']}', Location: [${storeLocation.lat}, ${storeLocation.long}], onlyCashless: $onlyCashless");
+    debugPrint(
+      "✅ [CHAT CHECKOUT] Step 2 passed: Store '${store['name']}', Location: [${storeLocation.lat}, ${storeLocation.long}], onlyCashless: $onlyCashless",
+    );
 
     // 3. Build the cart (merge with the local cart when it's the same store)
     debugPrint("🛒 [CHAT CHECKOUT] Step 3: Building cart object...");
@@ -123,23 +176,29 @@ class ChatCheckoutService {
       userData: userData,
       userId: userId,
       serverToken: serverToken,
-      product: product,
+      lines: lines,
+      mergeWithCart: mergeWithCart,
       storeId: storeId,
-      quantity: quantity,
       storeLocation: storeLocation,
       fallbackLat: metaData.latitude,
       fallbackLong: metaData.longitude,
     );
-    debugPrint("✅ [CHAT CHECKOUT] Step 3 passed: Cart built with ${cart.items?.length ?? 0} item(s)");
+    debugPrint(
+      "✅ [CHAT CHECKOUT] Step 3 passed: Cart built with ${cart.items?.length ?? 0} item(s)",
+    );
 
     // 4. Sync cart to backend
-    debugPrint("🛒 [CHAT CHECKOUT] Step 4: Syncing cart to backend (/api/user/add_item_in_cart_new)...");
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] Step 4: Syncing cart to backend (/api/user/add_item_in_cart_new)...",
+    );
     final cartResponse = await _post(
       '$baseUrl/api/user/add_item_in_cart_new',
       cart.toJson(),
     );
     if (cartResponse == null || cartResponse['success'] != true) {
-      debugPrint("❌ [CHAT CHECKOUT] Step 4 failed: cartResponse=${cartResponse?.toString()}");
+      debugPrint(
+        "❌ [CHAT CHECKOUT] Step 4 failed: cartResponse=${cartResponse?.toString()}",
+      );
       throw const ChatCheckoutException(
         "Couldn't add the item to your cart. Please try again.",
       );
@@ -147,38 +206,45 @@ class ChatCheckoutService {
     userData['user']['cart_id'] = cartResponse['cart_id'];
     await Service.save('user', userData);
     await Service.save('cart', cart.toJson());
-    debugPrint("✅ [CHAT CHECKOUT] Step 4 passed: Cart synced! cart_id: ${cartResponse['cart_id']}");
+    debugPrint(
+      "✅ [CHAT CHECKOUT] Step 4 passed: Cart synced! cart_id: ${cartResponse['cart_id']}",
+    );
 
     // 5. Delivery vehicle (prefer motorbike, else first available)
-    debugPrint("🛒 [CHAT CHECKOUT] Step 5: Requesting vehicle list (/api/store/get_vehicle_list)...");
-    final vehicleResponse = await _post(
-      '$baseUrl/api/store/get_vehicle_list',
-      {
-        "store_id": "",
-        "type": 7,
-        "delivery_type": 1,
-        "user_id": userId,
-        "server_token": serverToken,
-        "city_id": metaData.cityId,
-        "user_latitude": cart.storeLocation!.lat,
-        "user_longitude": cart.storeLocation!.long,
-        "store_latitude": cart.destinationAddress!.lat,
-        "store_longitude": cart.destinationAddress!.long,
-        "use_calculation": true,
-        "is_laundry": cart.isLaundryService,
-      },
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] Step 5: Requesting vehicle list (/api/store/get_vehicle_list)...",
     );
+    final vehicleResponse = await _post('$baseUrl/api/store/get_vehicle_list', {
+      "store_id": "",
+      "type": 7,
+      "delivery_type": 1,
+      "user_id": userId,
+      "server_token": serverToken,
+      "city_id": metaData.cityId,
+      "user_latitude": cart.storeLocation!.lat,
+      "user_longitude": cart.storeLocation!.long,
+      "store_latitude": cart.destinationAddress!.lat,
+      "store_longitude": cart.destinationAddress!.long,
+      "use_calculation": true,
+      "is_laundry": cart.isLaundryService,
+    });
     final vehicleId = _pickVehicleId(vehicleResponse?['vehicles']);
     if (vehicleId.isEmpty) {
-      debugPrint("❌ [CHAT CHECKOUT] Step 5 failed: No valid vehicle found in: ${vehicleResponse?['vehicles']}");
+      debugPrint(
+        "❌ [CHAT CHECKOUT] Step 5 failed: No valid vehicle found in: ${vehicleResponse?['vehicles']}",
+      );
       throw const ChatCheckoutException(
         'No delivery vehicle is available right now. Please try again later.',
       );
     }
-    debugPrint("✅ [CHAT CHECKOUT] Step 5 passed: Selected vehicleId: $vehicleId");
+    debugPrint(
+      "✅ [CHAT CHECKOUT] Step 5 passed: Selected vehicleId: $vehicleId",
+    );
 
     // 6. Distance & time — Haversine, ~2 min per km (urban average)
-    debugPrint("🛒 [CHAT CHECKOUT] Step 6: Calculating distance & estimated delivery time...");
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] Step 6: Calculating distance & estimated delivery time...",
+    );
     final distance = AddressValidationService.calculateDistanceInMeters(
       cart.storeLocation!.lat!,
       cart.storeLocation!.long!,
@@ -186,38 +252,42 @@ class ChatCheckoutService {
       cart.destinationAddress!.long!,
     );
     final time = (distance / 1000) * 120;
-    debugPrint("✅ [CHAT CHECKOUT] Step 6 passed: Distance: ${distance.toStringAsFixed(1)}m, Estimated Time: ${time.toStringAsFixed(0)}s");
+    debugPrint(
+      "✅ [CHAT CHECKOUT] Step 6 passed: Distance: ${distance.toStringAsFixed(1)}m, Estimated Time: ${time.toStringAsFixed(0)}s",
+    );
 
     // 7. Order invoice
-    debugPrint("🛒 [CHAT CHECKOUT] Step 7: Requesting cart invoice (/api/user/get_order_cart_invoice)...");
-    final invoice = await _post(
-      '$baseUrl/api/user/get_order_cart_invoice',
-      {
-        "user_id": userId,
-        "store_id": cart.storeId,
-        "total_time": time,
-        "total_distance": distance,
-        "order_type": 7,
-        "is_user_pick_up_order": false,
-        "total_item_count": cart.items?.length,
-        "is_user_drop_order": !cart.isLaundryService,
-        "express_option": 0,
-        "server_token": serverToken,
-        "vehicle_id": vehicleId,
-        "tip": 0,
-      },
-      timeout: 30,
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] Step 7: Requesting cart invoice (/api/user/get_order_cart_invoice)...",
     );
+    final invoice = await _post('$baseUrl/api/user/get_order_cart_invoice', {
+      "user_id": userId,
+      "store_id": cart.storeId,
+      "total_time": time,
+      "total_distance": distance,
+      "order_type": 7,
+      "is_user_pick_up_order": false,
+      "total_item_count": cart.items?.length,
+      "is_user_drop_order": !cart.isLaundryService,
+      "express_option": 0,
+      "server_token": serverToken,
+      "vehicle_id": vehicleId,
+      "tip": 0,
+    }, timeout: 30);
     if (invoice == null ||
         invoice['success'] != true ||
         invoice['order_payment'] == null) {
-      debugPrint("❌ [CHAT CHECKOUT] Step 7 failed: invoice success=${invoice?['success']}, error_code=${invoice?['error_code']}");
+      debugPrint(
+        "❌ [CHAT CHECKOUT] Step 7 failed: invoice success=${invoice?['success']}, error_code=${invoice?['error_code']}",
+      );
       throw const ChatCheckoutException(
         "Couldn't generate the order invoice. Please try again.",
       );
     }
     if (invoice['is_distance_alarm'] == true) {
-      debugPrint("⚠️ [CHAT CHECKOUT] Step 7 failed: Distance alarm triggered (too far)");
+      debugPrint(
+        "⚠️ [CHAT CHECKOUT] Step 7 failed: Distance alarm triggered (too far)",
+      );
       throw const ChatCheckoutException(
         'This store is too far from your delivery address. '
         'Please choose a closer store.',
@@ -225,14 +295,25 @@ class ChatCheckoutService {
     }
 
     final orderPayment = invoice['order_payment'];
-    final finalPrice =
-        double.tryParse(orderPayment['user_pay_payment']?.toString() ?? '') ??
-            0.0;
+    debugPrint(
+      "🧾 [CHAT CHECKOUT] Invoice amounts: user_pay_payment=${orderPayment['user_pay_payment']}, total=${orderPayment['total']}, total_order_price=${orderPayment['total_order_price']}, total_cart_price=${orderPayment['total_cart_price']}, total_delivery_price=${orderPayment['total_delivery_price']}",
+    );
+    // user_pay_payment is what the regular checkout charges; fall back to the
+    // other totals when it is missing or zero.
+    double amount(String key) =>
+        double.tryParse(orderPayment[key]?.toString() ?? '') ?? 0.0;
+    final finalPrice = [
+      'user_pay_payment',
+      'total',
+      'total_order_price',
+    ].map(amount).firstWhere((v) => v > 0, orElse: () => 0.0);
     final orderPaymentId = orderPayment['_id']?.toString() ?? '';
     final orderPaymentUniqueId = orderPayment['unique_id']?.toString() ?? '';
 
     debugPrint("✅ [CHAT CHECKOUT] Step 7 passed: Invoice generated!");
-    debugPrint("🎉 [CHAT CHECKOUT] Final Price: $finalPrice ETB, Payment ID: $orderPaymentId, Unique ID: $orderPaymentUniqueId");
+    debugPrint(
+      "🎉 [CHAT CHECKOUT] Final Price: $finalPrice ETB, Payment ID: $orderPaymentId, Unique ID: $orderPaymentUniqueId",
+    );
     debugPrint("🛒 [CHAT CHECKOUT] ========================================");
 
     return ChatCheckoutResult(
@@ -248,9 +329,9 @@ class ChatCheckoutService {
     required dynamic userData,
     required String userId,
     required String serverToken,
-    required MockProduct product,
+    required List<ChatBasketLine> lines,
+    required bool mergeWithCart,
     required String storeId,
-    required int quantity,
     required StoreLocation storeLocation,
     required double? fallbackLat,
     required double? fallbackLong,
@@ -261,17 +342,21 @@ class ChatCheckoutService {
       if (cartData != null) existing = Cart.fromJson(cartData);
     } catch (_) {}
 
-    final item = Item(
-      id: product.id,
-      quantity: quantity,
-      specification: [],
-      price: product.price * quantity,
-      itemName: product.name,
-      imageURL: product.imageUrl,
-    );
+    final items = [
+      for (final l in lines)
+        Item(
+          id: l.product.id,
+          quantity: l.quantity,
+          specification: [],
+          price: l.product.price * l.quantity,
+          itemName: l.product.name,
+          imageURL: l.product.imageUrl,
+        ),
+    ];
 
-    // Same store and items already in cart → keep them and merge this one.
-    if (existing != null &&
+    // Same store and items already in cart → keep them and merge these.
+    if (mergeWithCart &&
+        existing != null &&
         existing.storeId == storeId &&
         (existing.items?.isNotEmpty ?? false) &&
         existing.destinationAddress != null) {
@@ -279,12 +364,28 @@ class ChatCheckoutService {
         ..userId = userId
         ..serverToken = serverToken
         ..storeLocation = storeLocation;
-      Service.addOrMergeCartItem(existing, item);
+      for (final item in items) {
+        Service.addOrMergeCartItem(existing, item);
+      }
       return existing;
     }
 
-    // Otherwise start a fresh cart for this store, delivering to the
-    // user's current location.
+    // Otherwise start a fresh cart for this store. Deliver to the address
+    // picked in chat, else the saved cart's, else the current location.
+    final savedAddress =
+        await loadChatDeliveryAddress() ?? existing?.destinationAddress;
+    if (savedAddress?.lat != null && savedAddress?.long != null) {
+      return Cart(
+        userId: userId,
+        serverToken: serverToken,
+        storeId: storeId,
+        storeLocation: storeLocation,
+        destinationAddress: savedAddress,
+        userName: userData['user']['name'] ?? '',
+        phone: userData['user']['phone'] ?? '',
+        items: items,
+      );
+    }
     final lat = await Service.read('latitude');
     final long = await Service.read('longitude');
     return Cart(
@@ -296,13 +397,14 @@ class ChatCheckoutService {
         name: "Current Location",
         note: "User current location",
         lat: double.tryParse(lat?.toString() ?? '') ?? fallbackLat ?? 9.010498,
-        long: double.tryParse(long?.toString() ?? '') ??
+        long:
+            double.tryParse(long?.toString() ?? '') ??
             fallbackLong ??
             38.761886,
       ),
       userName: userData['user']['name'] ?? '',
       phone: userData['user']['phone'] ?? '',
-      items: [item],
+      items: items,
     );
   }
 
@@ -314,11 +416,9 @@ class ChatCheckoutService {
   ) async {
     dynamic response;
     try {
-      response = await _post(
-        '$baseUrl/api/user/search_item_global',
-        {"name": product.name},
-        timeout: 30,
-      );
+      response = await _post('$baseUrl/api/user/search_item_global', {
+        "name": product.name,
+      }, timeout: 30);
     } on ChatCheckoutException {
       return null;
     }
@@ -336,13 +436,18 @@ class ChatCheckoutService {
 
     final storeName = product.storeId.trim().toLowerCase();
     final itemName = product.name.trim().toLowerCase();
-    final resolved = candidate((i) => i['_id']?.toString() == product.id) ??
-        candidate((i) =>
-            i['name']?.toString().trim().toLowerCase() == itemName &&
-            i['store_name']?.toString().trim().toLowerCase() == storeName);
-    debugPrint(resolved != null
-        ? "✅ [CHAT CHECKOUT] Resolved storeId: $resolved"
-        : "⚠️ [CHAT CHECKOUT] Could not resolve storeId for '${product.name}'");
+    final resolved =
+        candidate((i) => i['_id']?.toString() == product.id) ??
+        candidate(
+          (i) =>
+              i['name']?.toString().trim().toLowerCase() == itemName &&
+              i['store_name']?.toString().trim().toLowerCase() == storeName,
+        );
+    debugPrint(
+      resolved != null
+          ? "✅ [CHAT CHECKOUT] Resolved storeId: $resolved"
+          : "⚠️ [CHAT CHECKOUT] Could not resolve storeId for '${product.name}'",
+    );
     return resolved;
   }
 
@@ -376,11 +481,7 @@ class ChatCheckoutService {
   static bool _looksLikeObjectId(String id) =>
       RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(id);
 
-  static Future<dynamic> _post(
-    String url,
-    Map body, {
-    int timeout = 15,
-  }) async {
+  static Future<dynamic> _post(String url, Map body, {int timeout = 15}) async {
     final encoded = json.encode(body);
     debugPrint("🌐 [CHAT CHECKOUT HTTP] POST $url");
     debugPrint("🌐 [CHAT CHECKOUT HTTP] Payload: $encoded");
@@ -390,18 +491,24 @@ class ChatCheckoutService {
           .post(Uri.parse(url), headers: _headers, body: encoded)
           .timeout(Duration(seconds: timeout));
       stopwatch.stop();
-      debugPrint("🌐 [CHAT CHECKOUT HTTP] Status: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms");
+      debugPrint(
+        "🌐 [CHAT CHECKOUT HTTP] Status: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms",
+      );
       debugPrint("🌐 [CHAT CHECKOUT HTTP] Response: ${response.body}");
       return json.decode(response.body);
     } on TimeoutException catch (e) {
       stopwatch.stop();
-      debugPrint("⏰ [CHAT CHECKOUT HTTP] Timeout on $url after ${stopwatch.elapsedMilliseconds}ms: $e");
+      debugPrint(
+        "⏰ [CHAT CHECKOUT HTTP] Timeout on $url after ${stopwatch.elapsedMilliseconds}ms: $e",
+      );
       throw const ChatCheckoutException(
         'The server is taking too long to respond. Please try again. ⏳',
       );
     } catch (e, stack) {
       stopwatch.stop();
-      debugPrint("❌ [CHAT CHECKOUT HTTP] Error on $url after ${stopwatch.elapsedMilliseconds}ms: $e");
+      debugPrint(
+        "❌ [CHAT CHECKOUT HTTP] Error on $url after ${stopwatch.elapsedMilliseconds}ms: $e",
+      );
       debugPrint("❌ [CHAT CHECKOUT HTTP] Stack: $stack");
       throw const ChatCheckoutException(
         'Something went wrong! Check your internet and try again.',

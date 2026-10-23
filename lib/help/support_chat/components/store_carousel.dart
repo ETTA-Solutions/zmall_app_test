@@ -1,19 +1,19 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
-import 'package:provider/provider.dart';
-import 'package:zmall/models/metadata.dart';
+import 'package:zmall/help/support_chat/components/chat_address_picker.dart';
+import 'package:zmall/help/support_chat/components/zmall_ui.dart';
+import 'package:zmall/help/support_chat/service/chat_basket.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
-import 'package:zmall/utils/constants.dart';
+import 'package:zmall/models/cart.dart';
 import 'package:zmall/utils/size_config.dart';
 
-/// Vertically scrollable inline store list shown directly in the chat.
+/// Inline restaurant list shown in the chat — same layout as the web
+/// ordering widget: delivery address bar, "Restaurants in …" header with the
+/// count, then one bordered row per store (logo, name, rating, chevron).
 ///
-/// Has a fixed height so it fits inside the message column without
-/// pushing everything else off-screen. The user simply scrolls up/down
-/// inside the card to browse all stores — no navigation needed.
-class StoreCarousel extends StatelessWidget {
-  final List<MockStore>? stores; // Optional: if null, uses mock data
+/// The list has a fixed height and scrolls inside the chat.
+class StoreCarousel extends StatefulWidget {
+  final List<MockStore>? stores;
   final ValueChanged<MockProduct>? onProductTap;
   final ValueChanged<MockProduct>? onAddToCart;
   final ValueChanged<MockStore>? onMenuRequested;
@@ -29,175 +29,118 @@ class StoreCarousel extends StatelessWidget {
   });
 
   @override
+  State<StoreCarousel> createState() => _StoreCarouselState();
+}
+
+class _StoreCarouselState extends State<StoreCarousel> {
+  @override
   Widget build(BuildContext context) {
-    final storeList = stores ?? const [];
+    final storeList = widget.stores ?? const [];
     if (storeList.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Header ────────────────────────────────────────────────
-        Padding(
-          padding: EdgeInsets.only(
-            left: getProportionateScreenWidth(2),
-            bottom: getProportionateScreenHeight(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                HeroiconsSolid.mapPin,
-                size: getProportionateScreenWidth(13),
-                color: kSecondaryColor,
-              ),
-              SizedBox(width: getProportionateScreenWidth(5)),
-              Text(
-                'Stores near you',
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(13),
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1E293B),
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: getProportionateScreenWidth(9),
-                  vertical: getProportionateScreenHeight(3),
-                ),
-                decoration: BoxDecoration(
-                  color: kSecondaryColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: kSecondaryColor.withValues(alpha: 0.18),
-                  ),
-                ),
-                child: Text(
-                  '${storeList.length} stores',
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(11),
-                    fontWeight: FontWeight.w600,
-                    color: kSecondaryColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return ZCard(
+      padding: EdgeInsets.all(getProportionateScreenWidth(10)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Delivering to (tap to change) ─────────────────────────
+          const ChatAddressField(pill: true),
+          SizedBox(height: getProportionateScreenHeight(12)),
 
-        // ── Scrollable list ───────────────────────────────────────
-        ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: SizedBox(
-            // Show exactly 4 store rows at once
-            height: getProportionateScreenHeight(340),
+          // ── Header ────────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: getProportionateScreenWidth(2),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: ValueListenableBuilder<DestinationAddress?>(
+                    valueListenable: chatDeliveryAddress,
+                    builder: (context, address, _) {
+                      final name = address?.name?.trim() ?? '';
+                      return Text(
+                        name.isEmpty
+                            ? 'Restaurants near you'
+                            : 'Restaurants in $name',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(14.5),
+                          fontWeight: FontWeight.w700,
+                          color: kZInk,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(width: getProportionateScreenWidth(8)),
+                Text(
+                  '${storeList.length} available',
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(11.5),
+                    color: kZMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: getProportionateScreenHeight(10)),
+
+          // ── Scrollable rows ───────────────────────────────────────
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: getProportionateScreenHeight(380),
+            ),
             child: ListView.separated(
+              shrinkWrap: true,
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.zero,
               itemCount: storeList.length,
-              separatorBuilder: (_, __) => Container(
-                height: 1,
-                color: const Color(0xFFF1F5F9),
-                margin: EdgeInsets.symmetric(
-                  horizontal: getProportionateScreenWidth(14),
+              separatorBuilder: (_, __) =>
+                  SizedBox(height: getProportionateScreenHeight(8)),
+              itemBuilder: (context, index) => ZStaggered(
+                index: index,
+                child: _StoreRow(
+                  store: storeList[index],
+                  onTap: () {
+                    final store = storeList[index];
+                    debugPrint(
+                      "🏪 [STORE CAROUSEL] Tapped store item: ${store.name} (id: ${store.id})",
+                    );
+                    widget.onMenuRequested?.call(store);
+                  },
                 ),
-              ),
-              itemBuilder: (context, index) => _StoreRow(
-                store: storeList[index],
-                isFirst: index == 0,
-                isLast: index == storeList.length - 1,
-                onProductTap: onProductTap,
-                onAddToCart: onAddToCart,
-                onMenuRequested: onMenuRequested,
-                onMenuRequestedWithProducts: onMenuRequestedWithProducts,
               ),
             ),
           ),
-        ),
-
-        // ── Scroll hint ────────────────────────────────────────────
-        Padding(
-          padding: EdgeInsets.only(
-            top: getProportionateScreenHeight(6),
-            left: getProportionateScreenWidth(2),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                HeroiconsMini.chevronUpDown,
-                size: getProportionateScreenWidth(11),
-                color: kGreyColor.withValues(alpha: 0.5),
-              ),
-              SizedBox(width: getProportionateScreenWidth(4)),
-              Text(
-                'Scroll to see all stores',
-                style: TextStyle(
-                  fontSize: getProportionateScreenWidth(11),
-                  color: kGreyColor.withValues(alpha: 0.5),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// A single row inside the scrollable store list.
 class _StoreRow extends StatelessWidget {
   final MockStore store;
-  final bool isFirst;
-  final bool isLast;
-  final ValueChanged<MockProduct>? onProductTap;
-  final ValueChanged<MockProduct>? onAddToCart;
-  final ValueChanged<MockStore>? onMenuRequested;
-  final Function(MockStore, List<MockProduct>)? onMenuRequestedWithProducts;
+  final VoidCallback onTap;
 
-  const _StoreRow({
-    required this.store,
-    required this.isFirst,
-    required this.isLast,
-    this.onProductTap,
-    this.onAddToCart,
-    this.onMenuRequested,
-    this.onMenuRequestedWithProducts,
-  });
+  const _StoreRow({required this.store, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final logoText = store.logoText.isNotEmpty
-        ? store.logoText
-        : store.name.substring(0, store.name.length.clamp(0, 10));
-
-    return InkWell(
-      onTap: () {
-        debugPrint("🏪 [STORE CAROUSEL] Tapped store item: ${store.name} (id: ${store.id}, category: ${store.category}, location: ${store.location})");
-        // If we have the callback with products, use it (for backend stores)
-        if (onMenuRequestedWithProducts != null) {
-          // For backend stores, we'll need to fetch products dynamically
-          // For now, fall back to the simple callback
-          onMenuRequested?.call(store);
-        } else {
-          onMenuRequested?.call(store);
-        }
-      },
-      child: Container(
-        color: Colors.white,
+    return ZPressable(
+      onTap: onTap,
+      child: ZCard(
         padding: EdgeInsets.symmetric(
           horizontal: getProportionateScreenWidth(14),
-          vertical: getProportionateScreenHeight(10),
+          vertical: getProportionateScreenHeight(12),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Logo / Image avatar
-            _buildStoreAvatar(context, logoText),
-
-            SizedBox(width: getProportionateScreenWidth(12)),
-
-            // Info
+            ZStoreLogo(store: store, size: 60),
+            SizedBox(width: getProportionateScreenWidth(14)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,61 +148,29 @@ class _StoreRow extends StatelessWidget {
                 children: [
                   Text(
                     store.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: getProportionateScreenWidth(13.5),
+                      fontSize: getProportionateScreenWidth(14.5),
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1E293B),
-                      letterSpacing: -0.2,
+                      color: kZInk,
+                      height: 1.25,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: getProportionateScreenHeight(2)),
-                  Text(
-                    store.category,
-                    style: TextStyle(
-                      fontSize: getProportionateScreenWidth(11),
-                      fontWeight: FontWeight.w500,
-                      color: kSecondaryColor,
+                  if (store.hasRating && store.rating > 0) ...[
+                    SizedBox(height: getProportionateScreenHeight(6)),
+                    ZPill(
+                      label: _rating(store.rating),
+                      icon: HeroiconsSolid.star,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: getProportionateScreenHeight(4)),
-                  // Rating · delivery · location (only show rating if available)
-                  Wrap(
-                    spacing: getProportionateScreenWidth(10),
-                    children: [
-                      if (store.hasRating)
-                        _meta(
-                          HeroiconsSolid.star,
-                          const Color(0xFFF59E0B),
-                          store.rating.toStringAsFixed(1),
-                        ),
-                      _meta(
-                        HeroiconsOutline.clock,
-                        const Color(0xFF94A3B8),
-                        store.deliveryTime,
-                      ),
-                      _meta(
-                        HeroiconsSolid.mapPin,
-                        const Color(0xFF94A3B8),
-                        store.location,
-                      ),
-                    ],
-                  ),
+                  ],
                 ],
               ),
             ),
-
-            SizedBox(width: getProportionateScreenWidth(6)),
-            Tooltip(
-              message: 'View menu',
-              child: Icon(
-                HeroiconsOutline.rectangleStack,
-                size: getProportionateScreenWidth(18),
-                color: kSecondaryColor,
-              ),
+            Icon(
+              HeroiconsOutline.chevronRight,
+              size: getProportionateScreenWidth(16),
+              color: kZMuted,
             ),
           ],
         ),
@@ -267,82 +178,7 @@ class _StoreRow extends StatelessWidget {
     );
   }
 
-  Widget _meta(IconData icon, Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: getProportionateScreenWidth(10), color: color),
-        SizedBox(width: getProportionateScreenWidth(3)),
-        ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: getProportionateScreenWidth(100),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: getProportionateScreenWidth(10.5),
-              color: const Color(0xFF64748B),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStoreAvatar(BuildContext context, String logoText) {
-    final hasImage = store.imageUrl.isNotEmpty;
-    final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
-    final fullImageUrl = hasImage
-        ? (store.imageUrl.startsWith('http')
-            ? store.imageUrl
-            : '$baseUrl/${store.imageUrl}')
-        : '';
-
-    Widget fallbackAvatar() => Container(
-          width: getProportionateScreenWidth(44),
-          height: getProportionateScreenWidth(44),
-          decoration: BoxDecoration(
-            color: store.themeColor,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: store.themeColor.withValues(alpha: 0.25),
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
-          padding: EdgeInsets.all(getProportionateScreenWidth(3)),
-          child: Text(
-            logoText,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: getProportionateScreenWidth(8),
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-            ),
-          ),
-        );
-
-    if (!hasImage) return fallbackAvatar();
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: getProportionateScreenWidth(44),
-        height: getProportionateScreenWidth(44),
-        color: const Color(0xFFF1F5F9),
-        child: CachedNetworkImage(
-          imageUrl: fullImageUrl,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => fallbackAvatar(),
-          errorWidget: (_, __, ___) => fallbackAvatar(),
-        ),
-      ),
-    );
-  }
+  String _rating(double rating) => rating == rating.roundToDouble()
+      ? rating.toStringAsFixed(0)
+      : rating.toStringAsFixed(1);
 }
