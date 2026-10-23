@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/profile/subscription/subscription_kifiya/inapp_subscription_payment.dart';
-import 'package:zmall/profile/subscription/subscription_kifiya/ussd_subscription_payment.dart';
+// import 'package:zmall/profile/subscription/subscription_kifiya/ussd_subscription_payment.dart';
 import 'package:zmall/widgets/custom_back_button.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/services/core_services.dart';
@@ -29,7 +29,8 @@ class _Premium {
     Color(0xFFA8782A),
     Color(0xFFF2D58A),
   ];
-  static const trust = Color(0xFF12B76A);
+  static Color get trust => kSecondaryColor;
+  static const active = Color(0xFF9A6B1F);
   static const surface = Color(0xFFF6F7FB);
   static const border = Color(0xFFE7E9F0);
   static const textMuted = Color(0xFF667085);
@@ -75,7 +76,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     {
       'title': 'Monthly Premium',
       'subtitle': 'Free Delivery on every order',
-      'description': 'Pay once, enjoy free delivery for $_subscriptionDurationDays days',
+      'description':
+          'Pay once, enjoy free delivery for $_subscriptionDurationDays days',
       'benefits': [
         'Free delivery on all orders',
         'Priority service',
@@ -131,7 +133,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         if (_scrollController.hasClients) {
           // Only treat the header as collapsed once the dark hero has fully
           // scrolled away, so the dark title never shows over it mid-transition.
-          final double collapsePoint = _expandedHeaderHeight -
+          final double collapsePoint =
+              _expandedHeaderHeight -
               kToolbarHeight -
               MediaQuery.of(context).padding.top -
               4;
@@ -270,7 +273,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       setState(() => _loading = false);
       Service.showMessage(
         context: context,
-        title: "Payment received but activation is taking longer than expected. Please refresh.",
+        title:
+            "Payment received but activation is taking longer than expected. Please refresh.",
         error: true,
         duration: 5,
       );
@@ -338,8 +342,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   Widget _wordmark({double size = 34, bool center = true}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment:
-          center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment: center
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         Text(
           'ZMALL',
@@ -442,7 +447,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           opacity: 0.25 + 0.75 * t,
           child: Transform.scale(
             scale: 0.8 + 0.3 * t,
-            child: Icon(Icons.auto_awesome, size: size, color: _Premium.goldLight),
+            child: Icon(
+              Icons.auto_awesome,
+              size: size,
+              color: _Premium.goldLight,
+            ),
           ),
         );
       },
@@ -577,13 +586,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
   Widget _statusPill(bool isActive, {bool onDark = true}) {
     final Color fg = isActive
-        ? (onDark ? Color(0xFF6CE9A6) : _Premium.trust)
+        ? (onDark ? _Premium.goldLight : _Premium.active)
         : (onDark ? Colors.white70 : _Premium.textMuted);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: isActive
-            ? _Premium.trust.withValues(alpha: onDark ? 0.18 : 0.1)
+            ? _Premium.gold.withValues(alpha: onDark ? 0.2 : 0.14)
             : (onDark ? Colors.white.withValues(alpha: 0.1) : _Premium.border),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -672,21 +681,48 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     required VoidCallback onPressed,
     required IconData icon,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 18),
-        label: Text(
-          label,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15),
+    // Brand red, with a gold icon/hairline to sit alongside the premium gold
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_Premium.red, _Premium.redDeep],
         ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: _Premium.ink,
-          side: BorderSide(color: _Premium.ink.withValues(alpha: 0.15)),
-          padding: EdgeInsets.symmetric(vertical: 15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _Premium.goldLight.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: _Premium.red.withValues(alpha: 0.25),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical: 15),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: _Premium.goldLight),
+                SizedBox(width: 8),
+                Text(
+                  label,
+                  style: _display(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -725,12 +761,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     return BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: _Premium.border),
+      border: Border.all(color: _Premium.border, width: 1.2),
       boxShadow: [
         BoxShadow(
-          color: _Premium.ink.withValues(alpha: 0.04),
-          blurRadius: 24,
-          offset: Offset(0, 8),
+          color: _Premium.ink.withValues(alpha: 0.06),
+          blurRadius: 16,
+          offset: Offset(0, 6),
+        ),
+        BoxShadow(
+          color: _Premium.ink.withValues(alpha: 0.03),
+          blurRadius: 2,
+          offset: Offset(0, 1),
         ),
       ],
     );
@@ -741,7 +782,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     // If admin has disabled subscriptions, show a simple message
     if (!_loading && !_subscriptionEnabled) {
       return Scaffold(
-        backgroundColor: _Premium.surface,
+        backgroundColor: Colors.white,
         appBar: AppBar(
           leading: CustomBackButton(),
           backgroundColor: Colors.transparent,
@@ -801,7 +842,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         ),
       ),
       child: Scaffold(
-        backgroundColor: _Premium.surface,
+        backgroundColor: Colors.white,
         body: CustomScrollView(
           controller: _scrollController,
           slivers: [
@@ -868,7 +909,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       planType: "Monthly",
                       isLatestPlan: true,
                     )
-                  : _buildHeroSection(_isSubscribed, _subscriptionPrice.toInt()),
+                  : _buildHeroSection(
+                      _isSubscribed,
+                      _subscriptionPrice.toInt(),
+                    ),
             ),
           ),
         ),
@@ -959,8 +1003,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       ),
                       SizedBox(height: 16),
                       _primaryButton(
-                        label:
-                            isSubscribed ? "Renew Membership" : "Become a Member",
+                        label: isSubscribed
+                            ? "Renew Membership"
+                            : "Become a Member",
                         onPressed: _openCheckout,
                       ),
                     ],
@@ -983,8 +1028,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     required bool isLatestPlan,
   }) {
     final isActive = daysLeft > 0;
-    final progress =
-        (planDay > 0 && isActive) ? (daysLeft / planDay).clamp(0.0, 1.0) : 0.0;
+    final progress = (planDay > 0 && isActive)
+        ? (daysLeft / planDay).clamp(0.0, 1.0)
+        : 0.0;
 
     return _buildHeroBackground(
       child: SafeArea(
@@ -1091,7 +1137,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: _Premium.gold.withValues(alpha: 0.6),
+                                      color: _Premium.gold.withValues(
+                                        alpha: 0.6,
+                                      ),
                                       blurRadius: 8,
                                     ),
                                   ],
@@ -1115,46 +1163,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                   ),
                                 ),
                               ),
-                              if (isActive)
-                                InkWell(
-                                  borderRadius: BorderRadius.circular(20),
-                                  onTap: () {
-                                    if (!isLatestPlan) {
-                                      _openCheckout();
-                                    } else {
-                                      _showManageSubscriptionSheet(
-                                        planType: planType,
-                                        amount: amount,
-                                        daysLeft: daysLeft,
-                                        endDate: _subscriptionExpiry,
-                                      );
-                                    }
-                                  },
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 7,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          _Premium.goldLight,
-                                          _Premium.gold,
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      isLatestPlan ? 'Manage' : 'Upgrade',
-                                      style: _display(
-                                        color: _Premium.ink,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.2,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                         ],
@@ -1287,7 +1295,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.verified_user_outlined, size: 18, color: _Premium.trust),
+                  Icon(
+                    Icons.verified_user_outlined,
+                    size: 18,
+                    color: _Premium.trust,
+                  ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1460,11 +1472,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         'Exclusive Discounts',
         'Save more on every purchase with member pricing',
       ),
-      (
-        Icons.support_agent_outlined,
-        'Priority Support',
-        '24/7 dedicated assistance from our team',
-      ),
+
       (
         Icons.card_giftcard_outlined,
         'Early Access Offers',
@@ -1475,15 +1483,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(
-        position: Tween<Offset>(
-          begin: Offset(0, 0.15),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic,
-          ),
-        ),
+        position: Tween<Offset>(begin: Offset(0, 0.15), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: _animationController,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 18, vertical: 6),
           decoration: _cardDecoration(),
@@ -1558,10 +1564,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     final currentDate = DateTime.now();
     final dateOfSubscription =
         subscription != null && subscription['date_of_subscription'] != null
-        ? DateTime.tryParse(subscription['date_of_subscription'].toString()) ?? DateTime.now()
+        ? DateTime.tryParse(subscription['date_of_subscription'].toString()) ??
+              DateTime.now()
         : DateTime.now();
     final planDay = _subscriptionDurationDays;
-    final endDate = _subscriptionExpiry ?? dateOfSubscription.add(Duration(days: planDay));
+    final endDate =
+        _subscriptionExpiry ?? dateOfSubscription.add(Duration(days: planDay));
     final isSubscribed = _isSubscribed;
     final isExpired = _subscriptionExpiry != null
         ? currentDate.isAfter(_subscriptionExpiry!)
@@ -1758,7 +1766,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                       style: GoogleFonts.inter(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.white.withValues(alpha: 0.92),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.92,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1768,7 +1778,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                           }).toList(),
                           SizedBox(height: 10),
                           _primaryButton(
-                            label: isCurrentPlan ? 'Subscribed' : 'Subscribe now',
+                            label: isCurrentPlan
+                                ? 'Subscribed'
+                                : 'Subscribe now',
                             icon: isCurrentPlan
                                 ? Icons.check_circle_rounded
                                 : Icons.arrow_forward_rounded,
@@ -1799,17 +1811,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       child: Container(
         padding: EdgeInsets.fromLTRB(18, 18, 18, 8),
         margin: EdgeInsets.only(bottom: kDefaultPadding),
-        decoration: BoxDecoration(
-          color: _Premium.ink.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _Premium.border),
-        ),
+        decoration: _cardDecoration(radius: 16),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: _Premium.textMuted),
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: _Premium.textMuted,
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Subscription Terms',
@@ -1836,9 +1848,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
-                  onPressed: () {
-                    // Navigate to Privacy Policy
-                  },
+                  onPressed: () => Service.launchInWebViewOrVC(
+                    "https://app.zmall.et/privacy.html",
+                  ),
                   child: Text(
                     'Privacy Policy',
                     style: GoogleFonts.inter(
@@ -1848,11 +1860,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                     ),
                   ),
                 ),
-                Text('•', style: TextStyle(color: _Premium.textMuted)),
+                Text('|', style: TextStyle(color: _Premium.textMuted)),
                 TextButton(
-                  onPressed: () {
-                    // Navigate to Terms of Service
-                  },
+                  onPressed: () => Service.launchInWebViewOrVC(
+                    "https://app.zmall.et/terms.html",
+                  ),
                   child: Text(
                     'Terms of Service',
                     style: GoogleFonts.inter(
@@ -1974,8 +1986,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               onPressed: () {
                 final plan = _subscriptionPlans.isNotEmpty
                     ? (planIndex < _subscriptionPlans.length
-                        ? _subscriptionPlans[planIndex]
-                        : _subscriptionPlans[0])
+                          ? _subscriptionPlans[planIndex]
+                          : _subscriptionPlans[0])
                     : null;
                 if (plan != null) {
                   ShowPaymentOption(
@@ -2021,28 +2033,32 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               childAspectRatio: 1.15,
-              children: _subscriptionPlans[planIndex]['benefits'].map<Widget>(
-                (benefit) {
-                  bool doesContainValue(string) {
-                    return benefit.toString().toLowerCase().contains(string);
-                  }
+              children: _subscriptionPlans[planIndex]['benefits'].map<Widget>((
+                benefit,
+              ) {
+                bool doesContainValue(string) {
+                  return benefit.toString().toLowerCase().contains(string);
+                }
 
-                  return _buildBenefitCard(
-                    color: _Premium.red,
-                    icon: doesContainValue("free deliveries") || doesContainValue("free delivery")
-                        ? Icons.local_shipping_outlined
-                        : doesContainValue("% off") || doesContainValue("discount")
-                        ? Icons.price_check_outlined
-                        : doesContainValue("exclusive")
-                        ? Icons.card_giftcard_outlined
-                        : doesContainValue("support") || doesContainValue("priority")
-                        ? Icons.support_agent_outlined
-                        : Icons.star_outline_rounded,
-                    title: benefit,
-                    description: 'Active',
-                  );
-                },
-              ).toList(),
+                return _buildBenefitCard(
+                  color: _Premium.active,
+                  icon:
+                      doesContainValue("free deliveries") ||
+                          doesContainValue("free delivery")
+                      ? Icons.local_shipping_outlined
+                      : doesContainValue("% off") ||
+                            doesContainValue("discount")
+                      ? Icons.price_check_outlined
+                      : doesContainValue("exclusive")
+                      ? Icons.card_giftcard_outlined
+                      : doesContainValue("support") ||
+                            doesContainValue("priority")
+                      ? Icons.support_agent_outlined
+                      : Icons.star_outline_rounded,
+                  title: benefit,
+                  description: 'Active',
+                );
+              }).toList(),
             ),
           ],
           if (!isActive || !isLatestPlan)
@@ -2098,12 +2114,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.check_circle_rounded, size: 13, color: _Premium.trust),
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 13,
+                      color: _Premium.active,
+                    ),
                     SizedBox(width: 4),
                     Text(
                       description,
                       style: GoogleFonts.inter(
-                        color: _Premium.trust,
+                        color: _Premium.active,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -2118,10 +2138,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     );
   }
 
-  ShowPaymentOption({
-    required num price,
-    required Map<String, dynamic> plan,
-  }) {
+  ShowPaymentOption({required num price, required Map<String, dynamic> plan}) {
     final double numericPrice = price.toDouble();
     showModalBottomSheet(
       context: context,
@@ -2185,7 +2202,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors:
-                            plan['gradient'] ?? [_Premium.inkSoft, _Premium.ink],
+                            plan['gradient'] ??
+                            [_Premium.inkSoft, _Premium.ink],
                       ),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
@@ -2276,46 +2294,47 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       });
                     },
                   ),
-                  SizedBox(height: 10),
-                  _buildPaymentContainer(
-                    title: "Telebirr USSD",
-                    subtitle: "Pay with a USSD code",
-                    imageUrl: "images/payment/telebirr.png",
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) {
-                            return SubscriptionPaymentUssd(
-                              amount: numericPrice,
-                              traceNo: uniqueId,
-                              phone: userData['user']['phone'],
-                              userId: userData['user']['_id'],
-                              serverToken: userData['user']['server_token'],
-                              url:
-                                  "http://196.189.44.60:8069/telebirr/ussd/send_sms",
-                            );
-                          },
-                        ),
-                      ).then((value) {
-                        Navigator.of(context).pop();
-                        if (value != null && value == true) {
-                          _buyProduct(_subscriptionPlans.indexOf(plan));
-                        } else {
-                          Future.delayed(Duration(milliseconds: 100), () {
-                            if (mounted) {
-                              Service.showMessage(
-                                title:
-                                    "Payment not completed. Please choose your payment method.",
-                                error: true,
-                                context: context,
-                              );
-                            }
-                          });
-                        }
-                      });
-                    },
-                  ),
+                  // Telebirr USSD disabled for now — use Telebirr InApp only
+                  //                   SizedBox(height: 10),
+                  //                   _buildPaymentContainer(
+                  //                     title: "Telebirr USSD",
+                  //                     subtitle: "Pay with a USSD code",
+                  //                     imageUrl: "images/payment/telebirr.png",
+                  //                     onPressed: () {
+                  //                       Navigator.push(
+                  //                         context,
+                  //                         MaterialPageRoute(
+                  //                           builder: (context) {
+                  //                             return SubscriptionPaymentUssd(
+                  //                               amount: numericPrice,
+                  //                               traceNo: uniqueId,
+                  //                               phone: userData['user']['phone'],
+                  //                               userId: userData['user']['_id'],
+                  //                               serverToken: userData['user']['server_token'],
+                  //                               url:
+                  //                                   "http://196.189.44.60:8069/telebirr/ussd/send_sms",
+                  //                             );
+                  //                           },
+                  //                         ),
+                  //                       ).then((value) {
+                  //                         Navigator.of(context).pop();
+                  //                         if (value != null && value == true) {
+                  //                           _buyProduct(_subscriptionPlans.indexOf(plan));
+                  //                         } else {
+                  //                           Future.delayed(Duration(milliseconds: 100), () {
+                  //                             if (mounted) {
+                  //                               Service.showMessage(
+                  //                                 title:
+                  //                                     "Payment not completed. Please choose your payment method.",
+                  //                                 error: true,
+                  //                                 context: context,
+                  //                               );
+                  //                             }
+                  //                           });
+                  //                         }
+                  //                       });
+                  //                     },
+                  //                   ),
                   SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
