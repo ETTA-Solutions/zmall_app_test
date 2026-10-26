@@ -92,7 +92,7 @@ class _MyAppState extends State<MyApp> {
     String? cartId;
 
     if (uri.scheme == 'zmall' && uri.host == 'cart') {
-      // zmall://cart/{cartId}
+      // zmall://cart/{cartId} p
       if (uri.pathSegments.isNotEmpty) {
         cartId = uri.pathSegments.first;
       }

@@ -14,6 +14,7 @@ import 'package:zmall/help/support_chat/service/chat_service.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/cart/cart_screen.dart';
+import 'package:zmall/checkout/checkout_screen.dart';
 import 'package:zmall/kifiya/kifiya_screen.dart';
 import 'package:zmall/help/support_chat/components/bot_avatar.dart';
 import 'package:zmall/help/support_chat/components/chat_basket_view.dart';
@@ -428,8 +429,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     Navigator.of(context).popUntil((r) => r == route);
   }
 
-  /// Instant Checkout: invoice the basket, then post the "Complete Your
-  /// Order" card — payment opens from its button.
+  /// Instant Checkout: price the basket like the regular checkout and open
+  /// [KifiyaScreen] directly.
   Future<void> _checkoutBasket() async {
     if (_isLoading || _basket.isEmpty) return;
     final store = _basket.store!;
@@ -444,9 +445,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final address = (await loadChatDeliveryAddress())?.name ?? '';
-      if (!mounted) return;
-      final result = await ChatCheckoutService.checkoutBasket(
+      final result = await ChatCheckoutService.addBasketToCart(
         context: context,
         lines: lines,
       );
@@ -454,23 +453,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       HapticFeedback.heavyImpact();
       _closeSheets();
       _basket.clear();
-      final order = ChatOrderReady(
-        storeName: store.name,
-        lines: lines,
-        itemsTotal: itemsTotal,
-        price: result.price,
-        deliveryAddress: address,
-        orderPaymentId: result.orderPaymentId,
-        orderPaymentUniqueId: result.orderPaymentUniqueId,
-        vehicleId: result.vehicleId,
-        onlyCashless: result.onlyCashless,
-      );
-      // The card stays in the chat so the user can reopen payment later.
       _addBotMessage(
-        'Your basket from ${store.name} is ready 🎉',
-        order: order,
+        'Your basket from ${store.name} is ready 🎉\n'
+        'Total: ${result.price.toStringAsFixed(2)} ETB (incl. delivery)',
       );
-      _proceedToPayment(order);
+      _openPayment(result);
     } on ChatCheckoutException catch (e) {
       debugPrint("⚠️ [CHAT SCREEN] Basket checkout failed: ${e.message}");
       if (mounted) {
@@ -491,27 +478,38 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     }
   }
 
-  void _proceedToPayment(ChatOrderReady order) {
+  void _openPayment(ChatCheckoutResult result) {
     debugPrint(
-      "💳 [CHAT SCREEN] Proceed to payment: ${order.price} ETB (paymentId: ${order.orderPaymentId})",
+      "💳 [CHAT SCREEN] Proceed to payment: ${result.price} ETB (paymentId: ${result.orderPaymentId}, vehicleId: ${result.vehicleId})",
     );
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => KifiyaScreen(
-          price: order.price,
-          orderPaymentId: order.orderPaymentId,
-          orderPaymentUniqueId: order.orderPaymentUniqueId,
-          vehicleId: order.vehicleId,
-          onlyCashless: order.onlyCashless,
+          price: result.price,
+          orderPaymentId: result.orderPaymentId,
+          orderPaymentUniqueId: result.orderPaymentUniqueId,
+          vehicleId: result.vehicleId,
+          onlyCashless: result.onlyCashless,
           userpickupWithSchedule: false,
         ),
       ),
     );
   }
 
-  /// Chat → payment: syncs the cart, picks a vehicle, generates the invoice
-  /// and opens [KifiyaScreen] (see CHATBOT_TO_PAYMENT_FLOW.md).
+  /// Older "Complete Your Order" cards carry an invoice that may have priced
+  /// the food at 0; send them through the regular checkout to re-price.
+  void _proceedToPayment(ChatOrderReady order) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutScreen(vehicleId: order.vehicleId),
+      ),
+    );
+  }
+
+  /// Chat → payment: prices the product like the regular checkout and opens
+  /// [KifiyaScreen] directly.
   Future<void> _handleOrderNow(MockProduct product, int quantity) async {
     if (_isLoading) {
       debugPrint("⏳ [CHAT SCREEN] _handleOrderNow ignored: already loading");
@@ -524,38 +522,19 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ChatCheckoutService.checkout(
+      final result = await ChatCheckoutService.addToCart(
         context: context,
         product: product,
         quantity: quantity,
       );
       if (!mounted) return;
 
-      debugPrint(
-        "🎉 [CHAT SCREEN] Checkout succeeded! Price=${result.price}, paymentId=${result.orderPaymentId}, uniqueId=${result.orderPaymentUniqueId}, vehicleId=${result.vehicleId}",
-      );
-
       _addBotMessage(
-        'Your order is ready 🎉\n'
-        'Total: ${result.price.toStringAsFixed(2)} ETB (incl. delivery)\n'
-        'Choose a payment method to complete it.',
+        'Your order of $quantity × ${product.name} is ready 🎉\n'
+        'Total: ${result.price.toStringAsFixed(2)} ETB (incl. delivery)',
       );
       setState(() => _isLoading = false);
-
-      debugPrint("📱 [CHAT SCREEN] Navigating to KifiyaScreen for payment...");
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => KifiyaScreen(
-            price: result.price,
-            orderPaymentId: result.orderPaymentId,
-            orderPaymentUniqueId: result.orderPaymentUniqueId,
-            vehicleId: result.vehicleId,
-            onlyCashless: result.onlyCashless,
-            userpickupWithSchedule: false,
-          ),
-        ),
-      );
+      _openPayment(result);
     } on ChatCheckoutException catch (e) {
       debugPrint("⚠️ [CHAT SCREEN] ChatCheckoutException: ${e.message}");
       if (mounted) _addBotMessage(e.message);

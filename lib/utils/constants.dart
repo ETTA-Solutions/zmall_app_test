@@ -38,12 +38,29 @@ const BASE_URL_TEST_OLD =
 // const BASE_URL = kDebugMode ? BASE_URL_TEST : BASE_URL_PROD;
 //
 
+/*
+
+
+
+{
+  "is_user_selected": false,
+  "is_default_selected": false,
+  "price": 840,
+  "dinein_price": 0,
+  "unique_id": 19130,
+  "name": "Full ",
+  "_id": "6492a7248bc79c3af98f0a7f"
+}
+
+
+*/
+
 const BASE_URL_TEST =
     "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
 // const BASE_URL = BASE_URL_TEST;
 
-const BASE_URL = BASE_URL_TEST;
+const BASE_URL = BASE_URL_PROD;
 
 // const ayat = "6a6b069856bef41124383c9e"`;
 // const mexico = "6a6b0c4a56bef41124383ca2";

@@ -196,12 +196,8 @@ class _ChatBasketPanelState extends State<ChatBasketPanel> {
   Future<void> _checkout() async {
     if (_checkingOut) return;
     HapticFeedback.mediumImpact();
-    // No address yet → ask for one before invoicing.
-    if (await loadChatDeliveryAddress() == null) {
-      if (!mounted) return;
-      final picked = await ChatAddressPicker.show(context);
-      if (picked == null || !mounted) return;
-    }
+    // Straight to invoicing — no saved address falls back to the current
+    // location (see ChatCheckoutService).
     setState(() => _checkingOut = true);
     try {
       await widget.onCheckout();

@@ -80,22 +80,51 @@ class _BodyState extends State<Body> {
     super.dispose();
   }
 
+  void _specDebug(String msg) => debugPrint("[SPEC DEBUG] $msg");
+
   void requiredCount() {
+    _specDebug(
+      "item=${widget.item['name']} id=${widget.item['_id']} "
+      "price=${widget.item['price']} (${widget.item['price'].runtimeType})",
+    );
+    final specs = widget.item['specifications'] ?? [];
+    for (final s in specs) {
+      _specDebug(
+        "spec '${s['name']}' unique_id=${s['unique_id']} "
+        "(${s['unique_id'].runtimeType}) type=${s['type']} "
+        "range=${s['range']} (${s['range'].runtimeType}) "
+        "is_required=${s['is_required']}",
+      );
+      for (final o in (s['list'] ?? [])) {
+        _specDebug(
+          "   option '${o['name']}' unique_id=${o['unique_id']} "
+          "(${o['unique_id'].runtimeType}) price=${o['price']} "
+          "(${o['price'].runtimeType})",
+        );
+      }
+    }
     if (widget.item['specifications'].length > 0) {
       for (
         var index = 0;
         index < widget.item['specifications'].length;
         index++
       ) {
-        if (widget.item['specifications'][index]['is_required']) {
+        final spec = widget.item['specifications'][index];
+        if (spec['is_required'] == true) {
+          final id = spec['unique_id'];
+          if (id is! int) {
+            _specDebug(
+              "WARNING required spec '${spec['name']}' has non-int "
+              "unique_id=$id (${id.runtimeType}) - it can never be cleared",
+            );
+          }
           setState(() {
             reqCount += 1;
-            requiredSpecs?.add(
-              widget.item['specifications'][index]['unique_id'],
-            );
+            if (id is int) requiredSpecs?.add(id);
           });
         }
       }
+      _specDebug("reqCount=$reqCount requiredSpecs=$requiredSpecs");
       if (reqCount == 0) {
         setState(() {
           clearedRequired = true;
@@ -128,6 +157,10 @@ class _BodyState extends State<Body> {
           count += 1;
         }
       });
+      _specDebug(
+        "checkRequired: selectedSpecs=${specification!.map((e) => '${e.uniqueId}:${e.list!.map((l) => l.uniqueId).toList()}').toList()} "
+        "matched=$count / reqCount=$reqCount",
+      );
       if (reqCount == count) {
         setState(() {
           clearedRequired = true;
@@ -374,6 +407,12 @@ class _BodyState extends State<Body> {
                           }
                         }
                       : () {
+                          _specDebug(
+                            "Add to cart blocked: clearedRequired=$clearedRequired "
+                            "price=$price reqCount=$reqCount "
+                            "requiredSpecs=$requiredSpecs "
+                            "selected=${specification!.map((e) => e.uniqueId).toList()}",
+                          );
                           Service.showMessage(
                             context: context,
                             title:
@@ -849,77 +888,95 @@ class _BodyState extends State<Body> {
                                   ),
                                 ),
                                 onSelected: (_) {
-                                  final specItem = ListElement(
-                                    uniqueId: opt['unique_id'],
-                                    price: price,
-                                  );
+                                  try {
+                                    _specDebug(
+                                      "tap option '${opt['name']}' (${opt['unique_id']}) "
+                                      "in spec '${spec['name']}' (${spec['unique_id']}) "
+                                      "type=${spec['type']} range=${spec['range']}",
+                                    );
+                                    final specItem = ListElement(
+                                      uniqueId: opt['unique_id'],
+                                      price: price,
+                                    );
 
-                                  final existingSpec = specification!
-                                      .firstWhere(
-                                        (e) => e.uniqueId == spec['unique_id'],
-                                        orElse: () => Specification(
-                                          uniqueId: -1,
-                                          list: [],
-                                        ),
-                                      );
+                                    final existingSpec = specification!
+                                        .firstWhere(
+                                          (e) =>
+                                              e.uniqueId == spec['unique_id'],
+                                          orElse: () => Specification(
+                                            uniqueId: -1,
+                                            list: [],
+                                          ),
+                                        );
 
-                                  if (existingSpec.uniqueId != -1) {
-                                    final list = existingSpec.list!;
-                                    if (list.any(
-                                      (e) => e.uniqueId == specItem.uniqueId,
-                                    )) {
-                                      setState(() {
-                                        list.removeWhere(
-                                          (e) =>
-                                              e.uniqueId == specItem.uniqueId,
-                                        );
-                                        selected.removeWhere(
-                                          (e) =>
-                                              e.uniqueId == specItem.uniqueId,
-                                        );
-                                        if (list.isEmpty) {
-                                          specification!.removeWhere(
+                                    if (existingSpec.uniqueId != -1) {
+                                      final list = existingSpec.list!;
+                                      if (list.any(
+                                        (e) => e.uniqueId == specItem.uniqueId,
+                                      )) {
+                                        setState(() {
+                                          list.removeWhere(
                                             (e) =>
-                                                e.uniqueId ==
-                                                existingSpec.uniqueId,
+                                                e.uniqueId == specItem.uniqueId,
                                           );
-                                        }
-                                      });
-                                    } else {
-                                      if (spec['type'] == 2) {
-                                        if (spec['range'] == 0 ||
-                                            list.length < spec['range']) {
+                                          selected.removeWhere(
+                                            (e) =>
+                                                e.uniqueId == specItem.uniqueId,
+                                          );
+                                          if (list.isEmpty) {
+                                            specification!.removeWhere(
+                                              (e) =>
+                                                  e.uniqueId ==
+                                                  existingSpec.uniqueId,
+                                            );
+                                          }
+                                        });
+                                      } else {
+                                        if (spec['type'] == 2) {
+                                          final int range =
+                                              (spec['range'] as num?)
+                                                  ?.toInt() ??
+                                              0;
+                                          if (range == 0 ||
+                                              list.length < range) {
+                                            setState(() {
+                                              list.add(specItem);
+                                              selected.add(specItem);
+                                            });
+                                          }
+                                        } else {
                                           setState(() {
-                                            list.add(specItem);
+                                            selected.removeWhere(
+                                              (e) =>
+                                                  e.uniqueId ==
+                                                  list[0].uniqueId,
+                                            );
+                                            list
+                                              ..clear()
+                                              ..add(specItem);
                                             selected.add(specItem);
                                           });
                                         }
-                                      } else {
-                                        setState(() {
-                                          selected.removeWhere(
-                                            (e) =>
-                                                e.uniqueId == list[0].uniqueId,
-                                          );
-                                          list
-                                            ..clear()
-                                            ..add(specItem);
-                                          selected.add(specItem);
-                                        });
                                       }
+                                    } else {
+                                      setState(() {
+                                        specification!.add(
+                                          Specification(
+                                            uniqueId: spec['unique_id'],
+                                            list: [specItem],
+                                          ),
+                                        );
+                                        selected.add(specItem);
+                                      });
                                     }
-                                  } else {
-                                    setState(() {
-                                      specification!.add(
-                                        Specification(
-                                          uniqueId: spec['unique_id'],
-                                          list: [specItem],
-                                        ),
-                                      );
-                                      selected.add(specItem);
-                                    });
+                                    checkRequired();
+                                    updatePrice();
+                                    _specDebug(
+                                      "after tap: clearedRequired=$clearedRequired price=${this.price}",
+                                    );
+                                  } catch (e, st) {
+                                    _specDebug("ERROR in onSelected: $e\n$st");
                                   }
-                                  checkRequired();
-                                  updatePrice();
                                 },
                               );
                             }),

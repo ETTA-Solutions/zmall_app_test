@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:zmall/help/support_chat/service/chat_basket.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
+import 'package:zmall/location/components/place_service.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/address_validation_service.dart';
@@ -38,13 +41,14 @@ class ChatCheckoutException implements Exception {
   String toString() => message;
 }
 
-/// Takes a product picked in the support chat through the same backend steps
-/// as the regular checkout (see CHATBOT_TO_PAYMENT_FLOW.md):
+/// Takes a chat order straight to payment by doing, without UI, what the
+/// regular Cart → Delivery → Checkout screens do:
 ///
-///   store detail → add_item_in_cart_new → get_vehicle_list
-///   → distance (Haversine) → get_order_cart_invoice
+///   resolve store + default specs → add_item_in_cart_new → motorbike
+///   (get_vehicle_list) → distance (Google, else Haversine) → 1 s settle
+///   → get_order_cart_invoice
 ///
-/// and returns the invoice data for [KifiyaScreen].
+/// and returns what CheckoutScreen's "Place order" passes to [KifiyaScreen].
 class ChatCheckoutService {
   static const _headers = <String, String>{
     "Content-Type": "application/json",
@@ -53,7 +57,7 @@ class ChatCheckoutService {
 
   /// Single product "Order now" — merged into the local cart when it is
   /// from the same store.
-  static Future<ChatCheckoutResult> checkout({
+  static Future<ChatCheckoutResult> addToCart({
     required BuildContext context,
     required MockProduct product,
     required int quantity,
@@ -67,7 +71,7 @@ class ChatCheckoutService {
 
   /// Chat basket "Instant Checkout" — the cart becomes exactly [lines], so
   /// the invoice matches the basket the user reviewed.
-  static Future<ChatCheckoutResult> checkoutBasket({
+  static Future<ChatCheckoutResult> addBasketToCart({
     required BuildContext context,
     required List<ChatBasketLine> lines,
   }) {
@@ -115,14 +119,28 @@ class ChatCheckoutService {
       "✅ [CHAT CHECKOUT] Step 1 passed: userId: $userId, serverToken present",
     );
 
-    // Chat menus sometimes carry the store name instead of its id; look the
-    // item up globally to recover the real store id.
+    // Chat products carry neither specifications nor a reliable store id, so
+    // load each item's full record (specs, base price, store_id).
+    final itemInfos = await Future.wait(
+      lines.map((l) => _fetchItemInfo(baseUrl, l.product.id)),
+    );
+
+    // Chat menus sometimes carry the store name instead of its id; recover the
+    // real store id from the item record, else a global item search.
     var storeId = product.storeId;
     if (_looksLikeObjectId(product.id) && !_looksLikeObjectId(storeId)) {
-      debugPrint(
-        "🛒 [CHAT CHECKOUT] storeId '$storeId' is not an ObjectId, resolving via search_item_global...",
-      );
-      storeId = await _resolveStoreId(baseUrl, product) ?? storeId;
+      final infoStoreId = itemInfos.first?['store_id']?.toString() ?? '';
+      if (_looksLikeObjectId(infoStoreId)) {
+        debugPrint(
+          "✅ [CHAT CHECKOUT] Resolved storeId via item info: $infoStoreId",
+        );
+        storeId = infoStoreId;
+      } else {
+        debugPrint(
+          "🛒 [CHAT CHECKOUT] storeId '$storeId' is not an ObjectId, resolving via search_item_global...",
+        );
+        storeId = await _resolveStoreId(baseUrl, product) ?? storeId;
+      }
     }
     for (final l in lines) {
       if (!_looksLikeObjectId(l.product.id) || !_looksLikeObjectId(storeId)) {
@@ -177,6 +195,7 @@ class ChatCheckoutService {
       userId: userId,
       serverToken: serverToken,
       lines: lines,
+      itemInfos: itemInfos,
       mergeWithCart: mergeWithCart,
       storeId: storeId,
       storeLocation: storeLocation,
@@ -186,6 +205,8 @@ class ChatCheckoutService {
     debugPrint(
       "✅ [CHAT CHECKOUT] Step 3 passed: Cart built with ${cart.items?.length ?? 0} item(s)",
     );
+
+    if (!mergeWithCart) await Service.remove('aliexpressCart');
 
     // 4. Sync cart to backend
     debugPrint(
@@ -241,27 +262,33 @@ class ChatCheckoutService {
       "✅ [CHAT CHECKOUT] Step 5 passed: Selected vehicleId: $vehicleId",
     );
 
-    // 6. Distance & time — Haversine, ~2 min per km (urban average)
+    // 6. Distance & time — Google Distance Matrix like CheckoutScreen,
+    // Haversine (~2 min per km) when it fails.
     debugPrint(
       "🛒 [CHAT CHECKOUT] Step 6: Calculating distance & estimated delivery time...",
     );
-    final distance = AddressValidationService.calculateDistanceInMeters(
-      cart.storeLocation!.lat!,
-      cart.storeLocation!.long!,
-      cart.destinationAddress!.lat!,
-      cart.destinationAddress!.long!,
-    );
-    final time = (distance / 1000) * 120;
+    final route = await _routeDistance(cart);
+    final distance = route?.distance ??
+        AddressValidationService.calculateDistanceInMeters(
+          cart.storeLocation!.lat!,
+          cart.storeLocation!.long!,
+          cart.destinationAddress!.lat!,
+          cart.destinationAddress!.long!,
+        );
+    final time = route?.time ?? (distance / 1000) * 120;
     debugPrint(
-      "✅ [CHAT CHECKOUT] Step 6 passed: Distance: ${distance.toStringAsFixed(1)}m, Estimated Time: ${time.toStringAsFixed(0)}s",
+      "✅ [CHAT CHECKOUT] Step 6 passed (${route != null ? 'Google' : 'Haversine'}): Distance: ${distance.toStringAsFixed(1)}m, Estimated Time: ${time.toStringAsFixed(0)}s",
     );
+    // CheckoutScreen waits a second before invoicing; give the synced cart
+    // the same time to settle.
+    await Future.delayed(const Duration(seconds: 1));
 
-    // 7. Order invoice
+    // 7. Order invoice — same request as CheckoutScreen.getCartInvoice
     debugPrint(
       "🛒 [CHAT CHECKOUT] Step 7: Requesting cart invoice (/api/user/get_order_cart_invoice)...",
     );
     final invoice = await _post('$baseUrl/api/user/get_order_cart_invoice', {
-      "user_id": userId,
+      "user_id": cart.userId,
       "store_id": cart.storeId,
       "total_time": time,
       "total_distance": distance,
@@ -270,7 +297,7 @@ class ChatCheckoutService {
       "total_item_count": cart.items?.length,
       "is_user_drop_order": !cart.isLaundryService,
       "express_option": 0,
-      "server_token": serverToken,
+      "server_token": cart.serverToken,
       "vehicle_id": vehicleId,
       "tip": 0,
     }, timeout: 30);
@@ -295,34 +322,73 @@ class ChatCheckoutService {
     }
 
     final orderPayment = invoice['order_payment'];
-    debugPrint(
-      "🧾 [CHAT CHECKOUT] Invoice amounts: user_pay_payment=${orderPayment['user_pay_payment']}, total=${orderPayment['total']}, total_order_price=${orderPayment['total_order_price']}, total_cart_price=${orderPayment['total_cart_price']}, total_delivery_price=${orderPayment['total_delivery_price']}",
-    );
-    // user_pay_payment is what the regular checkout charges; fall back to the
-    // other totals when it is missing or zero.
-    double amount(String key) =>
-        double.tryParse(orderPayment[key]?.toString() ?? '') ?? 0.0;
-    final finalPrice = [
-      'user_pay_payment',
-      'total',
-      'total_order_price',
-    ].map(amount).firstWhere((v) => v > 0, orElse: () => 0.0);
+    for (final e in (orderPayment as Map).entries) {
+      if (e.value is num) {
+        debugPrint("🧾 [CHAT CHECKOUT] invoice.${e.key} = ${e.value}");
+      }
+    }
+    // Same amount CheckoutScreen charges. Never fall back to another total:
+    // when the cart is priced at 0 that one is delivery only.
+    final price =
+        double.tryParse(orderPayment['user_pay_payment']?.toString() ?? '') ??
+        0.0;
+    if (price <= 0) {
+      debugPrint(
+        "❌ [CHAT CHECKOUT] Step 7 failed: user_pay_payment=$price, total_cart_price=${orderPayment['total_cart_price']}",
+      );
+      throw const ChatCheckoutException(
+        "Couldn't price your order right now. Please try again in a moment.",
+      );
+    }
+    // CheckoutScreen passes the invoice's own vehicle to KifiyaScreen.
+    final invoiceVehicles = invoice['vehicles'];
+    final paymentVehicleId =
+        invoiceVehicles is List && invoiceVehicles.isNotEmpty
+        ? invoiceVehicles.first['_id']?.toString() ?? vehicleId
+        : vehicleId;
     final orderPaymentId = orderPayment['_id']?.toString() ?? '';
     final orderPaymentUniqueId = orderPayment['unique_id']?.toString() ?? '';
 
     debugPrint("✅ [CHAT CHECKOUT] Step 7 passed: Invoice generated!");
     debugPrint(
-      "🎉 [CHAT CHECKOUT] Final Price: $finalPrice ETB, Payment ID: $orderPaymentId, Unique ID: $orderPaymentUniqueId",
+      "🎉 [CHAT CHECKOUT] Final Price: $price ETB, Payment ID: $orderPaymentId, Unique ID: $orderPaymentUniqueId, vehicleId: $paymentVehicleId",
     );
     debugPrint("🛒 [CHAT CHECKOUT] ========================================");
 
     return ChatCheckoutResult(
-      price: finalPrice,
+      price: price,
       orderPaymentId: orderPaymentId,
       orderPaymentUniqueId: orderPaymentUniqueId,
-      vehicleId: vehicleId,
+      vehicleId: paymentVehicleId,
       onlyCashless: onlyCashless,
     );
+  }
+
+  /// Road distance (m) and time (s) from the Google Distance Matrix, as
+  /// CheckoutScreen computes it; null when unavailable.
+  static Future<({double distance, double time})?> _routeDistance(
+    Cart cart,
+  ) async {
+    if (kIsWeb) return null;
+    final apiKey = Platform.isAndroid
+        ? PlaceApiProvider.androidKey
+        : PlaceApiProvider.iosKey;
+    final url =
+        "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${cart.storeLocation?.lat?.toStringAsFixed(6)},${cart.storeLocation?.long?.toStringAsFixed(6)}&destinations=${cart.destinationAddress?.lat},${cart.destinationAddress?.long}&key=$apiKey";
+    try {
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 30));
+      final element = json.decode(response.body)['rows'][0]['elements'][0];
+      if (element['status'] != 'OK') return null;
+      return (
+        distance: (element['distance']['value'] as num).toDouble(),
+        time: (element['duration']['value'] as num).toDouble(),
+      );
+    } catch (e) {
+      debugPrint("⚠️ [CHAT CHECKOUT] Distance Matrix failed: $e");
+      return null;
+    }
   }
 
   static Future<Cart> _buildCart({
@@ -330,6 +396,7 @@ class ChatCheckoutService {
     required String userId,
     required String serverToken,
     required List<ChatBasketLine> lines,
+    required List<Map?> itemInfos,
     required bool mergeWithCart,
     required String storeId,
     required StoreLocation storeLocation,
@@ -343,15 +410,7 @@ class ChatCheckoutService {
     } catch (_) {}
 
     final items = [
-      for (final l in lines)
-        Item(
-          id: l.product.id,
-          quantity: l.quantity,
-          specification: [],
-          price: l.product.price * l.quantity,
-          itemName: l.product.name,
-          imageURL: l.product.imageUrl,
-        ),
+      for (var i = 0; i < lines.length; i++) _cartItem(lines[i], itemInfos[i]),
     ];
 
     // Same store and items already in cart → keep them and merge these.
@@ -408,8 +467,86 @@ class ChatCheckoutService {
     );
   }
 
+  /// Loads the full item record (`get_item_information`), or null if it
+  /// can't be fetched.
+  static Future<Map?> _fetchItemInfo(String baseUrl, String itemId) async {
+    if (!_looksLikeObjectId(itemId)) return null;
+    try {
+      final info = await _post('$baseUrl/api/admin/get_item_information', {
+        "item_id": itemId,
+      }, timeout: 15);
+      final item = info?['item'];
+      if (info?['success'] == true && item is Map) return item;
+    } on ChatCheckoutException {
+      // Caller falls back to the chat product data.
+    }
+    debugPrint("⚠️ [CHAT CHECKOUT] Could not load item info for '$itemId'");
+    return null;
+  }
+
+  /// Builds the cart item for [line] the way the item screen does: the
+  /// default-selected options of each specification, priced as
+  /// `(base price + option prices) × quantity`. Without [info] the chat
+  /// product's own price is used with no specifications.
+  static Item _cartItem(ChatBasketLine line, Map? info) {
+    final product = line.product;
+    if (info == null) {
+      return Item(
+        id: product.id,
+        quantity: line.quantity,
+        specification: [],
+        price: product.price * line.quantity,
+        itemName: product.name,
+        imageURL: product.imageUrl,
+      );
+    }
+
+    final specs = <Specification>[];
+    var optionsPrice = 0.0;
+    for (final spec in (info['specifications'] as List? ?? const [])) {
+      if (spec is! Map) continue;
+      final defaults = [
+        for (final opt in (spec['list'] as List? ?? const []))
+          if (opt is Map && opt['is_default_selected'] == true)
+            ListElement(
+              uniqueId: opt['unique_id'],
+              price: double.tryParse(opt['price']?.toString() ?? '') ?? 0.0,
+            ),
+      ];
+      if (defaults.isEmpty) {
+        if (spec['is_required'] == true) {
+          debugPrint(
+            "⚠️ [CHAT CHECKOUT] ${product.name}: required spec '${spec['name']}' has no default option",
+          );
+          throw ChatCheckoutException(
+            '${product.name} needs a ${spec['name']} choice. '
+            'Please open the store and pick it from there.',
+          );
+        }
+        continue;
+      }
+      specs.add(Specification(uniqueId: spec['unique_id'], list: defaults));
+      optionsPrice += defaults.fold(0.0, (sum, o) => sum + (o.price ?? 0));
+    }
+
+    final basePrice = double.tryParse(info['price']?.toString() ?? '') ?? 0.0;
+    final unitPrice = basePrice + optionsPrice;
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] ${product.name}: base $basePrice + options $optionsPrice = $unitPrice ETB × ${line.quantity} (chat showed ${product.price})",
+    );
+    return Item(
+      id: product.id,
+      quantity: line.quantity,
+      specification: specs,
+      price: unitPrice * line.quantity,
+      itemName: product.name,
+      imageURL: product.imageUrl,
+    );
+  }
+
   /// Finds [product] in `search_item_global` and returns its `store_id`.
-  /// Matches on item id first, then on item name + store name.
+  /// Matches on item id first, then on item name + store name. The search is
+  /// capped, so it can miss the item for common names.
   static Future<String?> _resolveStoreId(
     String baseUrl,
     MockProduct product,
