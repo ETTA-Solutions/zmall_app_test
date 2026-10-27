@@ -142,7 +142,27 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             ? 0
             : -1;
 
-        vehicleId = vehicleList['vehicles'][selectedVehicle]['_id'];
+        if (selectedVehicle != -1) {
+          // Default to MOTOR BIKE if available
+          for (int i = 0; i < vehicleList['vehicles'].length; i++) {
+            final vName = (vehicleList['vehicles'][i]['name'] ?? '')
+                .toString()
+                .toLowerCase();
+            if (vName.contains('motor') || vName.contains('bike')) {
+              selectedVehicle = i;
+              break;
+            }
+          }
+          vehicleId = vehicleList['vehicles'][selectedVehicle]['_id'];
+        } else {
+          Service.showMessage(
+            context: context,
+            title:
+                "Delivery is not available to this location. Please update your address.",
+            error: true,
+            duration: 4,
+          );
+        }
         // debugPrint("selectedVehicle after $selectedVehicle");
         // debugPrint("selected vehicle id  after ${vehicleId}");
       });

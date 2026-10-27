@@ -89,19 +89,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="zmall" android:host="cart" />
             </intent-filter>
-            <!-- https://testapp.zmall.et/ai-cart/{cartId} — HTTPS AI cart link -->
+            <!-- https://testbackend.zmall.et & testapp.zmall.et cart links -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/ai-cart" />
-            </intent-filter>
-            <!-- https://testapp.zmall.et/go/cart/{cartId} — new cart deeplink format -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="testbackend.zmall.et" android:pathPrefix="/go/cart" />
+                <data android:scheme="https" android:host="testbackend.zmall.et" android:pathPrefix="/cart" />
+                <data android:scheme="https" android:host="testbackend.zmall.et" android:pathPrefix="/ai-cart" />
+                <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/go/cart" />
                 <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/cart" />
+                <data android:scheme="https" android:host="testapp.zmall.et" android:pathPrefix="/ai-cart" />
+                <data android:scheme="https" android:host="app.zmall.et" android:pathPrefix="/go/cart" />
+                <data android:scheme="https" android:host="app.zmall.et" android:pathPrefix="/cart" />
             </intent-filter>
             <!-- https://zmall-web.vercel.app/ai-cart/{cartId} — Vercel web AI cart link -->
             <intent-filter android:autoVerify="true">

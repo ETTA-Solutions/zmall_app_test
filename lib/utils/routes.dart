@@ -48,8 +48,18 @@ final Map<String, WidgetBuilder> routes = {
   LocationScreen.routeName: (context) => LocationScreen(),
   CheckoutScreen.routeName: (context) => CheckoutScreen(),
   ReportScreen.routeName: (context) => ReportScreen(),
-  KifiyaScreen.routeName: (context) => KifiyaScreen(),
-  OrderHistoryDetail.routeName: (context) => OrderHistoryDetail(),
+  KifiyaScreen.routeName: (context) {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    return KifiyaScreen(
+      price: (args?['price'] as num?)?.toDouble() ?? 0.0,
+      orderPaymentId: args?['orderPaymentId']?.toString() ?? '',
+      orderPaymentUniqueId: args?['orderPaymentUniqueId']?.toString() ?? '',
+      vehicleId: args?['vehicleId']?.toString(),
+      onlyCashless: args?['onlyCashless'] ?? false,
+      userpickupWithSchedule: args?['userpickupWithSchedule'] ?? false,
+    );
+  },
   OrderRating.routeName: (context) => OrderRating(),
   RegisterScreen.routeName: (context) => RegisterScreen(),
   ProviderLocation.routeName: (context) => ProviderLocation(),
@@ -66,10 +76,13 @@ final Map<String, WidgetBuilder> routes = {
   EventsScreen.routeName: (context) => EventsScreen(),
   SubscribeScreen.routeName: (context) => SubscribeScreen(),
   McpCartScreen.routeName: (context) {
-    final args =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-
-    return McpCartScreen(cartId: args['cartId']);
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final cartId = (args is Map) ? args['cartId']?.toString() ?? '' : '';
+    final target = (args is Map) ? args['target']?.toString() : null;
+    debugPrint(
+      '[MCP CART ROUTE] McpCartScreen route invoked with cartId: $cartId, target: $target',
+    );
+    return McpCartScreen(cartId: cartId, target: target);
   },
   ServiceLogsScreen.routeName: (context) => ServiceLogsScreen(),
   SupportChatScreen.routeName: (context) => SupportChatScreen(),
