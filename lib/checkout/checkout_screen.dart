@@ -1570,6 +1570,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             },
           );
       final decoded = json.decode(response.body);
+      // TEMP DEBUG: compare with chatbot checkout
+      debugPrint("🔎 [MAIN CHECKOUT] invoice payload: $body", wrapWidth: 800);
+      final op = decoded is Map ? decoded['order_payment'] : null;
+      if (op is Map) {
+        for (final e in op.entries) {
+          if (e.value is num) {
+            debugPrint("🔎 [MAIN CHECKOUT] invoice.${e.key} = ${e.value}");
+          }
+        }
+      }
       if (mounted) {
         setState(() {
           this.responseData = decoded;

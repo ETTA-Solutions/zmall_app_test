@@ -1262,6 +1262,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     }
 
     var body = json.encode(cart!.toJson());
+    // TEMP DEBUG: compare with chatbot checkout
+    debugPrint("🔎 [MAIN CHECKOUT] add_item_in_cart_new payload: $body", wrapWidth: 800);
     try {
       http.Response response = await http
           .post(
@@ -1278,6 +1280,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      // TEMP DEBUG: compare with chatbot checkout
+      debugPrint("🔎 [MAIN CHECKOUT] add_item_in_cart_new response: ${response.body}", wrapWidth: 800);
       if (mounted)
         setState(() {
           this.responseData = json.decode(response.body);
