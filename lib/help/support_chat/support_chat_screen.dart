@@ -453,9 +453,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       HapticFeedback.heavyImpact();
       _closeSheets();
       _basket.clear();
-      _addBotMessage(
-        'Your basket from ${store.name} is ready 🎉\n'
-        'Total: ${result.price.toStringAsFixed(2)} ETB (incl. delivery)',
+      await _postOrderReady(
+        storeName: store.name,
+        lines: lines,
+        itemsTotal: itemsTotal,
+        result: result,
       );
       _openPayment(result);
     } on ChatCheckoutException catch (e) {
@@ -497,9 +499,76 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     );
   }
 
-  /// Older "Complete Your Order" cards carry an invoice that may have priced
-  /// the food at 0; send them through the regular checkout to re-price.
+  /// Posts the order receipt card. The text is a full summary on its own so
+  /// it still reads well once the card is gone (restored chat history).
+  Future<void> _postOrderReady({
+    required String storeName,
+    required List<ChatBasketLine> lines,
+    required double itemsTotal,
+    required ChatCheckoutResult result,
+  }) async {
+    final address = (await loadChatDeliveryAddress())?.name?.trim() ?? '';
+    if (!mounted) return;
+    final fees = result.price - itemsTotal;
+    final summary = StringBuffer(
+      'Your order from **$storeName** is ready 🎉\n',
+    );
+    for (final l in lines) {
+      summary.writeln(
+        '• ${l.quantity} × ${l.product.name} — ${formatEtb(l.total)}',
+      );
+    }
+    summary.writeln('Items: ${formatEtb(itemsTotal)}');
+    if (fees.abs() >= 0.01) {
+      summary.writeln(
+        '${fees > 0 ? 'Delivery & service fee' : 'Discount'}: ${formatEtb(fees)}',
+      );
+    }
+    summary.write('**Total to pay: ${formatEtb(result.price)}**');
+
+    _addBotMessage(
+      summary.toString(),
+      order: ChatOrderReady(
+        storeName: storeName,
+        lines: lines,
+        itemsTotal: itemsTotal,
+        price: result.price,
+        deliveryAddress: address,
+        orderPaymentId: result.orderPaymentId,
+        orderPaymentUniqueId: result.orderPaymentUniqueId,
+        vehicleId: result.vehicleId,
+        onlyCashless: result.onlyCashless,
+      ),
+    );
+  }
+
+  /// Store name for [storeId] from the stores the chat has already shown.
+  String _storeNameFor(String storeId) {
+    final known = [
+      ..._messageStores.values.whereType<MockStore>(),
+      for (final list in _messageStoreLists.values) ...list,
+    ];
+    for (final store in known) {
+      if (store.id == storeId) return store.name;
+    }
+    return 'ZMall';
+  }
+
+  /// Pay button on the order card: reopen the priced invoice directly; fall
+  /// back to the regular checkout (re-price) when it carries no invoice.
   void _proceedToPayment(ChatOrderReady order) {
+    if (order.orderPaymentId.isNotEmpty) {
+      _openPayment(
+        ChatCheckoutResult(
+          price: order.price,
+          orderPaymentId: order.orderPaymentId,
+          orderPaymentUniqueId: order.orderPaymentUniqueId,
+          vehicleId: order.vehicleId,
+          onlyCashless: order.onlyCashless,
+        ),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -529,10 +598,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       );
       if (!mounted) return;
 
-      _addBotMessage(
-        'Your order of $quantity × ${product.name} is ready 🎉\n'
-        'Total: ${result.price.toStringAsFixed(2)} ETB (incl. delivery)',
+      await _postOrderReady(
+        storeName: _storeNameFor(product.storeId),
+        lines: [ChatBasketLine(product: product, quantity: quantity)],
+        itemsTotal: product.price * quantity,
+        result: result,
       );
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _openPayment(result);
     } on ChatCheckoutException catch (e) {

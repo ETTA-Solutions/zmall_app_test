@@ -165,8 +165,8 @@ class _SmallOutlinePill extends StatelessWidget {
   }
 }
 
-/// "Complete Your Order" card posted after Instant Checkout — summary, total,
-/// delivery address and the button into payment.
+/// "Order ready" receipt posted after Instant Checkout — store, every line,
+/// subtotal / delivery / total, delivery address and the button into payment.
 class OrderReadyCard extends StatelessWidget {
   final ChatOrderReady order;
   final VoidCallback onProceed;
@@ -182,191 +182,217 @@ class OrderReadyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hPad = getProportionateScreenWidth(16);
-    final deliveryFee = order.price - order.itemsTotal;
+    final itemCount = order.lines.fold<int>(0, (sum, l) => sum + l.quantity);
+    final fees = order.price - order.itemsTotal;
 
-    return ZCard(
-      raised: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Hero ────────────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: hPad,
-              vertical: getProportionateScreenHeight(22),
-            ),
-            child: Column(
-              children: [
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.4, end: 1),
-                  duration: const Duration(milliseconds: 650),
-                  curve: Curves.elasticOut,
-                  builder: (context, scale, child) =>
-                      Transform.scale(scale: scale, child: child),
-                  child: Container(
-                    width: getProportionateScreenWidth(58),
-                    height: getProportionateScreenWidth(58),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: kSecondaryColor.withValues(alpha: 0.1),
-                    ),
-                    child: Icon(
-                      HeroiconsOutline.shoppingCart,
-                      color: kSecondaryColor,
-                      size: getProportionateScreenWidth(26),
+    return ZStaggered(
+      index: 0,
+      child: ZCard(
+        raised: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _Header(order: order, itemCount: itemCount),
+
+            // ── Items ───────────────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                hPad,
+                getProportionateScreenHeight(14),
+                hPad,
+                getProportionateScreenHeight(4),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'ORDER SUMMARY',
+                    style: TextStyle(
+                      fontSize: getProportionateScreenWidth(11),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: kZMuted,
                     ),
                   ),
-                ),
-                SizedBox(height: getProportionateScreenHeight(14)),
-                Text(
-                  'Complete Your Order',
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(19),
-                    fontWeight: FontWeight.w800,
-                    color: kZInk,
-                  ),
-                ),
-                SizedBox(height: getProportionateScreenHeight(6)),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: 'Your basket from '),
-                      TextSpan(
-                        text: order.storeName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF374151),
-                        ),
-                      ),
-                      const TextSpan(
-                        text: ' is prepared. Proceed to payment in ZMall.',
-                      ),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: getProportionateScreenWidth(13),
-                    color: kZMuted,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+                  const Spacer(),
+                  ZPill(label: '$itemCount item${itemCount == 1 ? '' : 's'}'),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1, color: kZBorder),
+            for (var i = 0; i < order.lines.length; i++)
+              ZStaggered(
+                index: i + 1,
+                child: _LineRow(line: order.lines[i], hPad: hPad),
+              ),
 
-          Padding(
-            padding: EdgeInsets.all(hPad),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ZPrimaryButton(
-                  label: 'Proceed to Payment on ZMall →',
-                  onPressed: onProceed,
-                ),
-                SizedBox(height: getProportionateScreenHeight(14)),
-
-                // ── Order summary ─────────────────────────────────
-                Container(
-                  padding: EdgeInsets.all(getProportionateScreenWidth(14)),
-                  decoration: BoxDecoration(
-                    color: kZSurface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: kZBorder),
+            // ── Totals ──────────────────────────────────────────────
+            Container(
+              margin: EdgeInsets.fromLTRB(
+                hPad,
+                getProportionateScreenHeight(8),
+                hPad,
+                0,
+              ),
+              padding: EdgeInsets.all(getProportionateScreenWidth(14)),
+              decoration: BoxDecoration(
+                color: kZSurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: kZBorder),
+              ),
+              child: Column(
+                children: [
+                  _amountRow('Items subtotal', formatEtb(order.itemsTotal)),
+                  if (fees.abs() >= 0.01) ...[
+                    SizedBox(height: getProportionateScreenHeight(6)),
+                    _amountRow(
+                      fees > 0 ? 'Delivery & service fee' : 'Discount',
+                      formatEtb(fees),
+                      valueColor: fees > 0 ? null : kGreenColor,
+                    ),
+                  ],
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: getProportionateScreenHeight(10),
+                    ),
+                    child: const _DashedDivider(),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        'ORDER SUMMARY',
-                        style: TextStyle(
-                          fontSize: getProportionateScreenWidth(11.5),
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: kZMuted,
-                        ),
-                      ),
-                      SizedBox(height: getProportionateScreenHeight(10)),
-                      for (final line in order.lines)
-                        Padding(
-                          padding: EdgeInsets.only(
-                            bottom: getProportionateScreenHeight(6),
-                          ),
-                          child: _summaryRow(
-                            '${line.quantity}× ${line.product.name}',
-                            formatEtb(line.total),
-                          ),
-                        ),
-                      if (deliveryFee > 0.5)
-                        Padding(
-                          padding: EdgeInsets.only(
-                            bottom: getProportionateScreenHeight(6),
-                          ),
-                          child: _summaryRow(
-                            'Delivery & fees',
-                            formatEtb(deliveryFee),
-                          ),
-                        ),
-                      const Divider(height: 14, color: kZBorder),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Total',
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Total to pay',
                               style: TextStyle(
-                                fontSize: getProportionateScreenWidth(16),
+                                fontSize: getProportionateScreenWidth(14),
                                 fontWeight: FontWeight.w700,
                                 color: kZInk,
                               ),
                             ),
+                            Text(
+                              'Incl. delivery',
+                              style: TextStyle(
+                                fontSize: getProportionateScreenWidth(11),
+                                color: kZMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        formatEtb(order.price),
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(20),
+                          fontWeight: FontWeight.w800,
+                          color: kSecondaryColor,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Delivery address ───────────────────────────────────
+            if (order.deliveryAddress.trim().isNotEmpty)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  hPad,
+                  getProportionateScreenHeight(12),
+                  hPad,
+                  0,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: getProportionateScreenWidth(32),
+                      height: getProportionateScreenWidth(32),
+                      decoration: BoxDecoration(
+                        color: kSecondaryColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        HeroiconsOutline.mapPin,
+                        size: getProportionateScreenWidth(16),
+                        color: kSecondaryColor,
+                      ),
+                    ),
+                    SizedBox(width: getProportionateScreenWidth(10)),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Deliver to',
+                            style: TextStyle(
+                              fontSize: getProportionateScreenWidth(11),
+                              color: kZMuted,
+                            ),
                           ),
                           Text(
-                            formatEtb(order.price),
+                            order.deliveryAddress,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: getProportionateScreenWidth(16),
-                              fontWeight: FontWeight.w800,
-                              color: kSecondaryColor,
+                              fontSize: getProportionateScreenWidth(13),
+                              fontWeight: FontWeight.w600,
+                              color: kZInk,
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: getProportionateScreenHeight(10)),
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            const TextSpan(
-                              text: 'Deliver to: ',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF4B5563),
-                              ),
-                            ),
-                            TextSpan(text: order.deliveryAddress),
-                          ],
-                        ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // ── Actions ─────────────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.all(hPad),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ZPrimaryButton(
+                    label: 'Pay ${formatEtb(order.price)}  →',
+                    onPressed: onProceed,
+                  ),
+                  SizedBox(height: getProportionateScreenHeight(8)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        HeroiconsOutline.lockClosed,
+                        size: getProportionateScreenWidth(12),
+                        color: kZMuted,
+                      ),
+                      SizedBox(width: getProportionateScreenWidth(4)),
+                      Text(
+                        'Secure checkout on ZMall',
                         style: TextStyle(
-                          fontSize: getProportionateScreenWidth(12),
+                          fontSize: getProportionateScreenWidth(11),
                           color: kZMuted,
                         ),
                       ),
                     ],
                   ),
-                ),
-                SizedBox(height: getProportionateScreenHeight(14)),
-                ZOutlineButton(
-                  label: 'Browse More Restaurants',
-                  onPressed: onBrowseMore,
-                ),
-              ],
+                  SizedBox(height: getProportionateScreenHeight(12)),
+                  ZOutlineButton(
+                    label: 'Browse more stores',
+                    onPressed: onBrowseMore,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _summaryRow(String label, String value) {
+  Widget _amountRow(String label, String value, {Color? valueColor}) {
     return Row(
       children: [
         Expanded(
@@ -381,12 +407,191 @@ class OrderReadyCard extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontSize: getProportionateScreenWidth(12.5),
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF374151),
+            fontSize: getProportionateScreenWidth(13),
+            fontWeight: FontWeight.w600,
+            color: valueColor ?? const Color(0xFF374151),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Brand gradient banner — animated check, "Order ready", store name.
+class _Header extends StatelessWidget {
+  final ChatOrderReady order;
+  final int itemCount;
+
+  const _Header({required this.order, required this.itemCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(getProportionateScreenWidth(16)),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            kSecondaryColor,
+            Color.lerp(kSecondaryColor, Colors.black, 0.25)!,
+          ],
+        ),
+      ),
+      child: Row(
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.3, end: 1),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.elasticOut,
+            builder: (context, scale, child) =>
+                Transform.scale(scale: scale, child: child),
+            child: Container(
+              width: getProportionateScreenWidth(46),
+              height: getProportionateScreenWidth(46),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: kBlackColor.withValues(alpha: 0.15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                HeroiconsSolid.checkCircle,
+                color: kSecondaryColor,
+                size: getProportionateScreenWidth(28),
+              ),
+            ),
+          ),
+          SizedBox(width: getProportionateScreenWidth(12)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your order is ready 🎉',
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(17),
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(3)),
+                Row(
+                  children: [
+                    Icon(
+                      HeroiconsOutline.buildingStorefront,
+                      size: getProportionateScreenWidth(13),
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                    SizedBox(width: getProportionateScreenWidth(4)),
+                    Flexible(
+                      child: Text(
+                        order.storeName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(12.5),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One basket line — thumbnail, name, "2 × 120 ETB", line total.
+class _LineRow extends StatelessWidget {
+  final ChatBasketLine line;
+  final double hPad;
+
+  const _LineRow({required this.line, required this.hPad});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: hPad,
+        vertical: getProportionateScreenHeight(6),
+      ),
+      child: Row(
+        children: [
+          ZProductThumb(product: line.product, size: 42),
+          SizedBox(width: getProportionateScreenWidth(10)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  line.product.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(13.5),
+                    fontWeight: FontWeight.w600,
+                    color: kZInk,
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(2)),
+                Text(
+                  '${line.quantity} × ${formatEtb(line.product.price)}',
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(11.5),
+                    color: kZMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: getProportionateScreenWidth(8)),
+          Text(
+            formatEtb(line.total),
+            style: TextStyle(
+              fontSize: getProportionateScreenWidth(13.5),
+              fontWeight: FontWeight.w700,
+              color: kZInk,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Receipt-style dashed rule above the total.
+class _DashedDivider extends StatelessWidget {
+  const _DashedDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const dash = 5.0, gap = 4.0;
+        final count = (constraints.maxWidth / (dash + gap)).floor();
+        return Row(
+          children: List.generate(
+            count,
+            (_) => Container(
+              width: dash,
+              height: 1,
+              margin: const EdgeInsets.only(right: gap),
+              color: const Color(0xFFD1D5DB),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -830,7 +830,19 @@ class _McpCartScreenState extends State<McpCartScreen> {
         invoice['order_payment_id'] != null &&
         invoice['order_payment_unique_id'] != null;
 
-    if (canFastTrackToKifiya) {
+    // ChatGPT/MCP can hand over an invoice priced on the server for the items
+    // only. Use it only when it already charges delivery; otherwise re-price
+    // in the app like the in-app chatbot does.
+    final bool preInvoiceHasDelivery =
+        canFastTrackToKifiya &&
+        _logInvoiceBreakdown('PRE-CREATED (MCP) INVOICE', invoice) > 0;
+    if (canFastTrackToKifiya && !preInvoiceHasDelivery) {
+      debugPrint(
+        '[MCP DELIVERY] ⚠ Pre-created invoice has no delivery fee — ignoring it and re-pricing in app (vehicle + distance + get_order_cart_invoice).',
+      );
+    }
+
+    if (preInvoiceHasDelivery) {
       final double price =
           (num.tryParse(
                     invoice['user_pay_payment']?.toString() ??
@@ -1020,6 +1032,10 @@ class _McpCartScreenState extends State<McpCartScreen> {
               "city_id": cityId,
               "user_latitude": storeLocationMap['lat'],
               "user_longitude": storeLocationMap['long'],
+              "store_latitude": destAddress['lat'],
+              "store_longitude": destAddress['long'],
+              "use_calculation": true,
+              "is_laundry": cartData['is_laundry_service'] ?? false,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -1155,6 +1171,10 @@ class _McpCartScreenState extends State<McpCartScreen> {
 
       statusText = 'Generating payment invoice...';
 
+      // CheckoutScreen waits a second before invoicing; give the synced cart
+      // the same time to settle.
+      await Future.delayed(const Duration(seconds: 1));
+
       final invoiceUri = Uri.parse('$BASE_URL/api/user/get_order_cart_invoice');
       final invoiceResponse = await http
           .post(
@@ -1204,19 +1224,27 @@ class _McpCartScreenState extends State<McpCartScreen> {
           invoiceData['success'] == true &&
           invoiceData['order_payment'] != null &&
           invoiceData['is_distance_alarm'] != true) {
-        final orderPayment = invoiceData['order_payment'];
+        final orderPayment = invoiceData['order_payment'] as Map;
+        _logInvoiceBreakdown('APP-GENERATED INVOICE', orderPayment);
+        // Same amount CheckoutScreen charges. Never fall back to another
+        // total: those can be items-only or delivery-only.
         final double price =
-            (num.tryParse(
-                      orderPayment['user_pay_payment']?.toString() ??
-                          orderPayment['total']?.toString() ??
-                          '0',
-                    ) ??
+            (num.tryParse(orderPayment['user_pay_payment']?.toString() ?? '') ??
                     0.0)
                 .toDouble();
         final String paymentId = orderPayment['_id']?.toString() ?? '';
         final String uniqueId = orderPayment['unique_id']?.toString() ?? '';
+        // CheckoutScreen passes the invoice's own vehicle to KifiyaScreen.
+        final invoiceVehicles = invoiceData['vehicles'];
+        if (invoiceVehicles is List && invoiceVehicles.isNotEmpty) {
+          vehicleId = invoiceVehicles.first['_id']?.toString() ?? vehicleId;
+        }
 
-        if (paymentId.isNotEmpty && uniqueId.isNotEmpty) {
+        if (price <= 0) {
+          debugPrint(
+            '[MCP DELIVERY] ⚠ user_pay_payment=$price — invoice not usable. Falling back to CartScreen.',
+          );
+        } else if (paymentId.isNotEmpty && uniqueId.isNotEmpty) {
           debugPrint(
             '\n╔═══════════════════════════════════════════════════════════',
           );
@@ -1249,6 +1277,44 @@ class _McpCartScreenState extends State<McpCartScreen> {
       );
     }
     return false;
+  }
+
+  /// Logs an invoice's price breakdown and returns the delivery fee it
+  /// charges (0 when the invoice covers the items only).
+  double _logInvoiceBreakdown(String source, Map invoice) {
+    double? n(String key) => num.tryParse(invoice[key]?.toString() ?? '')
+        ?.toDouble();
+    final cart = n('total_cart_price');
+    final delivery = n('total_delivery_price') ?? 0.0;
+    final userPay = n('user_pay_payment') ?? n('total');
+    final hasDelivery = delivery > 0;
+
+    debugPrint('\n╔═══════════════════════════════════════════════════════════');
+    debugPrint('║  [MCP DELIVERY] $source');
+    debugPrint('║  total_cart_price     (items)    : ${cart ?? '—'}');
+    debugPrint('║  total_delivery_price (delivery) : $delivery');
+    debugPrint('║  total_order_price               : ${n('total_order_price') ?? '—'}');
+    debugPrint('║  promo_payment                   : ${n('promo_payment') ?? '—'}');
+    debugPrint('║  user_pay_payment     (charged)  : ${userPay ?? '—'}');
+    for (final e in invoice.entries) {
+      final key = e.key.toString();
+      if (e.value is num &&
+          RegExp(r'deliver|distance|service|surge|tax|time').hasMatch(key)) {
+        debugPrint('║    $key = ${e.value}');
+      }
+    }
+    if (cart != null && userPay != null) {
+      debugPrint(
+        '║  charged − items                 : ${(userPay - cart).toStringAsFixed(2)}',
+      );
+    }
+    debugPrint(
+      hasDelivery
+          ? '║  ✓ Delivery fee INCLUDED ($delivery ETB)'
+          : '║  ⚠ NO DELIVERY FEE — total covers the items only',
+    );
+    debugPrint('╚═══════════════════════════════════════════════════════════\n');
+    return delivery;
   }
 
   Future<Map<String, double>?> _fetchGoogleDistanceMatrix({

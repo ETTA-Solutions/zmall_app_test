@@ -612,7 +612,7 @@ class _ChatBubbleState extends State<ChatBubble> {
   List<InlineSpan> _inlineEntities(String text, TextStyle base) {
     final spans = <InlineSpan>[];
     final re = RegExp(
-      r'(ETB\s*\d+(?:\.\d{2})?|\d+\s*(?:Birr|birr|ETB|Br)|(?:\+251|09)\s*[\d\s\-]{7,12}|https?://[^\s]+)',
+      r'(ETB\s*\d[\d,]*(?:\.\d+)?|\d[\d,]*(?:\.\d+)?\s*(?:Birr|birr|ETB|Br)\b|(?:\+251|09)\s*[\d\s\-]{7,12}|https?://[^\s]+)',
       caseSensitive: false,
     );
     int last = 0;

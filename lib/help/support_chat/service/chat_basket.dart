@@ -139,4 +139,16 @@ Future<void> saveChatDeliveryAddress(DestinationAddress address) async {
   await Service.save(_kChatAddressKey, address.toJson());
 }
 
-String formatEtb(double amount) => '${amount.toStringAsFixed(0)} ETB';
+/// "1,250 ETB" for whole amounts, "53.45 ETB" otherwise — never rounds away
+/// the cents the backend charges.
+String formatEtb(double amount) {
+  final whole = (amount.abs() * 100).round() % 100 == 0;
+  final fixed = amount.abs().toStringAsFixed(whole ? 0 : 2);
+  final parts = fixed.split('.');
+  final grouped = parts[0].replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => ',',
+  );
+  final sign = amount < 0 ? '−' : '';
+  return '$sign$grouped${parts.length > 1 ? '.${parts[1]}' : ''} ETB';
+}
