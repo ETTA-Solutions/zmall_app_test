@@ -50,7 +50,6 @@ import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/custom_list_tile.dart';
 import 'package:zmall/store/store_screen.dart';
-import 'package:zmall/widgets/linear_loading_indicator.dart';
 import 'package:zmall/widgets/section_title.dart';
 import 'package:zmall/widgets/sliver_appbar_delegate.dart';
 import 'package:zmall/world_cup/prediction_home.dart';
@@ -1881,14 +1880,18 @@ class _HomeBodyState extends State<HomeBody> {
           ),
         ],
       ),
+
       body: RefreshIndicator(
         color: kPrimaryColor,
         backgroundColor: kSecondaryColor,
         onRefresh: _onRefresh,
         child: ModalProgressHUD(
           color: kPrimaryColor,
-          progressIndicator: LinearLoadingIndicator(),
-
+          progressIndicator: Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(kSecondaryColor),
+            ),
+          ),
           inAsyncCall: _loading,
           child: categories != null
               ? CustomScrollView(

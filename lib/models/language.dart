@@ -68,6 +68,12 @@ class ZLanguage extends ChangeNotifier {
   String itemsFound =
       "Item(s) from a different store found in cart! Would you like to clear your cart?";
   String clear = "Clear";
+  String orderFromBothStores = "Order from both stores";
+  String comboItemsFound =
+      "Your cart has items from another store. Order from both stores in one delivery, or clear your cart?";
+  String comboStoreLimit =
+      "You can order from at most 2 stores at once. Clear your cart to order from this store?";
+  String comboAdded = "Added. You are ordering from 2 stores in one delivery.";
   String addToCart = "Add to cart";
   String goToCart = "Go to Cart";
 
@@ -221,6 +227,12 @@ class ZLanguage extends ChangeNotifier {
       warning = "Warning";
       itemsFound =
           "Item(s) from a different store found in cart! Would you like to clear your cart?";
+      orderFromBothStores = "Order from both stores";
+      comboItemsFound =
+          "Your cart has items from another store. Order from both stores in one delivery, or clear your cart?";
+      comboStoreLimit =
+          "You can order from at most 2 stores at once. Clear your cart to order from this store?";
+      comboAdded = "Added. You are ordering from 2 stores in one delivery.";
       addToCart = "Add to cart";
       goToCart = "Go to Cart";
 
@@ -370,6 +382,10 @@ class ZLanguage extends ChangeNotifier {
       clear = "清空";
       warning = "提醒";
       itemsFound = "车库里已经有另一家商店的品目！确认先清空购物车？";
+      orderFromBothStores = "两家店一起下单";
+      comboItemsFound = "购物车里已有另一家商店的商品。两家店一起配送，还是清空购物车？";
+      comboStoreLimit = "一次最多只能从两家店下单。清空购物车后再从这家店下单？";
+      comboAdded = "已加入。您正在从两家店下单，一次配送。";
       addToCart = "加入购物库";
       goToCart = "购物库";
 

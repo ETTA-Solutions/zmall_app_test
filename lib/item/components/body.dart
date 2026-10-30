@@ -2,6 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';
+import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
+import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/item/components/photo_viewer.dart';
 import 'package:zmall/login/login_screen.dart';
@@ -40,6 +45,8 @@ class _BodyState extends State<Body> {
   String note = "";
   bool clearedRequired = false;
   Cart? cart;
+  // Guard: prevents re-entrant distance-check calls when the user taps fast.
+  bool _comboDistanceCheckInProgress = false;
   double? longitude, latitude;
   double? initialPrice;
   double? price;
@@ -204,6 +211,10 @@ class _BodyState extends State<Body> {
   }
 
   void addToCart(item, destination, storeLocation) {
+    debugPrint(
+      "📍 [ITEM ORDER] addToCart -> Item: ${item.itemName}, "
+      "Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}",
+    );
     cart = Cart(
       userId: userData['user']['_id'],
       items: [item],
@@ -360,17 +371,38 @@ class _BodyState extends State<Body> {
                             note: "User current location",
                           );
 
-                          if (cart != null) {
+                          debugPrint(
+                            "==================== ITEM ORDER DEBUG ====================\n"
+                            "📍 Item Name: ${widget.item['name']}\n"
+                            "📍 Item ID: ${widget.item['_id']}\n"
+                            "📍 Store ID: ${widget.item['store_id']}\n"
+                            "📍 Item/Store Location (raw): ${widget.location}\n"
+                            "📍 Item/Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}\n"
+                            "📍 Destination Location: Lat: ${destination.lat}, Long: ${destination.long}\n"
+                            "==========================================================",
+                          );
+
+                          if (cart != null &&
+                              cart!.items != null &&
+                              cart!.items!.isNotEmpty) {
                             if (userData != null) {
                               if (cart!.storeId == widget.item['store_id']) {
                                 setState(() {
                                   // Use Service method to add or merge item
+                                  debugPrint(
+                                    "📍 [ITEM ORDER] Merged item '${item.itemName}' into existing cart. "
+                                    "Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}",
+                                  );
                                   Service.addOrMergeCartItem(cart!, item);
                                   Service.save('cart', cart!.toJson());
                                   Navigator.of(context).pop();
                                 });
                               } else {
-                                _showDialog(item, destination, storeLocation);
+                                _handleOtherStore(
+                                  item,
+                                  destination,
+                                  storeLocation,
+                                );
                               }
                             } else {
                               Service.showMessage(
@@ -993,43 +1025,141 @@ class _BodyState extends State<Body> {
     );
   }
 
-  void _showDialog(item, destination, storeLocation) {
-    showDialog(
+  /// Item is from a store other than the cart's: merge into the combo's
+  /// second store, or ask whether to clear or order from both stores.
+  Future<void> _handleOtherStore(
+    Item item,
+    DestinationAddress destination,
+    StoreLocation storeLocation,
+  ) async {
+    // ── Re-entrancy guard ─────────────────────────────────────────────────
+    if (_comboDistanceCheckInProgress) return;
+
+    // ── Distance check ────────────────────────────────────────────────────
+    // Fail-closed: missing locations or API failure → block combo.
+    final firstStoreLoc = cart?.storeLocation;
+    if (cart != null) {
+      if (firstStoreLoc == null ||
+          firstStoreLoc.lat == null ||
+          firstStoreLoc.long == null ||
+          storeLocation.lat == null ||
+          storeLocation.long == null) {
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: "Store location unavailable. Cannot verify combo distance.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+
+      _comboDistanceCheckInProgress = true;
+      try {
+        final distRes = await ComboService.StoreDistancegetMax(
+          context,
+          userData: userData,
+          storeIdA: cart!.storeId ?? '',
+          storeIdB: widget.item['store_id'] ?? '',
+        );
+        if (!mounted) return;
+
+        // Fail-closed: API failure → block
+        if (distRes == null || distRes['success'] != true) {
+          Service.showMessage(
+            context: context,
+            title: "Could not verify store distance. Please try again.",
+            error: true,
+            duration: 4,
+          );
+          return;
+        }
+
+        final double maxDistM =
+            (distRes['max_distance'] as num? ?? 0.0).toDouble();
+        final double actualDistM =
+            AddressValidationService.calculateDistanceInMeters(
+          firstStoreLoc.lat!,
+          firstStoreLoc.long!,
+          storeLocation.lat!,
+          storeLocation.long!,
+        );
+        if (actualDistM > maxDistM) {
+          if (!mounted) return;
+          await showComboTooFarDialog(
+            context: context,
+            actualKm: actualDistM / 1000.0,
+            maxKm: maxDistM / 1000.0,
+          );
+          return; // blocked — no combo dialog shown
+        }
+      } finally {
+        _comboDistanceCheckInProgress = false;
+      }
+    }
+    // ── end distance check ─────────────────────────────────────────────────
+
+    if (await ComboCart.addToSecondStoreIfMatches(
+      widget.item['store_id'],
+      item,
+    )) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      return;
+    }
+    final comboFull = await ComboCart.load() != null;
+    final allowCombo = await ComboCart.canStartWith(cart);
+    if (!mounted) return;
+    _showDialog(
+      item,
+      destination,
+      storeLocation,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+    );
+  }
+
+  void _showDialog(
+    item,
+    destination,
+    storeLocation, {
+    bool allowCombo = false,
+    bool comboFull = false,
+  }) {
+    showStoreConflictDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: kPrimaryColor,
-        title: Text(Provider.of<ZLanguage>(context).warning),
-        content: Text(Provider.of<ZLanguage>(context).itemsFound),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              Provider.of<ZLanguage>(context).cancel,
-              style: TextStyle(color: kBlackColor, fontWeight: FontWeight.bold),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                Service.remove('cart');
-                Service.remove('aliexpressCart');
-                cart = Cart();
-                addToCart(item, destination, storeLocation);
-              });
-              Navigator.of(context)
-                ..pop()
-                ..pop();
-            },
-            child: Text(
-              Provider.of<ZLanguage>(context).clear,
-              style: TextStyle(
-                color: kSecondaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+      onClear: () {
+        setState(() {
+          Service.remove('cart');
+          Service.remove('aliexpressCart');
+          ComboCart.clear();
+          cart = Cart();
+          addToCart(item, destination, storeLocation);
+        });
+        Navigator.of(context).pop();
+      },
+      onCombo: () async {
+        debugPrint(
+          "📍 [ITEM ORDER COMBO] Item: ${item.itemName}, "
+          "Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}",
+        );
+        await ComboCart.start(
+          userData: userData,
+          storeId: widget.item['store_id'],
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
+        );
+        Navigator.of(context).pop();
+      },
     );
   }
 }

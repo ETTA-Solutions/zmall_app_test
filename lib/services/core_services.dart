@@ -514,6 +514,7 @@ class CoreServices {
     await Service.saveBool('logged', false);
     await Service.remove('user');
     await Service.remove('cart');
+    await Service.remove('combo_cart');
     await Service.remove('aliexpressCart'); //
     await Service.remove('images');
     await Service.remove('p_items');

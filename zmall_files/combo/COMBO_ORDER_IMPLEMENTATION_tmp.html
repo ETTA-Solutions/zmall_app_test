@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>COMBO_ORDER_IMPLEMENTATION.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="combo-order--mobile-implementation-guide">Combo Order — Mobile Implementation Guide</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>App</strong></td>
+<td>ZMall user app (Flutter), branch <code>new_combo</code></td>
+</tr>
+<tr>
+<td><strong>As of</strong></td>
+<td>2026-10-01</td>
+</tr>
+<tr>
+<td><strong>Sources</strong></td>
+<td><em>Combo Order Mobile Implementation Spec.docx</em> · <code>endpoint.docx</code> (live requests captured from web delivery against <code>testbackend.zmall.et</code>) · current code in <code>lib/</code></td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Backend <code>combo_*</code> endpoints are <strong>live on test</strong> and working from web. The mobile app has <strong>no combo code yet</strong>.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="contents">Contents</h2>
+<ol>
+<li><a href="#1-what-a-combo-order-is">What a combo order is</a></li>
+<li><a href="#2-how-the-app-works-today-single-store">How the app works today (single-store)</a></li>
+<li><a href="#3-target-flow-combo">Target flow (combo)</a></li>
+<li><a href="#4-endpoint-reference-with-real-payloads">Endpoint reference with real payloads</a></li>
+<li><a href="#5-distance--route-algorithm">Distance &amp; route algorithm</a></li>
+<li><a href="#6-mobile-implementation-plan-file-by-file">Mobile implementation plan (file by file)</a></li>
+<li><a href="#7-error-handling">Error handling</a></li>
+<li><a href="#8-driver-app">Driver app</a></li>
+<li><a href="#9-testing">Testing</a></li>
+<li><a href="#10-open-issues--findings">Open issues &amp; findings</a></li>
+<li><a href="#11-checklist">Checklist</a></li>
+</ol>
+<hr>
+<h2 id="1-what-a-combo-order-is">1. What a combo order is</h2>
+<p>A customer orders from <strong>two stores in one checkout</strong>, and <strong>one driver delivers both in one trip</strong>.</p>
+<p>Backend design rules (from the spec):</p>
+<ul>
+<li>A combo is <strong>not</strong> a new data model. It is <strong>two ordinary single-store Orders</strong> that share a <code>combo_id</code>.</li>
+<li>The <code>combo_*</code> endpoints are thin wrappers. Each one calls the existing single-store logic once per store:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Combo endpoint</th>
+<th>Wraps (×2)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combo_add_item_in_cart</code></td>
+<td><code>add_item_in_cart</code></td>
+</tr>
+<tr>
+<td><code>combo_get_order_cart_invoice</code></td>
+<td><code>get_order_cart_invoice</code></td>
+</tr>
+<tr>
+<td><code>combo_pay_order_payment</code></td>
+<td><code>pay_order_payment</code></td>
+</tr>
+<tr>
+<td><code>combo_create_order</code></td>
+<td><code>create_order</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Single-store ordering stays <strong>unchanged</strong>.</li>
+<li>After creation, each Order has <code>combo_id</code> and <code>combo_pickup_sequence</code> (<code>1</code> = first pickup / origin, <code>2</code> = second pickup / waypoint).</li>
+</ul>
+<hr>
+<h2 id="2-how-the-app-works-today-single-store">2. How the app works today (single-store)</h2>
+<h3 id="21-flow">2.1 Flow</h3>
+<pre class="hljs"><code><div>Item / Product screen ──(local only, no API)──► Service.save('cart')
+        │ item from a different store → &quot;clear your cart?&quot; dialog
+        ▼
+DeliveryScreen ── POST /api/user/add_item_in_cart_new ──► cart_id
+        ▼
+CheckoutScreen ── distance (geohash → Distance Matrix → haversine)
+               ── POST /api/user/get_order_cart_invoice ──► order_payment
+        ▼
+KifiyaScreen ── POST /api/user/pay_order_payment
+             ── POST /api/user/create_order   (or create_order_for_telebirr_inapp)
+</div></code></pre>
+<h3 id="22-where-each-step-lives">2.2 Where each step lives</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>File</th>
+<th>Function / line</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cart model</td>
+<td><code>lib/models/cart.dart</code></td>
+<td><code>class Cart</code></td>
+<td><strong>One</strong> <code>storeId</code>, one <code>storeLocation</code>, <code>items</code>, <code>destinationAddress</code></td>
+</tr>
+<tr>
+<td>Create cart</td>
+<td><code>lib/item/components/body.dart</code></td>
+<td><code>addToCart()</code> :173</td>
+<td>Local only: <code>Service.save('cart', cart.toJson())</code></td>
+</tr>
+<tr>
+<td>Create cart</td>
+<td><code>lib/product/product_screen.dart</code></td>
+<td><code>addToCart()</code> :166</td>
+<td>Local only</td>
+</tr>
+<tr>
+<td>Add / merge</td>
+<td><code>lib/services/service.dart</code></td>
+<td><code>addOrMergeCartItem()</code> :464</td>
+<td>Merges by item + specs</td>
+</tr>
+<tr>
+<td>Same-store check</td>
+<td><code>lib/item/components/body.dart</code> :331, <code>lib/product/product_screen.dart</code> :586</td>
+<td><code>if (cart!.storeId == item['store_id'])</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Conflict dialog</td>
+<td><code>lib/item/components/body.dart</code></td>
+<td><code>_showDialog()</code> :938</td>
+<td>Text: <code>lib/models/language.dart:69</code>. Copies also in <code>global/items/components/body.dart</code>, <code>notifications/notification_store.dart</code>, <code>scanner/components/scanned_store.dart</code></td>
+</tr>
+<tr>
+<td><strong>First server call</strong></td>
+<td><code>lib/delivery/delivery_screen.dart</code></td>
+<td><code>_addToCart()</code> :382 → <code>addToCart()</code> :1249</td>
+<td><code>add_item_in_cart_new</code> (or <code>_for_aliexpress</code>), saves <code>cart_id</code> into <code>userData['user']['cart_id']</code></td>
+</tr>
+<tr>
+<td>Distance</td>
+<td><code>lib/checkout/checkout_screen.dart</code></td>
+<td><code>_getTotalDistanceGeoHash</code> → <code>_getTotalDistance</code> (Distance Matrix, :1389) → <code>_fallbackHaversine</code></td>
+<td><strong>One leg</strong> store → customer</td>
+</tr>
+<tr>
+<td>Store detail</td>
+<td><code>lib/checkout/checkout_screen.dart</code></td>
+<td><code>getStoreDetail()</code> :1745</td>
+<td>Reuse to get <code>store.location</code></td>
+</tr>
+<tr>
+<td>Invoice</td>
+<td><code>lib/checkout/checkout_screen.dart</code></td>
+<td><code>getCartInvoice()</code> :1512</td>
+<td><code>get_order_cart_invoice</code></td>
+</tr>
+<tr>
+<td>Pay</td>
+<td><code>lib/kifiya/kifiya_screen.dart</code></td>
+<td><code>payOrderPayment()</code> :3113</td>
+<td>One <code>order_payment_id</code></td>
+</tr>
+<tr>
+<td>Create order</td>
+<td><code>lib/kifiya/kifiya_screen.dart</code></td>
+<td>~:3880</td>
+<td><code>create_order</code>, idempotency key <code>order_payment_unique_id</code></td>
+</tr>
+<tr>
+<td>Base URL</td>
+<td><code>lib/utils/constants.dart:44</code></td>
+<td><code>BASE_URL = BASE_URL_TEST</code></td>
+<td>via <code>Provider.of&lt;ZMetaData&gt;(context).baseUrl</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-what-blocks-combo-today">2.3 What blocks combo today</h3>
+<ul>
+<li><code>Cart</code> can hold only one store, so adding a second store destroys the first cart.</li>
+<li>Distance covers one leg only. There is no waypoint and no origin choice.</li>
+<li>Invoice, pay and create each take a single <code>cart_id</code> / <code>order_payment_id</code>.</li>
+<li>No <code>combo_id</code> exists anywhere in the app.</li>
+</ul>
+<hr>
+<h2 id="3-target-flow-combo">3. Target flow (combo)</h2>
+<pre class="hljs"><code><div>Item screen
+  ├─ same store            → merge (unchanged)
+  └─ different store        → dialog: [Order From Both Stores]  [Clear cart]
+                                     │
+                                     ▼
+                     ComboCart (local) { first: Cart, second: Cart }
+                                     │  still no API per item
+                                     ▼
+DeliveryScreen ── 1. combo_add_item_in_cart ──► combo_id, cart_id × 2
+                     (server rejects: different city / too far apart)
+                                     ▼
+CheckoutScreen ── fetch both store.location
+               ── haversine(store → customer) → FARTHER store = origin
+               ── Google Directions: origin → waypoint → customer
+               ── RELABEL: store_a = origin, store_b = waypoint  (fixed from here on)
+               ── 2. combo_get_order_cart_invoice ──► order_payment × 2, combined totals
+                                     ▼
+Payment (wallet / cash only)
+               ── 3. combo_pay_order_payment
+               ── 4. combo_create_order ──► order_id × 2
+                                     ▼
+Clear ComboCart → success screen (2 orders, 1 combo)
+</div></code></pre>
+<blockquote>
+<p><strong>Labels change between step 1 and step 2.</strong> In step 1, <code>store_a</code> is just the store the customer tapped first.
+From step 2 onward, <code>store_a</code> <strong>must</strong> be the geographic origin (the farther store). Driver dispatch searches for
+drivers around <code>store_a</code>.</p>
+</blockquote>
+<hr>
+<h2 id="4-endpoint-reference-with-real-payloads">4. Endpoint reference with real payloads</h2>
+<p>These requests were captured from web delivery against the test backend.
+<code>server_token</code> is masked. Large store objects are trimmed to the fields the app uses.</p>
+<p>All calls: <code>POST {baseUrl}/api/user/&lt;endpoint&gt;</code>, headers <code>Content-Type: application/json</code>, <code>Accept: application/json</code>.</p>
+<h3 id="41-comboadditemincart">4.1 <code>combo_add_item_in_cart</code></h3>
+<p>Builds both carts in one call. Called <strong>once</strong>, from the delivery screen.</p>
+<p><strong>Request</strong></p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"user_id"</span>: <span class="hljs-string">"69eb547031dafab4ce1f1d5f"</span>,
+  <span class="hljs-attr">"server_token"</span>: <span class="hljs-string">"&lt;server_token&gt;"</span>,
+  <span class="hljs-attr">"destination_address"</span>: {
+    <span class="hljs-attr">"name"</span>: <span class="hljs-string">"Custom Location"</span>,
+    <span class="hljs-attr">"long"</span>: <span class="hljs-number">38.7701506</span>,
+    <span class="hljs-attr">"lat"</span>: <span class="hljs-number">8.9999798</span>,
+    <span class="hljs-attr">"note"</span>: <span class="hljs-string">""</span>
+  },
+  <span class="hljs-attr">"delivery_type"</span>: <span class="hljs-number">1</span>,
+  <span class="hljs-attr">"username"</span>: <span class="hljs-string">"Kirubel Woldemichael"</span>,
+  <span class="hljs-attr">"phone"</span>: <span class="hljs-string">"944140745"</span>,
+  <span class="hljs-attr">"store_a"</span>: {
+    <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"63d9146526a10835da38a598"</span>,
+    <span class="hljs-attr">"items"</span>: [
+      {
+        <span class="hljs-attr">"_id"</span>: <span class="hljs-string">"63d9150526a10835da38a5bd"</span>,
+        <span class="hljs-attr">"quantity"</span>: <span class="hljs-number">1</span>,
+        <span class="hljs-attr">"specification"</span>: [],
+        <span class="hljs-attr">"note_for_item"</span>: <span class="hljs-string">""</span>,
+        <span class="hljs-attr">"price"</span>: <span class="hljs-number">250</span>,
+        <span class="hljs-attr">"item_name"</span>: <span class="hljs-string">"Brownie"</span>,
+        <span class="hljs-attr">"image_url"</span>: <span class="hljs-string">"https://testbackend.zmall.et/store_items/63d9150526a10835da38a5bdNXY0.jpg"</span>
+      }
+    ]
+  },
+  <span class="hljs-attr">"store_b"</span>: {
+    <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"66434399ff1c5d52db7bf524"</span>,
+    <span class="hljs-attr">"items"</span>: [
+      {
+        <span class="hljs-attr">"_id"</span>: <span class="hljs-string">"66434415ff1c5d52db7bf530"</span>,
+        <span class="hljs-attr">"quantity"</span>: <span class="hljs-number">1</span>,
+        <span class="hljs-attr">"specification"</span>: [
+          {
+            <span class="hljs-attr">"unique_id"</span>: <span class="hljs-number">1</span>,
+            <span class="hljs-attr">"name"</span>: <span class="hljs-string">"choose"</span>,
+            <span class="hljs-attr">"list"</span>: [{ <span class="hljs-attr">"unique_id"</span>: <span class="hljs-number">20109</span>, <span class="hljs-attr">"price"</span>: <span class="hljs-number">1100</span>, <span class="hljs-attr">"name"</span>: <span class="hljs-string">"250g"</span> }]
+          }
+        ],
+        <span class="hljs-attr">"note_for_item"</span>: <span class="hljs-string">""</span>,
+        <span class="hljs-attr">"price"</span>: <span class="hljs-number">2200</span>,
+        <span class="hljs-attr">"item_name"</span>: <span class="hljs-string">"Guada Kulate with Berbere"</span>,
+        <span class="hljs-attr">"image_url"</span>: <span class="hljs-string">"https://testbackend.zmall.et/store_items/66434415ff1c5d52db7bf5308hre.jpg"</span>
+      }
+    ]
+  }
+}
+</div></code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Source in app</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>user_id</code>, <code>server_token</code></td>
+<td>yes</td>
+<td><code>userData['user']['_id']</code>, <code>['server_token']</code></td>
+</tr>
+<tr>
+<td><code>phone</code>, <code>username</code></td>
+<td>yes, unless <code>is_superapp</code></td>
+<td><code>userData['user']</code></td>
+</tr>
+<tr>
+<td><code>is_superapp</code></td>
+<td>no</td>
+<td></td>
+</tr>
+<tr>
+<td><code>combo_id</code></td>
+<td>no</td>
+<td>Omit on the first call. Send it on a re-sync.</td>
+</tr>
+<tr>
+<td><code>delivery_type</code></td>
+<td>yes</td>
+<td><code>1</code> = store delivery</td>
+</tr>
+<tr>
+<td><code>destination_address</code></td>
+<td>yes</td>
+<td><code>{name, long, lat, note}</code>, same as <code>Cart.destinationAddress</code></td>
+</tr>
+<tr>
+<td><code>store_a</code> / <code>store_b</code></td>
+<td>yes</td>
+<td><code>{store_id, items, cart_unique_token?}</code>. <code>items</code> uses the same shape as <code>Item.toJson()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong></p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">"combo_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1baa"</span>,
+  <span class="hljs-attr">"store_a"</span>: {
+    <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+    <span class="hljs-attr">"is_laundary_store"</span>: <span class="hljs-literal">false</span>,
+    <span class="hljs-attr">"message"</span>: <span class="hljs-number">952</span>,
+    <span class="hljs-attr">"cart_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1bb2"</span>,
+    <span class="hljs-attr">"city_id"</span>: <span class="hljs-string">"5b406b46d2ddf8062d11b788"</span>,
+    <span class="hljs-attr">"user_id"</span>: <span class="hljs-string">"69eb547031dafab4ce1f1d5f"</span>,
+    <span class="hljs-attr">"server_token"</span>: <span class="hljs-string">"&lt;server_token&gt;"</span>,
+    <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"63d9146526a10835da38a598"</span>
+  },
+  <span class="hljs-attr">"store_b"</span>: {
+    <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+    <span class="hljs-attr">"is_laundary_store"</span>: <span class="hljs-literal">false</span>,
+    <span class="hljs-attr">"message"</span>: <span class="hljs-number">952</span>,
+    <span class="hljs-attr">"cart_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1bbe"</span>,
+    <span class="hljs-attr">"city_id"</span>: <span class="hljs-string">"5b406b46d2ddf8062d11b788"</span>,
+    <span class="hljs-attr">"user_id"</span>: <span class="hljs-string">"69eb547031dafab4ce1f1d5f"</span>,
+    <span class="hljs-attr">"server_token"</span>: <span class="hljs-string">"&lt;server_token&gt;"</span>,
+    <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"66434399ff1c5d52db7bf524"</span>
+  }
+}
+</div></code></pre>
+<p><strong>Save:</strong> <code>combo_id</code>, plus <code>cart_id</code> for each <code>store_id</code>. Map cart ids by <strong>store_id</strong>, not by <code>a</code>/<code>b</code>, because the labels change in the next step.</p>
+<hr>
+<h3 id="42-combogetordercartinvoice">4.2 <code>combo_get_order_cart_invoice</code></h3>
+<p>Prices both carts and returns one combined delivery fee.</p>
+<p><strong>Request.</strong> <code>store_a</code> is now the <strong>origin</strong> (Guada, the farther store), so the labels are swapped compared with 4.1:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"user_id"</span>: <span class="hljs-string">"69eb547031dafab4ce1f1d5f"</span>,
+  <span class="hljs-attr">"server_token"</span>: <span class="hljs-string">"&lt;server_token&gt;"</span>,
+  <span class="hljs-attr">"combo_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1baa"</span>,
+  <span class="hljs-attr">"order_type"</span>: <span class="hljs-number">7</span>,
+  <span class="hljs-attr">"total_time"</span>: <span class="hljs-number">282</span>,
+  <span class="hljs-attr">"total_distance"</span>: <span class="hljs-number">863</span>,
+  <span class="hljs-attr">"store_a"</span>: { <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"66434399ff1c5d52db7bf524"</span>, <span class="hljs-attr">"cart_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1bbe"</span> },
+  <span class="hljs-attr">"store_b"</span>: { <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"63d9146526a10835da38a598"</span>, <span class="hljs-attr">"cart_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1bb2"</span> }
+}
+</div></code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combo_id</code></td>
+<td>yes</td>
+<td>From 4.1</td>
+</tr>
+<tr>
+<td><code>store_a</code> / <code>store_b</code></td>
+<td>yes</td>
+<td><code>{store_id, cart_id}</code>. <strong><code>store_a</code> = origin</strong> (section 5)</td>
+</tr>
+<tr>
+<td><code>total_time</code></td>
+<td>yes</td>
+<td><strong>seconds</strong>, whole trip (both legs). The server stores minutes: 282 s → <code>4.7</code></td>
+</tr>
+<tr>
+<td><code>total_distance</code></td>
+<td>yes</td>
+<td><strong>meters</strong>, whole trip. The server stores km: 863 m → <code>0.863</code></td>
+</tr>
+<tr>
+<td><code>order_type</code></td>
+<td>yes</td>
+<td><code>7</code> (same as single-store)</td>
+</tr>
+<tr>
+<td><code>express_option</code></td>
+<td>no</td>
+<td>e.g. <code>&quot;normal&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response (key fields)</strong></p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">"combo_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1baa"</span>,
+  <span class="hljs-attr">"combined_delivery_price"</span>: <span class="hljs-number">146.22</span>,
+  <span class="hljs-attr">"combined_user_pay_payment"</span>: <span class="hljs-number">1496.22</span>,
+  <span class="hljs-attr">"store_a"</span>: {
+    <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+    <span class="hljs-attr">"message"</span>: <span class="hljs-number">113</span>,
+    <span class="hljs-attr">"server_time"</span>: <span class="hljs-string">"2026-10-01T14:02:13.522Z"</span>,
+    <span class="hljs-attr">"timezone"</span>: <span class="hljs-string">"Africa/Nairobi"</span>,
+    <span class="hljs-attr">"order_payment"</span>: {
+      <span class="hljs-attr">"_id"</span>: <span class="hljs-string">"6abe67e591cbd91c93955c04"</span>,
+      <span class="hljs-attr">"cart_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1bbe"</span>,
+      <span class="hljs-attr">"combo_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1baa"</span>,
+      <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"66434399ff1c5d52db7bf524"</span>,
+      <span class="hljs-attr">"vehicle_id"</span>: <span class="hljs-string">"5b406c5dd2ddf8062d11b78a"</span>,
+      <span class="hljs-attr">"currency_code"</span>: <span class="hljs-string">"ETB"</span>,
+      <span class="hljs-attr">"total_distance"</span>: <span class="hljs-number">0.863</span>,
+      <span class="hljs-attr">"total_time"</span>: <span class="hljs-number">4.7</span>,
+      <span class="hljs-attr">"total_item_count"</span>: <span class="hljs-number">1</span>,
+      <span class="hljs-attr">"total_cart_price"</span>: <span class="hljs-number">1100</span>,
+      <span class="hljs-attr">"total_order_price"</span>: <span class="hljs-number">1100</span>,
+      <span class="hljs-attr">"total_delivery_price"</span>: <span class="hljs-number">73.11</span>,
+      <span class="hljs-attr">"total_service_price"</span>: <span class="hljs-number">73.11</span>,
+      <span class="hljs-attr">"promo_payment"</span>: <span class="hljs-number">0</span>,
+      <span class="hljs-attr">"tip"</span>: <span class="hljs-number">0</span>,
+      <span class="hljs-attr">"user_pay_payment"</span>: <span class="hljs-number">1173.11</span>,
+      <span class="hljs-attr">"total"</span>: <span class="hljs-number">1173.11</span>,
+      <span class="hljs-attr">"is_payment_mode_cash"</span>: <span class="hljs-literal">true</span>,
+      <span class="hljs-attr">"is_payment_paid"</span>: <span class="hljs-literal">false</span>,
+      <span class="hljs-attr">"is_store_pay_delivery_fees"</span>: <span class="hljs-literal">false</span>,
+      <span class="hljs-attr">"express_option"</span>: <span class="hljs-string">"normal"</span>,
+      <span class="hljs-attr">"unique_id"</span>: <span class="hljs-number">603122</span>
+    },
+    <span class="hljs-attr">"store"</span>: {
+      <span class="hljs-attr">"_id"</span>: <span class="hljs-string">"66434399ff1c5d52db7bf524"</span>,
+      <span class="hljs-attr">"name"</span>: <span class="hljs-string">"GUADA/ጓዳ"</span>,
+      <span class="hljs-attr">"location"</span>: [<span class="hljs-number">8.9992927</span>, <span class="hljs-number">38.7694498</span>],
+      <span class="hljs-attr">"city_id"</span>: <span class="hljs-string">"5b406b46d2ddf8062d11b788"</span>,
+      <span class="hljs-attr">"image_url"</span>: <span class="hljs-string">"store_profiles/66434399ff1c5d52db7bf524JMCz.jpg"</span>,
+      <span class="hljs-attr">"address"</span>: <span class="hljs-string">"Bole behind, Sur Construction, አዲስ አበባ, Ethiopia"</span>,
+      <span class="hljs-attr">"accept_only_cashless_payment"</span>: <span class="hljs-literal">false</span>
+    },
+    <span class="hljs-attr">"vehicles"</span>: [{ <span class="hljs-attr">"_id"</span>: <span class="hljs-string">"5b406c5dd2ddf8062d11b78a"</span>, <span class="hljs-attr">"vehicle_name"</span>: <span class="hljs-string">"MOTOR BIKE"</span> }]
+  },
+  <span class="hljs-attr">"store_b"</span>: {
+    <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+    <span class="hljs-attr">"message"</span>: <span class="hljs-number">113</span>,
+    <span class="hljs-attr">"order_payment"</span>: {
+      <span class="hljs-attr">"_id"</span>: <span class="hljs-string">"6abe67e591cbd91c93955c11"</span>,
+      <span class="hljs-attr">"cart_id"</span>: <span class="hljs-string">"6abe67e59b318a14825a1bb2"</span>,
+      <span class="hljs-attr">"store_id"</span>: <span class="hljs-string">"63d9146526a10835da38a598"</span>,
+      <span class="hljs-attr">"total_cart_price"</span>: <span class="hljs-number">250</span>,
+      <span class="hljs-attr">"total_delivery_price"</span>: <span class="hljs-number">73.11</span>,
+      <span class="hljs-attr">"user_pay_payment"</span>: <span class="hljs-number">323.11</span>,
+      <span class="hljs-attr">"total"</span>: <span class="hljs-number">323.11</span>,
+      <span class="hljs-attr">"unique_id"</span>: <span class="hljs-number">603123</span>
+    },
+    <span class="hljs-attr">"store"</span>: {
+      <span class="hljs-attr">"_id"</span>: <span class="hljs-string">"63d9146526a10835da38a598"</span>,
+      <span class="hljs-attr">"name"</span>: <span class="hljs-string">"SUMI'S CAKE (Relocating We'll be back soon!)"</span>,
+      <span class="hljs-attr">"location"</span>: [<span class="hljs-number">9.0000198</span>, <span class="hljs-number">38.7702638</span>]
+    }
+  }
+}
+</div></code></pre>
+<p><strong>How the totals add up</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Store A (Guada)</th>
+<th>Store B (Sumi's)</th>
+<th>Combined</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Items (<code>total_cart_price</code>)</td>
+<td>1,100.00</td>
+<td>250.00</td>
+<td>1,350.00</td>
+</tr>
+<tr>
+<td>Delivery (<code>total_delivery_price</code>, 50/50 split)</td>
+<td>73.11</td>
+<td>73.11</td>
+<td><strong>146.22</strong> (<code>combined_delivery_price</code>)</td>
+</tr>
+<tr>
+<td>Customer pays (<code>user_pay_payment</code>)</td>
+<td>1,173.11</td>
+<td>323.11</td>
+<td><strong>1,496.22</strong> (<code>combined_user_pay_payment</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Save:</strong> <code>store_a.order_payment._id</code> and <code>store_b.order_payment._id</code> for 4.3.
+<strong>Show:</strong> both item breakdowns, one delivery fee (<code>combined_delivery_price</code>), one total (<code>combined_user_pay_payment</code>).</p>
+<hr>
+<h3 id="43-combopayorderpayment">4.3 <code>combo_pay_order_payment</code></h3>
+<p>Settles both sides with one method. <strong>Wallet or cash only</strong> in this phase.</p>
+<p><strong>Request</strong></p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"user_id"</span>: <span class="hljs-string">"69eb547031dafab4ce1f1d5f"</span>,
+  <span class="hljs-attr">"server_token"</span>: <span class="hljs-string">"&lt;server_token&gt;"</span>,
+  <span class="hljs-attr">"store_a_order_payment_id"</span>: <span class="hljs-string">"6abe67e69b318a14825a1bcf"</span>,
+  <span class="hljs-attr">"store_b_order_payment_id"</span>: <span class="hljs-string">"6abe67e69b318a14825a1bdc"</span>,
+  <span class="hljs-attr">"is_payment_mode_cash"</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">"otp"</span>: <span class="hljs-string">""</span>
+}
+</div></code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>store_a_order_payment_id</code> / <code>store_b_order_payment_id</code></td>
+<td>yes</td>
+<td>From 4.2, keeping the same a/b as the invoice</td>
+</tr>
+<tr>
+<td><code>is_payment_mode_cash</code></td>
+<td>yes</td>
+<td><code>true</code> = cash, <code>false</code> = wallet</td>
+</tr>
+<tr>
+<td><code>order_type</code></td>
+<td>spec: yes</td>
+<td>Web does not send it. Send <code>7</code> to be safe</td>
+</tr>
+<tr>
+<td><code>otp</code></td>
+<td>no</td>
+<td>When OTP is enabled for the user</td>
+</tr>
+<tr>
+<td><code>store_delivery_id</code></td>
+<td>no</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong></p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">"combo_id"</span>: <span class="hljs-string">"6abe67e6990ff8e719e586d5"</span>,
+  <span class="hljs-attr">"store_a"</span>: { <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">"message"</span>: <span class="hljs-number">116</span>, <span class="hljs-attr">"is_payment_paid"</span>: <span class="hljs-literal">true</span> },
+  <span class="hljs-attr">"store_b"</span>: { <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">"message"</span>: <span class="hljs-number">116</span>, <span class="hljs-attr">"is_payment_paid"</span>: <span class="hljs-literal">true</span> }
+}
+</div></code></pre>
+<p><code>success</code> is <code>true</code> only if <strong>both</strong> sides paid. For wallet, the server checks the <strong>combined</strong> amount first and returns
+<code>error_code: &quot;YOUR_WALLET_AMOUNT_NEGATIVE&quot;</code> before charging either side.</p>
+<hr>
+<h3 id="44-combocreateorder">4.4 <code>combo_create_order</code></h3>
+<p>Turns both paid carts into real Orders.</p>
+<p><strong>Request</strong></p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"user_id"</span>: <span class="hljs-string">"69eb547031dafab4ce1f1d5f"</span>,
+  <span class="hljs-attr">"server_token"</span>: <span class="hljs-string">"&lt;server_token&gt;"</span>,
+  <span class="hljs-attr">"combo_id"</span>: <span class="hljs-string">"6abe67e6990ff8e719e586d5"</span>,
+  <span class="hljs-attr">"store_a_cart_id"</span>: <span class="hljs-string">"6abe67e6990ff8e719e586e9"</span>,
+  <span class="hljs-attr">"store_b_cart_id"</span>: <span class="hljs-string">"6abe67e6990ff8e719e586dd"</span>,
+  <span class="hljs-attr">"is_user_pick_up_order"</span>: <span class="hljs-literal">false</span>,
+  <span class="hljs-attr">"order_from"</span>: <span class="hljs-string">"web"</span>
+}
+</div></code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combo_id</code></td>
+<td>yes</td>
+<td></td>
+</tr>
+<tr>
+<td><code>store_a_cart_id</code> / <code>store_b_cart_id</code></td>
+<td>yes</td>
+<td><strong>Origin store's cart = <code>store_a_cart_id</code></strong></td>
+</tr>
+<tr>
+<td><code>order_from</code></td>
+<td></td>
+<td>Web sends <code>&quot;web&quot;</code>. Mobile should send its own value (confirm with backend, e.g. <code>&quot;android&quot;</code> / <code>&quot;ios&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>is_user_pick_up_order</code></td>
+<td></td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>order_type</code>, <code>is_schedule_order</code>, <code>schedule_order_start_at</code>, <code>order_start_at</code>, <code>delivery_type</code>, <code>paid_by</code>, <code>tip</code></td>
+<td>optional</td>
+<td>Forwarded to both sides, same as single-store <code>create_order</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong></p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">"combo_id"</span>: <span class="hljs-string">"6abe67e6990ff8e719e586d5"</span>,
+  <span class="hljs-attr">"order_unique_ids"</span>: [<span class="hljs-number">470721</span>, <span class="hljs-number">470722</span>],
+  <span class="hljs-attr">"store_a"</span>: { <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">"order_id"</span>: <span class="hljs-string">"6abe69c2990ff8e719e5871d"</span>, <span class="hljs-attr">"message"</span>: <span class="hljs-number">241</span> },
+  <span class="hljs-attr">"store_b"</span>: { <span class="hljs-attr">"success"</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">"order_id"</span>: <span class="hljs-string">"6abe69c2990ff8e719e58732"</span>, <span class="hljs-attr">"message"</span>: <span class="hljs-number">241</span> }
+}
+</div></code></pre>
+<p>Show <code>order_unique_ids</code> to the customer (e.g. &quot;Orders #470721 and #470722&quot;).</p>
+<h3 id="45-message-codes-seen">4.5 Message codes seen</h3>
+<table>
+<thead>
+<tr>
+<th><code>message</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>952</td>
+<td>Item(s) added to cart</td>
+</tr>
+<tr>
+<td>113</td>
+<td>Invoice generated</td>
+</tr>
+<tr>
+<td>116</td>
+<td>Payment done</td>
+</tr>
+<tr>
+<td>241</td>
+<td>Order created</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="5-distance--route-algorithm">5. Distance &amp; route algorithm</h2>
+<h3 id="51-steps">5.1 Steps</h3>
+<ol>
+<li><strong>Get both store coordinates.</strong> Cart items don't include them, so use <code>store.location</code> = <code>[lat, lng]</code>. Either fetch
+it with the store-detail call (<code>getStoreDetail()</code> already exists in <code>checkout_screen.dart</code>), or keep the
+<code>storeLocation</code> each local <code>Cart</code> already holds.</li>
+<li><strong>Pick the origin.</strong> Compute the haversine distance from each store to the customer.
+<ul>
+<li><strong>Farther</strong> store → <strong>origin</strong> → <code>store_a</code> from now on.</li>
+<li><strong>Nearer</strong> store → <strong>waypoint</strong> → <code>store_b</code>.</li>
+<li>This is optimal, not a shortcut. The only two routes are S1→S2→C and S2→S1→C, and the S1↔S2 leg is the same in
+both. So the shorter route is the one whose last leg (store → customer) is shorter.</li>
+</ul>
+</li>
+<li><strong>Call Google Directions once:</strong> <code>origin=origin</code>, <code>waypoints=waypoint</code>, <code>destination=customer</code>, <code>mode=driving</code>.
+<ul>
+<li><code>total_distance = legs[0].distance.value + legs[1].distance.value</code> (meters)</li>
+<li><code>total_time = legs[0].duration.value + legs[1].duration.value</code> (seconds)</li>
+</ul>
+</li>
+<li><strong>Fallback:</strong> if Directions fails, use haversine(origin→waypoint) + haversine(waypoint→customer), with time at
+about 120 s/km (the same estimate <code>_fallbackHaversine</code> uses today). Never block checkout because of this call.</li>
+<li><strong>Relabel and keep the labels.</strong> Use <code>store_a</code> = origin in invoice, pay and create.</li>
+</ol>
+<h3 id="52-worked-example-from-endpointdocx">5.2 Worked example (from <code>endpoint.docx</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Point</th>
+<th>Lat, Lng</th>
+<th>Haversine to customer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Customer</td>
+<td>8.9999798, 38.7701506</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GUADA (<code>66434399…</code>)</td>
+<td>8.9992927, 38.7694498</td>
+<td>≈ 108 m → <strong>farther → origin (<code>store_a</code>)</strong></td>
+</tr>
+<tr>
+<td>SUMI'S CAKE (<code>63d91465…</code>)</td>
+<td>9.0000198, 38.7702638</td>
+<td>≈ 13 m → nearer → waypoint (<code>store_b</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The customer tapped Sumi's first, so it was <code>store_a</code> in 4.1. In 4.2 Guada correctly becomes <code>store_a</code>.
+Route total: 863 m, 282 s.</p>
+<h3 id="53-dart-reference">5.3 Dart reference</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// lib/combo/combo_route.dart</span>
+<span class="hljs-keyword">import</span> <span class="hljs-string">'dart:convert'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'dart:math'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:http/http.dart'</span> <span class="hljs-keyword">as</span> http;
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboRoute</span> </span>{
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">String</span> originStoreId;   <span class="hljs-comment">// -&gt; store_a</span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">String</span> waypointStoreId; <span class="hljs-comment">// -&gt; store_b</span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">double</span> totalDistance;   <span class="hljs-comment">// meters</span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">double</span> totalTime;       <span class="hljs-comment">// seconds</span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">bool</span> fromFallback;
+  ComboRoute(<span class="hljs-keyword">this</span>.originStoreId, <span class="hljs-keyword">this</span>.waypointStoreId, <span class="hljs-keyword">this</span>.totalDistance,
+      <span class="hljs-keyword">this</span>.totalTime, <span class="hljs-keyword">this</span>.fromFallback);
+}
+
+<span class="hljs-built_in">double</span> haversineMeters(<span class="hljs-built_in">double</span> lat1, <span class="hljs-built_in">double</span> lon1, <span class="hljs-built_in">double</span> lat2, <span class="hljs-built_in">double</span> lon2) {
+  <span class="hljs-keyword">const</span> p = <span class="hljs-number">0.017453292519943295</span>;
+  <span class="hljs-keyword">final</span> a = <span class="hljs-number">0.5</span> -
+      cos((lat2 - lat1) * p) / <span class="hljs-number">2</span> +
+      cos(lat1 * p) * cos(lat2 * p) * (<span class="hljs-number">1</span> - cos((lon2 - lon1) * p)) / <span class="hljs-number">2</span>;
+  <span class="hljs-keyword">return</span> <span class="hljs-number">12742000</span> * asin(sqrt(a));
+}
+
+Future&lt;ComboRoute&gt; computeComboRoute({
+  required <span class="hljs-built_in">String</span> storeIdX, required <span class="hljs-built_in">double</span> xLat, required <span class="hljs-built_in">double</span> xLng,
+  required <span class="hljs-built_in">String</span> storeIdY, required <span class="hljs-built_in">double</span> yLat, required <span class="hljs-built_in">double</span> yLng,
+  required <span class="hljs-built_in">double</span> custLat, required <span class="hljs-built_in">double</span> custLng,
+  required <span class="hljs-built_in">String</span> apiKey,
+}) <span class="hljs-keyword">async</span> {
+  <span class="hljs-keyword">final</span> dx = haversineMeters(xLat, xLng, custLat, custLng);
+  <span class="hljs-keyword">final</span> dy = haversineMeters(yLat, yLng, custLat, custLng);
+  <span class="hljs-keyword">final</span> xIsOrigin = dx &gt;= dy; <span class="hljs-comment">// farther store goes first</span>
+
+  <span class="hljs-keyword">final</span> oId = xIsOrigin ? storeIdX : storeIdY;
+  <span class="hljs-keyword">final</span> wId = xIsOrigin ? storeIdY : storeIdX;
+  <span class="hljs-keyword">final</span> oLat = xIsOrigin ? xLat : yLat, oLng = xIsOrigin ? xLng : yLng;
+  <span class="hljs-keyword">final</span> wLat = xIsOrigin ? yLat : xLat, wLng = xIsOrigin ? yLng : xLng;
+
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">final</span> url = <span class="hljs-string">'https://maps.googleapis.com/maps/api/directions/json'</span>
+        <span class="hljs-string">'?origin=<span class="hljs-subst">$oLat</span>,<span class="hljs-subst">$oLng</span>&amp;destination=<span class="hljs-subst">$custLat</span>,<span class="hljs-subst">$custLng</span>'</span>
+        <span class="hljs-string">'&amp;waypoints=<span class="hljs-subst">$wLat</span>,<span class="hljs-subst">$wLng</span>&amp;mode=driving&amp;key=<span class="hljs-subst">$apiKey</span>'</span>;
+    <span class="hljs-keyword">final</span> res = <span class="hljs-keyword">await</span> http.<span class="hljs-keyword">get</span>(<span class="hljs-built_in">Uri</span>.parse(url)).timeout(<span class="hljs-keyword">const</span> <span class="hljs-built_in">Duration</span>(seconds: <span class="hljs-number">10</span>));
+    <span class="hljs-keyword">final</span> data = json.decode(res.body);
+    <span class="hljs-keyword">if</span> (data[<span class="hljs-string">'status'</span>] == <span class="hljs-string">'OK'</span>) {
+      <span class="hljs-keyword">final</span> legs = data[<span class="hljs-string">'routes'</span>][<span class="hljs-number">0</span>][<span class="hljs-string">'legs'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">List</span>;
+      <span class="hljs-built_in">double</span> dist = <span class="hljs-number">0</span>, time = <span class="hljs-number">0</span>;
+      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">final</span> leg <span class="hljs-keyword">in</span> legs) {
+        dist += (leg[<span class="hljs-string">'distance'</span>][<span class="hljs-string">'value'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">num</span>).toDouble();
+        time += (leg[<span class="hljs-string">'duration'</span>][<span class="hljs-string">'value'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">num</span>).toDouble();
+      }
+      <span class="hljs-keyword">return</span> ComboRoute(oId, wId, dist, time, <span class="hljs-keyword">false</span>);
+    }
+  } <span class="hljs-keyword">catch</span> (_) {}
+
+  <span class="hljs-comment">// Fallback: two straight-line legs, ~2 min per km</span>
+  <span class="hljs-keyword">final</span> dist = haversineMeters(oLat, oLng, wLat, wLng) +
+      haversineMeters(wLat, wLng, custLat, custLng);
+  <span class="hljs-keyword">return</span> ComboRoute(oId, wId, dist, dist / <span class="hljs-number">1000</span> * <span class="hljs-number">120</span>, <span class="hljs-keyword">true</span>);
+}
+</div></code></pre>
+<blockquote>
+<p><strong>Watch the coordinate order.</strong> <code>store.location</code> is <code>[lat, lng]</code>. <code>destination_address</code> uses <code>lat</code> / <code>long</code> keys.</p>
+</blockquote>
+<hr>
+<h2 id="6-mobile-implementation-plan-file-by-file">6. Mobile implementation plan (file by file)</h2>
+<h3 id="61-new-files">6.1 New files</h3>
+<pre class="hljs"><code><div>lib/combo/
+├── models/combo_cart.dart        # ComboCart + persistence
+├── services/combo_service.dart   # the 4 HTTP calls
+├── combo_route.dart              # section 5.3
+└── combo_checkout_screen.dart    # invoice + payment + create (or a mode in CheckoutScreen)
+</div></code></pre>
+<h3 id="62-combocart-model">6.2 <code>ComboCart</code> model</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// lib/combo/models/combo_cart.dart</span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboCart</span> </span>{
+  <span class="hljs-built_in">String</span>? comboId;                     <span class="hljs-comment">// from combo_add_item_in_cart</span>
+  Cart first;                          <span class="hljs-comment">// first store tapped</span>
+  Cart second;                         <span class="hljs-comment">// second store</span>
+  <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt; cartIdByStore;   <span class="hljs-comment">// store_id -&gt; cart_id (labels change later!)</span>
+  <span class="hljs-built_in">String</span>? originStoreId;               <span class="hljs-comment">// set after distance calc = store_a</span>
+  <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt; orderPaymentIdByStore; <span class="hljs-comment">// from invoice</span>
+
+  ComboCart({<span class="hljs-keyword">this</span>.comboId, required <span class="hljs-keyword">this</span>.first, required <span class="hljs-keyword">this</span>.second,
+      <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;? cartIdByStore, <span class="hljs-keyword">this</span>.originStoreId,
+      <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;? orderPaymentIdByStore})
+      : cartIdByStore = cartIdByStore ?? {},
+        orderPaymentIdByStore = orderPaymentIdByStore ?? {};
+
+  <span class="hljs-built_in">String</span> <span class="hljs-keyword">get</span> waypointStoreId =&gt;
+      originStoreId == first.storeId ? second.storeId! : first.storeId!;
+
+  <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt; toJson() =&gt; {
+        <span class="hljs-string">'combo_id'</span>: comboId,
+        <span class="hljs-string">'first'</span>: first.toJson(),
+        <span class="hljs-string">'second'</span>: second.toJson(),
+        <span class="hljs-string">'cart_id_by_store'</span>: cartIdByStore,
+        <span class="hljs-string">'origin_store_id'</span>: originStoreId,
+        <span class="hljs-string">'order_payment_id_by_store'</span>: orderPaymentIdByStore,
+      };
+
+  <span class="hljs-keyword">factory</span> ComboCart.fromJson(<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt; j) =&gt; ComboCart(
+        comboId: j[<span class="hljs-string">'combo_id'</span>],
+        first: Cart.fromJson(j[<span class="hljs-string">'first'</span>]),
+        second: Cart.fromJson(j[<span class="hljs-string">'second'</span>]),
+        cartIdByStore: <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;.from(j[<span class="hljs-string">'cart_id_by_store'</span>] ?? {}),
+        originStoreId: j[<span class="hljs-string">'origin_store_id'</span>],
+        orderPaymentIdByStore:
+            <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;.from(j[<span class="hljs-string">'order_payment_id_by_store'</span>] ?? {}),
+      );
+}
+</div></code></pre>
+<ul>
+<li>Storage key: <code>Service.save('combo_cart', comboCart.toJson())</code>. The existing <code>'cart'</code> key stays untouched, so every
+single-store screen keeps working.</li>
+<li>Clear <code>combo_cart</code> after <code>combo_create_order</code> succeeds, or when the user empties it.</li>
+</ul>
+<h3 id="63-comboservice-following-the-codebases-existing-httppost-pattern">6.3 <code>ComboService</code>, following the codebase's existing <code>http.post</code> pattern</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// lib/combo/services/combo_service.dart</span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboService</span> </span>{
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; _post(
+      BuildContext context, <span class="hljs-built_in">String</span> path, <span class="hljs-built_in">Map</span> body, {<span class="hljs-built_in">int</span> timeout = <span class="hljs-number">30</span>}) <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> url = <span class="hljs-string">'<span class="hljs-subst">${Provider.of&lt;ZMetaData&gt;(context, listen: <span class="hljs-keyword">false</span>).baseUrl}</span>/api/user/<span class="hljs-subst">$path</span>'</span>;
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">final</span> res = <span class="hljs-keyword">await</span> http
+          .post(<span class="hljs-built_in">Uri</span>.parse(url),
+              headers: {<span class="hljs-string">'Content-Type'</span>: <span class="hljs-string">'application/json'</span>, <span class="hljs-string">'Accept'</span>: <span class="hljs-string">'application/json'</span>},
+              body: json.encode(body))
+          .timeout(<span class="hljs-built_in">Duration</span>(seconds: timeout),
+              onTimeout: () =&gt; <span class="hljs-keyword">throw</span> TimeoutException(<span class="hljs-string">'The connection has timed out!'</span>));
+      <span class="hljs-keyword">return</span> json.decode(res.body);
+    } <span class="hljs-keyword">catch</span> (e) {
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">null</span>;
+    }
+  }
+
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; addItemInCart(BuildContext c, <span class="hljs-built_in">Map</span> user,
+          ComboCart cc, DestinationAddress dest) =&gt;
+      _post(c, <span class="hljs-string">'combo_add_item_in_cart'</span>, {
+        <span class="hljs-string">'user_id'</span>: user[<span class="hljs-string">'_id'</span>],
+        <span class="hljs-string">'server_token'</span>: user[<span class="hljs-string">'server_token'</span>],
+        <span class="hljs-string">'username'</span>: <span class="hljs-string">'<span class="hljs-subst">${user[<span class="hljs-string">'first_name'</span>]}</span> <span class="hljs-subst">${user[<span class="hljs-string">'last_name'</span>]}</span>'</span>,
+        <span class="hljs-string">'phone'</span>: user[<span class="hljs-string">'phone'</span>],
+        <span class="hljs-keyword">if</span> (cc.comboId != <span class="hljs-keyword">null</span>) <span class="hljs-string">'combo_id'</span>: cc.comboId,
+        <span class="hljs-string">'delivery_type'</span>: <span class="hljs-number">1</span>,
+        <span class="hljs-string">'destination_address'</span>: dest.toJson(),
+        <span class="hljs-string">'store_a'</span>: {<span class="hljs-string">'store_id'</span>: cc.first.storeId, <span class="hljs-string">'items'</span>: cc.first.items!.map((i) =&gt; i.toJson()).toList()},
+        <span class="hljs-string">'store_b'</span>: {<span class="hljs-string">'store_id'</span>: cc.second.storeId, <span class="hljs-string">'items'</span>: cc.second.items!.map((i) =&gt; i.toJson()).toList()},
+      });
+
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; getInvoice(BuildContext c, <span class="hljs-built_in">Map</span> user,
+          ComboCart cc, ComboRoute r, {<span class="hljs-built_in">String</span>? expressOption}) =&gt;
+      _post(c, <span class="hljs-string">'combo_get_order_cart_invoice'</span>, {
+        <span class="hljs-string">'user_id'</span>: user[<span class="hljs-string">'_id'</span>],
+        <span class="hljs-string">'server_token'</span>: user[<span class="hljs-string">'server_token'</span>],
+        <span class="hljs-string">'combo_id'</span>: cc.comboId,
+        <span class="hljs-string">'order_type'</span>: <span class="hljs-number">7</span>,
+        <span class="hljs-string">'total_time'</span>: r.totalTime,
+        <span class="hljs-string">'total_distance'</span>: r.totalDistance,
+        <span class="hljs-keyword">if</span> (expressOption != <span class="hljs-keyword">null</span>) <span class="hljs-string">'express_option'</span>: expressOption,
+        <span class="hljs-string">'store_a'</span>: {<span class="hljs-string">'store_id'</span>: r.originStoreId,   <span class="hljs-string">'cart_id'</span>: cc.cartIdByStore[r.originStoreId]},
+        <span class="hljs-string">'store_b'</span>: {<span class="hljs-string">'store_id'</span>: r.waypointStoreId, <span class="hljs-string">'cart_id'</span>: cc.cartIdByStore[r.waypointStoreId]},
+      });
+
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; pay(BuildContext c, <span class="hljs-built_in">Map</span> user,
+          ComboCart cc, {required <span class="hljs-built_in">bool</span> cash, <span class="hljs-built_in">String</span> otp = <span class="hljs-string">''</span>}) =&gt;
+      _post(c, <span class="hljs-string">'combo_pay_order_payment'</span>, {
+        <span class="hljs-string">'user_id'</span>: user[<span class="hljs-string">'_id'</span>],
+        <span class="hljs-string">'server_token'</span>: user[<span class="hljs-string">'server_token'</span>],
+        <span class="hljs-string">'store_a_order_payment_id'</span>: cc.orderPaymentIdByStore[cc.originStoreId],
+        <span class="hljs-string">'store_b_order_payment_id'</span>: cc.orderPaymentIdByStore[cc.waypointStoreId],
+        <span class="hljs-string">'is_payment_mode_cash'</span>: cash,
+        <span class="hljs-string">'order_type'</span>: <span class="hljs-number">7</span>,
+        <span class="hljs-string">'otp'</span>: otp,
+      }, timeout: <span class="hljs-number">40</span>);
+
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; createOrder(BuildContext c, <span class="hljs-built_in">Map</span> user,
+          ComboCart cc, {required <span class="hljs-built_in">String</span> orderFrom}) =&gt;
+      _post(c, <span class="hljs-string">'combo_create_order'</span>, {
+        <span class="hljs-string">'user_id'</span>: user[<span class="hljs-string">'_id'</span>],
+        <span class="hljs-string">'server_token'</span>: user[<span class="hljs-string">'server_token'</span>],
+        <span class="hljs-string">'combo_id'</span>: cc.comboId,
+        <span class="hljs-string">'store_a_cart_id'</span>: cc.cartIdByStore[cc.originStoreId],
+        <span class="hljs-string">'store_b_cart_id'</span>: cc.cartIdByStore[cc.waypointStoreId],
+        <span class="hljs-string">'is_user_pick_up_order'</span>: <span class="hljs-keyword">false</span>,
+        <span class="hljs-string">'order_from'</span>: orderFrom,
+      }, timeout: <span class="hljs-number">50</span>);
+}
+</div></code></pre>
+<blockquote>
+<p>Confirm the user name fields (<code>first_name</code> / <code>last_name</code>) against the stored <code>user</code> object before use.</p>
+</blockquote>
+<h3 id="64-changes-to-existing-files">6.4 Changes to existing files</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lib/item/components/body.dart</code> (<code>_showDialog</code>)</td>
+<td>Add <strong>&quot;Order From Both Stores&quot;</strong>: build a <code>ComboCart(first: existingCart, second: newCart)</code> and save <code>combo_cart</code>. Keep &quot;Clear cart&quot;. If a combo already exists and a <strong>third</strong> store is added, show the clear dialog.</td>
+</tr>
+<tr>
+<td><code>lib/product/product_screen.dart</code>, <code>lib/global/items/components/body.dart</code>, <code>lib/notifications/notification_store.dart</code>, <code>lib/scanner/components/scanned_store.dart</code></td>
+<td>Same dialog change. Best: move the dialog into one shared widget first.</td>
+</tr>
+<tr>
+<td><code>lib/models/language.dart</code></td>
+<td>New strings: &quot;Order From Both Stores&quot;, &quot;Both stores must be in the same city…&quot;, &quot;These two stores are too far apart…&quot;</td>
+</tr>
+<tr>
+<td>Cart screen (<code>lib/cart/components/body.dart</code>)</td>
+<td>When <code>combo_cart</code> exists, show two store sections with per-store subtotals and quantity edits. Emptying one store drops back to a single-store <code>cart</code>.</td>
+</tr>
+<tr>
+<td><code>lib/delivery/delivery_screen.dart</code> (<code>_addToCart</code>)</td>
+<td>If <code>combo_cart</code> exists, call <code>ComboService.addItemInCart</code>. Save <code>combo_id</code> and <code>cartIdByStore</code> from <code>store_a.store_id → store_a.cart_id</code> and the same for <code>store_b</code>. Show server errors (section 7).</td>
+</tr>
+<tr>
+<td><code>lib/checkout/checkout_screen.dart</code></td>
+<td>Combo mode: get both store locations → <code>computeComboRoute</code> → set <code>originStoreId</code> → <code>ComboService.getInvoice</code>. Save <code>orderPaymentIdByStore</code> from each side's <code>order_payment.store_id → order_payment._id</code>. Render the two breakdowns plus the combined total. <strong>Hide self-pickup.</strong></td>
+</tr>
+<tr>
+<td><code>lib/kifiya/kifiya_screen.dart</code></td>
+<td>Combo mode: show <strong>only wallet and cash</strong>. Call <code>ComboService.pay</code>. If <code>success</code> is true, call <code>ComboService.createOrder</code>. Then remove <code>combo_cart</code> and show both <code>order_unique_ids</code>.</td>
+</tr>
+<tr>
+<td>Orders list / detail</td>
+<td>Group orders that share <code>combo_id</code> (show &quot;Combo · 2 stores&quot;).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="65-rules-to-keep">6.5 Rules to keep</h3>
+<ul>
+<li>Never send per-item API calls. Sync once at the delivery screen.</li>
+<li>Map ids <strong>by store_id</strong>. The <code>a</code>/<code>b</code> labels from 4.1 mean nothing after the distance calc.</li>
+<li>Don't recalculate the origin after the invoice. If the address changes, run the route <strong>and</strong> the invoice again.</li>
+<li>When re-syncing (the user goes back and edits the cart), send the existing <code>combo_id</code> to <code>combo_add_item_in_cart</code>.</li>
+</ul>
+<hr>
+<h2 id="7-error-handling">7. Error handling</h2>
+<table>
+<thead>
+<tr>
+<th>When</th>
+<th>Server says</th>
+<th>App should</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>add_item</td>
+<td><code>store_a.store_id and store_a.items are required</code> (or <code>store_b</code>)</td>
+<td>Bug. Log it and show a generic error</td>
+</tr>
+<tr>
+<td>add_item</td>
+<td><code>store_a and store_b must be different stores</code></td>
+<td>Merge into a single-store cart</td>
+</tr>
+<tr>
+<td>add_item / invoice</td>
+<td><code>Store not found</code></td>
+<td>Show the message. Remove that store from the combo</td>
+</tr>
+<tr>
+<td>add_item / invoice</td>
+<td><code>Both stores must be in the same city for a combo order</code></td>
+<td>Show the message. Offer to keep one store</td>
+</tr>
+<tr>
+<td>add_item</td>
+<td><code>These two stores are too far apart for a combo order</code></td>
+<td>Same as above</td>
+</tr>
+<tr>
+<td>invoice</td>
+<td><code>total_time and total_distance (for the whole combined trip) are required</code></td>
+<td>Bug: the route was not computed</td>
+</tr>
+<tr>
+<td>invoice</td>
+<td><code>Failed to compute invoice for one or both stores</code> + per-side detail</td>
+<td>Show which store failed</td>
+</tr>
+<tr>
+<td>pay</td>
+<td><code>store_a_order_payment_id and store_b_order_payment_id are required</code></td>
+<td>Bug</td>
+</tr>
+<tr>
+<td>pay</td>
+<td><code>Order_payment not found</code></td>
+<td>Run the invoice again</td>
+</tr>
+<tr>
+<td>pay (wallet)</td>
+<td><code>error_code: &quot;YOUR_WALLET_AMOUNT_NEGATIVE&quot;</code></td>
+<td>&quot;Not enough wallet balance.&quot; Offer cash or top-up. Nothing was charged</td>
+</tr>
+<tr>
+<td>create</td>
+<td><code>Failed to create one or both orders</code> + per-side detail</td>
+<td><strong>No rollback.</strong> Show which side failed. <strong>Don't</strong> clear <code>combo_cart</code>. Tell the user to contact support (see 10)</td>
+</tr>
+<tr>
+<td>any</td>
+<td><code>error_code: 999</code></td>
+<td>Log out (same as existing screens)</td>
+</tr>
+<tr>
+<td>any</td>
+<td>timeout / <code>null</code></td>
+<td>Existing &quot;Something went wrong! Check your internet…&quot; message</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="8-driver-app">8. Driver app</h2>
+<p>The driver app is a separate repo. It needs <strong>no new endpoints</strong>, because a combo is one Request whose
+<code>pickup_addresses</code> has 2 entries.</p>
+<p><strong>Spec says is missing</strong></p>
+<ul>
+<li>About 30 places read <code>pickup_addresses[0]</code>, which ignores the second store.</li>
+<li>The status flow is linear, and ARRIVED / PICKED_ORDER can't repeat.</li>
+<li>The map has fixed <code>&quot;Pickup&quot;</code> / <code>&quot;Dropoff&quot;</code> markers.</li>
+</ul>
+<p><strong>Target status chain (combo only)</strong></p>
+<pre class="hljs"><code><div>ACCEPTED → COMING → ARRIVED (store 1) → PICKED_ORDER (store 1)
+→ COMING (store 2) → DELIVERY_MAN_ARRIVED_STORE_2 → DELIVERY_MAN_PICKED_ORDER_STORE_2
+→ STARTED_DELIVERY → ARRIVED_AT_DESTINATION → COMPLETE
+</div></code></pre>
+<p><strong>Changes:</strong> a combo branch in <code>updateOrderStatus()</code>, button labels that name the store (&quot;ARRIVED — STORE 2&quot;), a
+geofence on the active stop, and map markers built from a stop list with camera bounds covering every stop.</p>
+<blockquote>
+<p><strong>Observed on the test phone (2026-10-01):</strong> an installed driver build already logs
+<code>[DeliveryStop] buildStops: total stops built = 3 (2 pickup(s), 1 dropoff(s))</code>. So multi-stop parsing has already
+started in the driver repo. Check that repo before following this section.</p>
+</blockquote>
+<hr>
+<h2 id="9-testing">9. Testing</h2>
+<h3 id="91-replay-with-curl">9.1 Replay with curl</h3>
+<p>Run the calls in order. Each one uses ids from the previous response.</p>
+<pre class="hljs"><code><div>BASE=https://testbackend.zmall.et      <span class="hljs-comment"># or BASE_URL_TEST from lib/utils/constants.dart</span>
+U=69eb547031dafab4ce1f1d5f
+T=&lt;server_token&gt;
+
+<span class="hljs-comment"># 1. cart</span>
+curl -s -X POST <span class="hljs-variable">$BASE</span>/api/user/combo_add_item_in_cart -H <span class="hljs-string">'Content-Type: application/json'</span> -d @add.json
+<span class="hljs-comment">#    -&gt; combo_id, store_a.cart_id, store_b.cart_id</span>
+
+<span class="hljs-comment"># 2. invoice (store_a = FARTHER store)</span>
+curl -s -X POST <span class="hljs-variable">$BASE</span>/api/user/combo_get_order_cart_invoice -H <span class="hljs-string">'Content-Type: application/json'</span> -d <span class="hljs-string">'{
+ "user_id":"'</span><span class="hljs-variable">$U</span><span class="hljs-string">'","server_token":"'</span><span class="hljs-variable">$T</span><span class="hljs-string">'","combo_id":"&lt;combo_id&gt;","order_type":7,
+ "total_time":282,"total_distance":863,
+ "store_a":{"store_id":"&lt;origin_store&gt;","cart_id":"&lt;origin_cart&gt;"},
+ "store_b":{"store_id":"&lt;waypoint_store&gt;","cart_id":"&lt;waypoint_cart&gt;"}}'</span>
+<span class="hljs-comment">#    -&gt; store_a.order_payment._id, store_b.order_payment._id</span>
+
+<span class="hljs-comment"># 3. pay (cash)</span>
+curl -s -X POST <span class="hljs-variable">$BASE</span>/api/user/combo_pay_order_payment -H <span class="hljs-string">'Content-Type: application/json'</span> -d <span class="hljs-string">'{
+ "user_id":"'</span><span class="hljs-variable">$U</span><span class="hljs-string">'","server_token":"'</span><span class="hljs-variable">$T</span><span class="hljs-string">'",
+ "store_a_order_payment_id":"&lt;op_a&gt;","store_b_order_payment_id":"&lt;op_b&gt;",
+ "is_payment_mode_cash":true,"otp":""}'</span>
+
+<span class="hljs-comment"># 4. create</span>
+curl -s -X POST <span class="hljs-variable">$BASE</span>/api/user/combo_create_order -H <span class="hljs-string">'Content-Type: application/json'</span> -d <span class="hljs-string">'{
+ "user_id":"'</span><span class="hljs-variable">$U</span><span class="hljs-string">'","server_token":"'</span><span class="hljs-variable">$T</span><span class="hljs-string">'","combo_id":"&lt;combo_id&gt;",
+ "store_a_cart_id":"&lt;origin_cart&gt;","store_b_cart_id":"&lt;waypoint_cart&gt;",
+ "is_user_pick_up_order":false,"order_from":"android"}'</span>
+</div></code></pre>
+<blockquote>
+<p>The 4.3 / 4.4 samples in <code>endpoint.docx</code> come from a <strong>different run</strong> than 4.1 / 4.2 (different <code>combo_id</code>).
+Don't mix ids across runs.</p>
+</blockquote>
+<h3 id="92-seeing-the-requests-from-the-phone">9.2 Seeing the requests from the phone</h3>
+<pre class="hljs"><code><div>adb devices
+adb -s &lt;device&gt; logcat -v brief flutter:I <span class="hljs-string">'*:S'</span>
+</div></code></pre>
+<p>In Android Studio, filter Logcat by <code>com.zmall.user</code>.</p>
+<h3 id="93-test-cases">9.3 Test cases</h3>
+<ul>
+<li><input type="checkbox" id="checkbox0"><label for="checkbox0">Two stores in the same city: all four calls succeed and two orders are created.</label></li>
+<li><input type="checkbox" id="checkbox1"><label for="checkbox1">Stores in different cities: rejected at </label><code>combo_add_item_in_cart</code>.</li>
+<li><input type="checkbox" id="checkbox2"><label for="checkbox2">Stores farther apart than the admin limit: rejected.</label></li>
+<li><input type="checkbox" id="checkbox3"><label for="checkbox3">Tap the </label><strong>nearer</strong> store first: the invoice must still send the <strong>farther</strong> store as <code>store_a</code> (example in 5.2).</li>
+<li><input type="checkbox" id="checkbox4"><label for="checkbox4">Directions API fails (bad key or offline): the haversine fallback is used and checkout still works.</label></li>
+<li><input type="checkbox" id="checkbox5"><label for="checkbox5"></label><code>combined_delivery_price</code> = sum of both <code>total_delivery_price</code>. <code>combined_user_pay_payment</code> = sum of both <code>user_pay_payment</code>.</li>
+<li><input type="checkbox" id="checkbox6"><label for="checkbox6">Wallet with too little balance: </label><code>YOUR_WALLET_AMOUNT_NEGATIVE</code>, and neither side is charged.</li>
+<li><input type="checkbox" id="checkbox7"><label for="checkbox7">Cash: both sides </label><code>is_payment_paid: true</code>.</li>
+<li><input type="checkbox" id="checkbox8"><label for="checkbox8">Both orders have </label><code>combo_pickup_sequence</code> 1 (origin) and 2 (waypoint), checked in the admin panel.</li>
+<li><input type="checkbox" id="checkbox9"><label for="checkbox9">Edit the cart after sync: re-sync with the same </label><code>combo_id</code>.</li>
+<li><input type="checkbox" id="checkbox10"><label for="checkbox10">Remove all items of one store: the app falls back to a normal single-store order.</label></li>
+<li><input type="checkbox" id="checkbox11"><label for="checkbox11">Single-store orders are unaffected (regression).</label></li>
+<li><input type="checkbox" id="checkbox12"><label for="checkbox12">Driver (once the backend states ship): both stops on the map, two separate pickups, delivery available only after both.</label></li>
+</ul>
+<hr>
+<h2 id="10-open-issues--findings">10. Open issues &amp; findings</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Issue</th>
+<th>Owner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Partial create failure.</strong> One order is created and the other fails, with no rollback. Recovery behavior is not yet defined.</td>
+<td>Backend / product</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>50/50 delivery split</strong> is temporary and only for testing. A final pricing rule is pending.</td>
+<td>Product</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>External gateways</strong> (Telebirr, Wegagen, Kifiya cards) are not supported for combo in this phase.</td>
+<td>Backend</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Price mismatch in the sample.</strong> The Guada item was sent with <code>price: 2200</code> (spec option 1100), but the invoice shows <code>total_cart_price: 1100</code>. Confirm how <code>price</code> should be sent for items with specifications.</td>
+<td>Backend + mobile</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong><code>order_from</code> for mobile.</strong> Web sends <code>&quot;web&quot;</code>. Agree on the mobile value.</td>
+<td>Backend</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Idempotency.</strong> Single-store <code>create_order</code> uses <code>order_payment_unique_id</code> to stop duplicates. Ask whether <code>combo_create_order</code> supports it too.</td>
+<td>Backend</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Interaction with other flows.</strong> AliExpress, self-pickup, scheduled orders, &quot;order for others&quot;, promo codes and tips are not defined for combo. Suggest blocking combo for these at first.</td>
+<td>Product</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>🔒 Data leak.</strong> The invoice response returns each store's full record, including the <code>password</code> hash (unsalted MD5: Guada's <code>e10adc39…</code> = <code>123456</code>), <code>bank_account_number</code>, <code>wallet</code> balance and <code>email</code>. The backend should return only the fields the app needs.</td>
+<td>Backend (urgent)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>🔒 Token in a document.</strong> <code>endpoint.docx</code> has a real <code>server_token</code> in plain text. Rotate it, and mask tokens in shared docs.</td>
+<td>Team</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="11-checklist">11. Checklist</h2>
+<p><strong>Mobile (user app)</strong></p>
+<ul>
+<li><input type="checkbox" id="checkbox13"><label for="checkbox13"></label><code>lib/combo/models/combo_cart.dart</code> + the <code>combo_cart</code> storage key</li>
+<li><input type="checkbox" id="checkbox14"><label for="checkbox14">Shared store-conflict dialog with &quot;Order From Both Stores&quot; (replace all copies)</label></li>
+<li><input type="checkbox" id="checkbox15"><label for="checkbox15">Cart screen shows two store sections</label></li>
+<li><input type="checkbox" id="checkbox16"><label for="checkbox16">Delivery screen calls </label><code>combo_add_item_in_cart</code>, saves <code>combo_id</code> and <code>cartIdByStore</code></li>
+<li><input type="checkbox" id="checkbox17"><label for="checkbox17"></label><code>combo_route.dart</code>: haversine origin choice, Directions with waypoint, fallback</li>
+<li><input type="checkbox" id="checkbox18"><label for="checkbox18">Checkout: combo invoice, two breakdowns, combined total, no self-pickup</label></li>
+<li><input type="checkbox" id="checkbox19"><label for="checkbox19">Payment: wallet / cash only, </label><code>combo_pay_order_payment</code></li>
+<li><input type="checkbox" id="checkbox20"><label for="checkbox20"></label><code>combo_create_order</code>, success screen with both order numbers, clear the combo cart</li>
+<li><input type="checkbox" id="checkbox21"><label for="checkbox21">Partial-failure handling (keep the cart, show which side failed)</label></li>
+<li><input type="checkbox" id="checkbox22"><label for="checkbox22">Orders list groups orders by </label><code>combo_id</code></li>
+<li><input type="checkbox" id="checkbox23"><label for="checkbox23">Translations in </label><code>language.dart</code></li>
+</ul>
+<p><strong>Backend (asks)</strong></p>
+<ul>
+<li><input type="checkbox" id="checkbox24"><label for="checkbox24">Strip sensitive store fields from the invoice response</label></li>
+<li><input type="checkbox" id="checkbox25"><label for="checkbox25">Decide the partial-failure recovery</label></li>
+<li><input type="checkbox" id="checkbox26"><label for="checkbox26">Confirm </label><code>order_from</code> and idempotency for combo</li>
+<li><input type="checkbox" id="checkbox27"><label for="checkbox27">Ship </label><code>DELIVERY_MAN_ARRIVED_STORE_2</code> / <code>DELIVERY_MAN_PICKED_ORDER_STORE_2</code></li>
+</ul>
+<p><strong>Driver app</strong></p>
+<ul>
+<li><input type="checkbox" id="checkbox28"><label for="checkbox28">Multi-stop status chain, labels, geofence, map markers (section 8)</label></li>
+</ul>
+
+</body>
+</html>

@@ -51,8 +51,7 @@ class Service {
         SnackBar(
           backgroundColor: error == null
               ? kWhiteColor
-              // kGreyColor
-              : error
+              : error == true
               ? kSecondaryColor
               : kGreenColor,
           content: Text(
@@ -135,6 +134,7 @@ class Service {
     await Service.saveBool('logged', false);
     await Service.remove('user');
     await Service.remove('cart');
+    await Service.remove('combo_cart');
     await Service.remove('aliexpressCart'); //NEW
     await Service.remove('images');
   }

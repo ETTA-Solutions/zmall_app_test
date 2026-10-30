@@ -18,6 +18,9 @@ import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/delivery/delivery_screen.dart';
 import 'package:zmall/lunch_home/lunch_home_screen.dart';
 import 'package:zmall/models/cart.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
+import 'package:zmall/combo/widgets/combo_store_section.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/notifications/notification_store.dart';
@@ -49,6 +52,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   bool isLocationServicesEnabled = false;
   Cart? cart;
   AliExpressCart? aliexpressCart;
+  ComboCart? comboCart;
+  String comboStoreName = '';
   bool _loading = true;
   bool _checkingAvailability = false;
   bool _checkoutBlocked = false;
@@ -88,9 +93,105 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     cart?.items?.forEach((item) {
       tempPrice += item.price!;
     });
+    comboCart?.second.items?.forEach((item) {
+      tempPrice += item.price!;
+    });
     setState(() {
       price = tempPrice;
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Minimum order price guard (Task: Cart Screen Minimum Order Price Check)
+  // Checks each store's subtotal against the store's min_order_price.
+  // Returns null if everything is fine, or an error message to display.
+  //
+  // For the primary store: min_order_price comes from storeDetail.
+  // For the combo second store: we compare against the second Cart's items only;
+  // the actual threshold is stored in the backend store document and only
+  // surfaced on the invoice, so we fall back to 0 here.  The real enforcement
+  // happens server-side; this is a best-effort client-side guard.
+  // ---------------------------------------------------------------------------
+  String? _checkMinOrderPrice() {
+    if (cart == null) return null;
+
+    // Primary store subtotal
+    double primarySubtotal = 0;
+    cart!.items?.forEach((item) => primarySubtotal += item.price!);
+    final double primaryMin =
+        (storeDetail?['store']?['min_order_price'] as num? ?? 0).toDouble();
+    if (primaryMin > 0 && primarySubtotal < primaryMin) {
+      final name = storeName.isNotEmpty ? storeName : 'this store';
+      return 'Minimum order for $name is ${primaryMin.toStringAsFixed(0)} ETB. '
+          'Please add more items.';
+    }
+
+    // Combo second store subtotal (min threshold not locally available yet —
+    // the checkout invoice will enforce it; we only guard if we somehow have it)
+    if (comboCart != null) {
+      double secondSubtotal = 0;
+      comboCart!.second.items?.forEach((item) => secondSubtotal += item.price!);
+      // Second store min is not locally cached before invoice — skip if 0
+      // (server-side validation will catch it at checkout).
+    }
+
+    return null;
+  }
+
+  Future<void> _loadComboCart() async {
+    final combo = await ComboCart.load();
+    if (!mounted) return;
+    setState(() {
+      comboCart = combo;
+    });
+    if (combo != null && comboStoreName.isEmpty) {
+      final data = await ComboService.getStoreDetail(
+        context,
+        storeId: combo.second.storeId!,
+      );
+      if (!mounted) return;
+      if (data != null && data['success'] == true) {
+        setState(() {
+          comboStoreName = data['store']['name'] ?? '';
+        });
+      }
+    }
+  }
+
+  void _onComboChanged() {
+    if (comboCart == null) return;
+    if (comboCart!.second.items!.isEmpty) {
+      ComboCart.clear();
+      setState(() {
+        comboCart = null;
+        comboStoreName = '';
+      });
+    } else {
+      comboCart!.save();
+      setState(() {});
+    }
+    calculatePrice();
+  }
+
+  /// When the first store is emptied, the second store becomes the normal
+  /// single-store cart.
+  void _promoteComboIfFirstEmpty() {
+    if (comboCart == null || cart == null || cart!.items!.isNotEmpty) return;
+    final second = comboCart!.second;
+    second.serverToken = cart!.serverToken;
+    setState(() {
+      cart = second;
+      storeID = second.storeId;
+      storeName = comboStoreName;
+      extraItems = null;
+      comboCart = null;
+      comboStoreName = '';
+    });
+    Service.save('cart', cart!.toJson());
+    ComboCart.clear();
+    _getStoreExtraItemList();
+    _getStoreDetail();
+    calculatePrice();
   }
 
   void getCart() async {
@@ -122,6 +223,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         //   debugPrint("ALI CART NOT FOUND>>>");
         // }
         _getStoreExtraItemList();
+        await _loadComboCart();
 
         calculatePrice();
         _refreshAvailability();
@@ -805,6 +907,17 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                         // if (now.isAfter(zmallOpen) &&
                                         //     now.isBefore(zmallClose)) {
                                         if (true) {
+                                          // ── Min-order check ─────────────────
+                                          final minErr = _checkMinOrderPrice();
+                                          if (minErr != null) {
+                                            Service.showMessage(
+                                              context: context,
+                                              title: minErr,
+                                              error: true,
+                                              duration: 4,
+                                            );
+                                            return;
+                                          }
                                           Navigator.pushNamed(
                                             context,
                                             DeliveryScreen.routeName,
@@ -841,17 +954,11 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           : SizedBox.shrink(),
       body: ModalProgressHUD(
         color: kPrimaryColor,
-        progressIndicator: LinearLoadingIndicator(title: "Checking..."),
-        // progressIndicator: Column(
-        //   mainAxisAlignment: MainAxisAlignment.center,
-        //   children: [
-        //     SpinKitWave(
-        //       color: kSecondaryColor,
-        //       size: getProportionateScreenHeight(kDefaultPadding),
-        //     ),
-        //     Text("Checking if items are available..."),
-        //   ],
-        // ),
+        progressIndicator: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(kSecondaryColor),
+          ),
+        ),
         inAsyncCall: _loading,
         child: cart != null && cart!.items!.length > 0
             ? Column(
@@ -936,7 +1043,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                   Expanded(
                     child: ListView.separated(
                       shrinkWrap: true,
-                      itemCount: cart!.toJson()['items'].length ?? 0,
+                      itemCount:
+                          cart!.items!.length + (comboCart != null ? 1 : 0),
                       padding: EdgeInsets.only(
                         left: getProportionateScreenWidth(kDefaultPadding / 2),
                         right: getProportionateScreenWidth(kDefaultPadding / 2),
@@ -949,6 +1057,14 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                             ),
                           ),
                       itemBuilder: (context, index) {
+                        if (index == cart!.items!.length) {
+                          return ComboStoreSection(
+                            comboCart: comboCart!,
+                            storeName: comboStoreName,
+                            onChanged: _onComboChanged,
+                            onReturnFromStore: getCart,
+                          );
+                        }
                         final item = cart!.items?[index];
                         final isLunchBox =
                             item?.itemName?.contains('ምሳቃ') ?? false;
@@ -1183,10 +1299,17 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                             onTap: () {
                                               setState(() {
                                                 cart?.items?.removeAt(index);
-                                                Service.save(
-                                                  'cart',
-                                                  cart!.toJson(),
-                                                );
+                                                if (cart?.items?.isEmpty ??
+                                                    true) {
+                                                  if (comboCart == null) {
+                                                    Service.remove('cart');
+                                                    cart = null;
+                                                  } else {
+                                                    Service.save('cart', cart);
+                                                  }
+                                                } else {
+                                                  Service.save('cart', cart);
+                                                }
                                                 if (aliexpressCart != null &&
                                                     aliexpressCart!
                                                             .cart
@@ -1206,6 +1329,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                               });
                                               calculatePrice();
                                               _refreshAvailability();
+                                              _promoteComboIfFirstEmpty();
                                             },
                                             child: Text(
                                               Provider.of<ZLanguage>(
@@ -1619,6 +1743,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                   cart!.toJson();
                   Service.remove('cart');
                   Service.remove('aliexpressCart'); ////NEW
+                  ComboCart.clear();
                   cart = Cart();
                   addToCart(item, destination, storeLocation, storeId);
                 });

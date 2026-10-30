@@ -32,17 +32,20 @@ import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/widgets/order_status_row.dart';
 import 'package:zmall/utils/random_digits.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
 import 'package:zmall/report/report_screen.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'components/kifiya_method_container.dart';
 import 'components/telebirr_screen.dart';
 import 'package:zmall/services/image_upload_service.dart';
+import 'package:zmall/models/combo_payment_context.dart';
 
 class KifiyaScreen extends StatefulWidget {
   static String routeName = '/kifiya';
 
-  const KifiyaScreen({
+  KifiyaScreen({
     this.vehicleId,
     this.onlyCashless = false,
     @required this.price,
@@ -50,7 +53,20 @@ class KifiyaScreen extends StatefulWidget {
     @required this.orderPaymentId,
     @required this.orderPaymentUniqueId,
     this.userpickupWithSchedule,
-  });
+    bool isCombo = false,
+    String? comboId,
+    String? storeAOrderPaymentId,
+    String? storeBOrderPaymentId,
+    String? storeACartId,
+    String? storeBCartId,
+    this.combo,
+  })  : isCombo = isCombo || combo != null,
+        comboId = combo != null ? combo.comboId : comboId,
+        storeAOrderPaymentId = combo != null ? combo.storeA.orderPaymentId : storeAOrderPaymentId,
+        storeBOrderPaymentId = combo != null ? combo.storeB.orderPaymentId : storeBOrderPaymentId,
+        storeACartId = combo != null ? combo.storeA.cartId : storeACartId,
+        storeBCartId = combo != null ? combo.storeB.cartId : storeBCartId;
+
   final double? price;
   final bool? isCourier;
   final String? vehicleId;
@@ -58,6 +74,13 @@ class KifiyaScreen extends StatefulWidget {
   final String? orderPaymentId;
   final String? orderPaymentUniqueId;
   final bool? userpickupWithSchedule;
+  final bool isCombo;
+  final String? comboId;
+  final String? storeAOrderPaymentId;
+  final String? storeBOrderPaymentId;
+  final String? storeACartId;
+  final String? storeBCartId;
+  final ComboPaymentContext? combo;
 
   @override
   _KifiyaScreenState createState() => _KifiyaScreenState();
@@ -138,7 +161,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     int intervalSeconds = 1,
     int maxAttempts = 6,
   }) async {
-    // debugPrint('🔍 Polling Telebirr status for merchOrderId: $merchOrderId');
+    debugPrint('🔍 [Telebirr] Polling status for merchOrderId: $merchOrderId (maxAttempts=$maxAttempts, interval=${intervalSeconds}s)');
 
     if (!mounted) return false;
 
@@ -191,7 +214,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         if (!mounted) return false;
 
         final data = json.decode(response.body);
-        // debugPrint('DATA>>>: $data');
+        debugPrint('[Telebirr] Poll #$attempt response raw: $data');
         String? status;
         bool? success;
         String? message;
@@ -203,13 +226,14 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           message = data['message']?.toString();
         }
 
-        // debugPrint('📊Telebirr poll #$attempt => status: $status, success: $success, message: $message');
+        debugPrint('📊 [Telebirr] Poll #$attempt => status: $status, success: $success, message: $message');
 
         if (status != null) {
           final upperStatus = status.toUpperCase();
           if ((upperStatus.contains('PAID') ||
                   upperStatus.contains('SUCCESS')) &&
               success == true) {
+            debugPrint('✅ [Telebirr] Payment confirmed on attempt #$attempt');
             if (mounted) setState(() => _loading = false);
             return true;
           }
@@ -217,16 +241,19 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           if (upperStatus.contains('FAILED') ||
               upperStatus.contains('FAIL') ||
               success == false) {
+            debugPrint('❌ [Telebirr] Payment failed status received on attempt #$attempt: $status');
             if (mounted) setState(() => _loading = false);
             return false;
           }
         }
       } catch (e) {
-        // debugPrint('⚠️ Telebirr poll error (retrying): $e');
+        debugPrint('⚠️ [Telebirr] Poll error (retrying attempt #$attempt): $e');
       }
 
       await Future.delayed(Duration(seconds: intervalSeconds));
     }
+
+    debugPrint('⏳ [Telebirr] Polling reached max attempts ($maxAttempts) without conclusive status');
 
     if (mounted) setState(() => _loading = false);
     return false;
@@ -450,15 +477,38 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       _loading = true;
       _placeOrder = true;
     });
+
+    debugPrint('╔══════════════════════════════════════════════════╗');
+    debugPrint('║        [PAYMENT GATEWAY] Fetching...             ║');
+    debugPrint('╚══════════════════════════════════════════════════╝');
+
     await getPaymentGateway();
+
     if (!mounted) return;
     if (paymentResponse != null && paymentResponse['success']) {
+
+      // ── Print every gateway returned by the backend ──────────────────────
+      final List<dynamic> gateways = paymentResponse['payment_gateway'] ?? [];
+      debugPrint('┌─────────────────────────────────────────────────────');
+      debugPrint('│ [PAYMENT GATEWAY] ✅ Success — ${gateways.length} gateway(s) returned');
+      debugPrint('│ wallet balance : ${paymentResponse['wallet']}');
+      debugPrint('├─────────────────────────────────────────────────────');
+      for (int i = 0; i < gateways.length; i++) {
+        final g = gateways[i];
+        debugPrint('│  [$i] name="${g['name']}"  _id=${g['_id']}  type=${g['payment_type'] ?? g['type'] ?? '-'}');
+      }
+      debugPrint('└─────────────────────────────────────────────────────');
+
       setState(() {
         _loading = false;
         _placeOrder = false;
       });
       await useBorsa();
     } else {
+      debugPrint('┌─────────────────────────────────────────────────────');
+      debugPrint('│ [PAYMENT GATEWAY] ❌ Failed');
+      debugPrint('│ response : $paymentResponse');
+      debugPrint('└─────────────────────────────────────────────────────');
       setState(() {
         _loading = false;
         _placeOrder = false;
@@ -526,7 +576,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       if (!mounted) return;
       if (data != null && data['success']) {
         if (data['duplicate'] != null && data['duplicate'] == true) {
-          // debugPrint("order duplicated>> ${data['duplicate']}}");
+          debugPrint(
+            '[COMBO-DEBUG] ⚠ Step 4: duplicate order detected — combo_id=${data['combo_id']}',
+          );
           // duplicate logic
           Service.showMessage(
             context: context,
@@ -535,8 +587,19 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             // error: true,
           );
         } else {
-          // debugPrint("order duplicated>> ${data['duplicate']}}");
-          // normal success logic
+          debugPrint(
+            '[COMBO-DEBUG] ✓ Step 4: order created successfully\n'
+            '  combo_id        : ${data['combo_id']}\n'
+            '  store_a order_id: ${data['store_a']?['order_id']}\n'
+            '  store_b order_id: ${data['store_b']?['order_id']}\n'
+            '  order_unique_ids: ${data['order_unique_ids']}',
+          );
+          try {
+            debugPrint(
+              '📍 [ORDER PLACED] Items/Store Location: '
+              'Lat: ${cart.storeLocation?.lat}, Long: ${cart.storeLocation?.long}',
+            );
+          } catch (_) {}
           Service.showMessage(
             context: context,
             title: "Order successfully created",
@@ -544,7 +607,52 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           );
           await Service.remove('cart');
           await Service.remove('aliexpressCart');
+          if (widget.isCombo) {
+            await ComboCart.clear();
+            try {
+              final orderA = data['store_a']?['order_id']?.toString();
+              final orderB = data['store_b']?['order_id']?.toString();
+              final orderIds = [
+                if (orderA != null && orderA.isNotEmpty) orderA,
+                if (orderB != null && orderB.isNotEmpty) orderB,
+              ];
+              final uniqueIds = data['order_unique_ids'] is List
+                  ? List.from(data['order_unique_ids'])
+                  : [];
+              final cId = data['combo_id']?.toString() ?? widget.comboId ?? "";
+              if (cId.isNotEmpty && orderIds.isNotEmpty) {
+                final existingRaw = await Service.read('combo_orders');
+                List<dynamic> existingList = [];
+                if (existingRaw is List) {
+                  existingList = List.from(existingRaw);
+                } else if (existingRaw is String) {
+                  try {
+                    existingList = List.from(jsonDecode(existingRaw));
+                  } catch (_) {}
+                }
+                existingList.insert(0, {
+                  'combo_id': cId,
+                  'order_ids': orderIds,
+                  'order_unique_ids': uniqueIds,
+                  'created_at': DateTime.now().toIso8601String(),
+                });
+                if (existingList.length > 50) {
+                  existingList = existingList.sublist(0, 50);
+                }
+                await Service.save('combo_orders', existingList);
+              }
+            } catch (e) {
+              debugPrint("Failed to persist combo_orders: $e");
+            }
+          }
           if (!mounted) return;
+
+          final orderIdsList = widget.isCombo && data['order_unique_ids'] is List
+              ? List.from(data['order_unique_ids'])
+              : null;
+          final uniqueId = (orderIdsList != null && orderIdsList.isNotEmpty)
+              ? orderIdsList.join(',')
+              : (widget.orderPaymentUniqueId ?? "");
 
           Navigator.pushReplacement(
             context,
@@ -552,22 +660,69 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               builder: (context) {
                 return ReportScreen(
                   price: widget.price!,
-                  orderPaymentUniqueId: widget.orderPaymentUniqueId!,
+                  orderPaymentUniqueId: uniqueId,
                 );
               },
             ),
           );
         }
       } else {
+        debugPrint(
+          '[COMBO-DEBUG] ✗ Step 4: order creation failed\n'
+          '  response: ${data?.toString() ?? "null"}\n'
+          '  isCombo : ${widget.isCombo}',
+        );
+        // ── Combo telemetry: log API-level failure ─────────────────────────
+        if (widget.isCombo) {
+          await _logFailedComboOrder(
+            reason: 'combo_create_order API error: '
+                '${ComboService.errorText(data, fallback: 'unknown')}',
+            amount: widget.price ?? 0.0,
+          );
+          // Prompt user to contact support since payment may have been taken
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              Service.showMessage(
+                context: context,
+                title:
+                    'If payment was deducted, please contact support at 8707 '
+                    'with reference: ${widget.orderPaymentUniqueId}',
+                error: true,
+                duration: 5,
+              );
+            }
+          });
+        }
         Service.showMessage(
           context: context,
-          title: data != null
-              ? "${errorCodes['${data['error_code']}'] ?? 'Order failed. Please try again.'}"
-              : "Something went wrong. Please try again.",
+          title: widget.isCombo
+              ? ComboService.errorText(data, fallback: 'Order failed. Please try again.')
+              : (data != null
+                  ? "${errorCodes['${data['error_code']}'] ?? 'Order failed. Please try again.'}"
+                  : "Something went wrong. Please try again."),
           error: true,
         );
       }
     } catch (e) {
+      // ── Combo telemetry: log exception-level failure ───────────────────────
+      if (widget.isCombo) {
+        await _logFailedComboOrder(
+          reason: 'combo_create_order exception: $e',
+          amount: widget.price ?? 0.0,
+        );
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            Service.showMessage(
+              context: context,
+              title:
+                  'If payment was deducted, please contact support at 8707 '
+                  'with reference: ${widget.orderPaymentUniqueId}',
+              error: true,
+              duration: 5,
+            );
+          }
+        });
+      }
       Service.showMessage(
         context: context,
         title: "Something went wrong. Please try again.",
@@ -653,7 +808,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       );
       if (!mounted) return;
       if (data != null && data['success']) {
-        widget.isCourier!
+        widget.isCombo
+            ? _createOrder()
+            : widget.isCourier!
             ? _createCourierOrder()
             : (aliexpressCart != null &&
                   aliexpressCart!.cart.storeId == cart.storeId)
@@ -664,13 +821,16 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           _loading = false;
           _placeOrder = false;
         });
+        final errorText = widget.isCombo
+            ? ComboService.errorText(data, fallback: 'Payment failed. Please try again.')
+            : "${errorCodes['${data?['error_code']}'] ?? 'Payment failed.'}!";
         Service.showMessage(
           context: context,
-          title: "${errorCodes['${data['error_code']}']}!",
+          title: errorText,
           error: true,
         );
         await Future.delayed(Duration(seconds: 2));
-        if (data['error_code'] == 999) {
+        if (data != null && data['error_code'] == 999) {
           await Service.saveBool('logged', false);
           await Service.remove('user');
           Navigator.pushReplacementNamed(context, LoginScreen.routeName);
@@ -1146,10 +1306,32 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
                               ///list of payment methods///
                               Expanded(
-                                child: GridView.builder(
+                                child: Builder(
+                                  builder: (context) {
+                                    // For combo orders (Phase 1), only Cash and
+                                    // Wallet are supported. Filter the list so
+                                    // unsupported gateways are hidden entirely
+                                    // instead of shown with a "Soon" badge.
+                                    final List<dynamic> allGateways =
+                                        paymentResponse['payment_gateway'] as List<dynamic>;
+                                    final List<dynamic> visibleGateways =
+                                        widget.isCombo
+                                            ? allGateways
+                                                .where((g) => ['cash', 'wallet'].contains(
+                                                    g['name'].toString().toLowerCase()))
+                                                .toList()
+                                            : allGateways;
+
+                                    debugPrint(
+                                      '[PAYMENT GATEWAY] 🏗  building grid — '
+                                      'isCombo=${widget.isCombo}  '
+                                      'total=${allGateways.length}  '
+                                      'visible=${visibleGateways.length}  '
+                                      'names=${visibleGateways.map((g) => g['name']).toList()}',
+                                    );
+                                    return GridView.builder(
                                   shrinkWrap: true,
-                                  itemCount:
-                                      paymentResponse['payment_gateway'].length,
+                                  itemCount: visibleGateways.length,
                                   padding: EdgeInsets.symmetric(
                                     vertical: getProportionateScreenHeight(
                                       kDefaultPadding / 2,
@@ -1168,12 +1350,27 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             ),
                                       ),
                                   itemBuilder: (BuildContext ctx, index) {
+                                    final gateway = visibleGateways[index];
                                     String paymentName =
-                                        paymentResponse['payment_gateway'][index]['name']
+                                        gateway['name']
                                             .toString()
                                             .toLowerCase();
+                                    // Use position in the FULL list so
+                                    // payOrderPayment picks the correct gateway _id.
+                                    final int originalIndex =
+                                        allGateways.indexWhere(
+                                            (g) => g['_id'] == gateway['_id']);
+
+                                    debugPrint(
+                                      '[PAYMENT GATEWAY] 🟦 rendering card '
+                                      '[$index] name="$paymentName"  '
+                                      'originalIndex=$originalIndex  '
+                                      '_id=${gateway['_id']}',
+                                    );
+
                                     return KifiyaMethodContainer(
-                                      selected: kifiyaMethod == index,
+                                      selected: kifiyaMethod == originalIndex,
+                                      isSoon: false,
                                       title: paymentName,
                                       // .toUpperCase(),
                                       kifiyaMethod: kifiyaMethod,
@@ -1202,7 +1399,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           : paymentName == "zemen"
                                           ? 'images/payment/zemen.png'
                                           : paymentName.contains("wegagen")
-                                          ? 'images/payment/wegagen.png'
+                                          ? 'images/payment/wegagen_real.png'
                                           : paymentName == "awash"
                                           ? 'images/payment/awash.png'
                                           : paymentName == "etta card"
@@ -1222,8 +1419,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
                                       // 'images/payment/telebirr.png',
                                       press: () async {
+                                        // For combo, only Cash & Wallet are
+                                        // in the visible list — no guard needed.
                                         setState(() {
-                                          kifiyaMethod = index;
+                                          kifiyaMethod = originalIndex;
                                         });
                                         if (paymentName == "cash") {
                                           if (widget.onlyCashless!) {
@@ -1412,7 +1611,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                 _payOrderPayment(
                                                   otp: value,
                                                   paymentId:
-                                                      paymentResponse['payment_gateway'][index]['_id'],
+                                                      gateway['_id'],
                                                 );
                                               }
                                             });
@@ -2281,7 +2480,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                               return TelebirrInApp(
                                                                 context:
                                                                     context,
-                                                                amount:   widget.price!, 
+                                                                amount: widget
+                                                                    .price!,
                                                                 traceNo:
                                                                     inAppTraceNumber,
                                                                 phone:
@@ -2990,7 +3190,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                       },
                                     );
                                   },
-                                ),
+                                );
+                                },
+                              ),
                               ),
                               // SizedBox(
                               //   height: getProportionateScreenHeight(kDefaultPadding),
@@ -3056,7 +3258,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       // "device_type": 'iOS',
     };
     var body = json.encode(data);
-    // debugdebugPrint("kbody $body");
+    debugPrint('┌─────────────────────────────────────────────────────');
+    debugPrint('│ [PAYMENT GATEWAY] POST → $url');
+    debugPrint('│ request body : $body');
+    debugPrint('└─────────────────────────────────────────────────────');
     try {
       http.Response response = await http
           .post(
@@ -3077,6 +3282,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+
+      debugPrint('┌─────────────────────────────────────────────────────');
+      debugPrint('│ [PAYMENT GATEWAY] HTTP ${response.statusCode}');
+      debugPrint('│ raw response : ${response.body}');
+      debugPrint('└─────────────────────────────────────────────────────');
 
       if (mounted)
         setState(() {
@@ -3105,6 +3315,31 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   }
 
   Future<dynamic> payOrderPayment(otp, paymentId) async {
+    if (widget.isCombo) {
+      debugPrint(
+        '[COMBO-DEBUG] ▶ Step 3: combo_pay_order_payment\n'
+        '  storeA_order_payment_id: ${widget.storeAOrderPaymentId ?? widget.orderPaymentId}\n'
+        '  storeB_order_payment_id: ${widget.storeBOrderPaymentId}\n'
+        '  otp: ${otp?.toString().isEmpty == true ? "(empty)" : "***"}',
+      );
+      final res = await ComboService.pay(
+        context,
+        userData: userData,
+        originPaymentId: widget.storeAOrderPaymentId ?? widget.orderPaymentId!,
+        waypointPaymentId: widget.storeBOrderPaymentId ?? "",
+        otp: otp?.toString() ?? "",
+      );
+      debugPrint(
+        '[COMBO-DEBUG] ◀ Step 3 response: ${res == null ? "NULL (timeout/network)" : res.toString()}',
+      );
+      if (mounted) {
+        setState(() {
+          this._loading = false;
+        });
+      }
+      return res;
+    }
+
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/pay_order_payment";
 
@@ -3155,6 +3390,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           };
 
     var body = json.encode(data);
+    debugPrint("[COMBO-DEBUG] pay_order_payment BODY: $body");
     try {
       http.Response response = await http
           .post(
@@ -3175,6 +3411,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      debugPrint("[COMBO-DEBUG] pay_order_payment RESPONSE: ${response.body}");
       if (mounted)
         setState(() {
           this._loading = false;
@@ -3400,6 +3637,54 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         );
       }
       return null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Combo failed-order telemetry (§combo-telemetry)
+  // Called when create_order fails for a combo AFTER payment has been taken.
+  // Mirrors _logFailedOrderAfterPayment but carries combo-specific fields.
+  // ---------------------------------------------------------------------------
+  Future<void> _logFailedComboOrder({
+    required String reason,
+    required double amount,
+  }) async {
+    try {
+      final Map<String, dynamic> record = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'combo_id': widget.comboId ?? '',
+        'store_a_order_payment_id': widget.storeAOrderPaymentId ?? '',
+        'store_b_order_payment_id': widget.storeBOrderPaymentId ?? '',
+        'order_payment_unique_id': widget.orderPaymentUniqueId ?? '',
+        'amount': amount,
+        'user_id': userData['user']['_id'],
+        'user_phone': userData['user']['phone'],
+        'reason': reason,
+        'is_combo': true,
+      };
+
+      // Persist locally so the user can reference it when contacting support
+      List<dynamic> failedOrders =
+          await Service.read('failed_orders') ?? [];
+      failedOrders.add(record);
+      await Service.save('failed_orders', failedOrders);
+
+      // Best-effort backend notification (same endpoint as single-store)
+      try {
+        final baseUrl =
+            Provider.of<ZMetaData>(context, listen: false).baseUrl;
+        await http
+            .post(
+              Uri.parse("$baseUrl/api/user/log_failed_order"),
+              headers: {"Content-Type": "application/json"},
+              body: json.encode(record),
+            )
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Silent fail — local log is the primary record
+      }
+    } catch (_) {
+      // Never crash the payment flow due to telemetry
     }
   }
 
@@ -3871,6 +4156,50 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         ),
       );
     });
+
+    if (widget.isCombo) {
+      // ── Retry loop with exponential back-off (§combo-retry) ──────────────
+      // Attempts: 1, 2, 3.  Delays between attempts: 1 s, 2 s.
+      // A null response means network/timeout — safe to retry.
+      // A non-null response (success OR a known API error) stops immediately
+      // so we never double-charge.
+      Map<String, dynamic>? res;
+      const int _maxAttempts = 3;
+      for (int attempt = 1; attempt <= _maxAttempts; attempt++) {
+        debugPrint(
+          '[COMBO-DEBUG] ▶ Step 4: combo_create_order attempt $attempt/$_maxAttempts\n'
+          '  combo_id       : ${widget.comboId}\n'
+          '  storeA_cart_id : ${widget.storeACartId}\n'
+          '  storeB_cart_id : ${widget.storeBCartId}',
+        );
+        res = await ComboService.createOrder(
+          context,
+          userData: userData,
+          comboId: widget.comboId ?? "",
+          originCartId: widget.storeACartId ?? "",
+          waypointCartId: widget.storeBCartId ?? "",
+        );
+        debugPrint(
+          '[COMBO-DEBUG] ◀ Step 4 attempt $attempt response: '
+          '${res == null ? "NULL (timeout/network) — will retry" : res.toString()}',
+        );
+        // Stop on any non-null body: the server replied, so retrying could
+        // duplicate the order even if success == false.
+        if (res != null) break;
+        // null == network error / timeout — wait before next attempt
+        if (attempt < _maxAttempts) {
+          await Future.delayed(Duration(seconds: attempt)); // 1 s, then 2 s
+        }
+      }
+      if (mounted) {
+        setState(() {
+          orderResponse = res;
+          this._loading = false;
+        });
+      }
+      return res;
+    }
+
     // var url ="${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/create_order";
     var url =
         _selectedPaymentMethod == "telebirr inapp" ||
@@ -3899,6 +4228,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         if (filteredOrderIds != null) "aliexpress_order_ids": filteredOrderIds,
       };
       var body = json.encode(data);
+      debugPrint("[COMBO-DEBUG] create_order URL: $url");
+      debugPrint("[COMBO-DEBUG] create_order BODY: $body");
       http.Response response = await http
           .post(
             Uri.parse(url),
@@ -3918,6 +4249,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      debugPrint("[COMBO-DEBUG] create_order RESPONSE: ${response.body}");
       if (mounted)
         setState(() {
           orderResponse = json.decode(response.body);

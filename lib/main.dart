@@ -118,9 +118,12 @@ class _MyAppState extends State<MyApp> {
     } else if (uri.queryParameters.containsKey('next')) {
       // e.g. login?next=/go/cart/{cartId} or ?next=/ai-cart/{cartId}
       final nextPath = uri.queryParameters['next'] ?? '';
-      final nextUri = Uri.tryParse(nextPath.startsWith('/') ? 'app://$nextPath' : nextPath);
+      final nextUri = Uri.tryParse(
+        nextPath.startsWith('/') ? 'app://$nextPath' : nextPath,
+      );
       if (nextUri != null) {
-        if (nextUri.pathSegments.length >= 2 && nextUri.pathSegments[0] == 'ai-cart') {
+        if (nextUri.pathSegments.length >= 2 &&
+            nextUri.pathSegments[0] == 'ai-cart') {
           cartId = nextUri.pathSegments[1];
           debugPrint('║ Pattern: ?next=/ai-cart/{cartId} -> cartId: $cartId');
         } else if (nextUri.pathSegments.length >= 3 &&
@@ -128,7 +131,8 @@ class _MyAppState extends State<MyApp> {
             nextUri.pathSegments[1] == 'cart') {
           cartId = nextUri.pathSegments[2];
           debugPrint('║ Pattern: ?next=/go/cart/{cartId} -> cartId: $cartId');
-        } else if (nextUri.pathSegments.length >= 2 && nextUri.pathSegments[0] == 'cart') {
+        } else if (nextUri.pathSegments.length >= 2 &&
+            nextUri.pathSegments[0] == 'cart') {
           cartId = nextUri.pathSegments[1];
           debugPrint('║ Pattern: ?next=/cart/{cartId} -> cartId: $cartId');
         }
@@ -144,7 +148,8 @@ class _MyAppState extends State<MyApp> {
         uri.queryParameters['target'] ?? uri.queryParameters['flow'];
     if (target == null && uri.queryParameters.containsKey('next')) {
       final nextUri = Uri.tryParse(uri.queryParameters['next'] ?? '');
-      target = nextUri?.queryParameters['target'] ??
+      target =
+          nextUri?.queryParameters['target'] ??
           nextUri?.queryParameters['flow'];
     }
 

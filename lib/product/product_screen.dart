@@ -12,6 +12,11 @@ import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/item/item_screen.dart';
 import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/models/cart.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';
+import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
+import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
@@ -49,6 +54,8 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> {
   final GlobalKey _filterButtonKey = GlobalKey();
   bool _loading = true;
+  // Guard: prevents re-entrant distance-check calls when the user taps fast.
+  bool _comboDistanceCheckInProgress = false;
   // var responseData;
   var favoriteResponseData;
   var products;
@@ -582,7 +589,17 @@ class _ProductScreenState extends State<ProductScreen> {
       note: "User current location",
     );
 
-    if (cart != null) {
+    debugPrint(
+      "==================== PRODUCT ORDER DEBUG ====================\n"
+      "📍 Product Name: ${item['name']}\n"
+      "📍 Product ID: ${item['_id']}\n"
+      "📍 Store ID: ${item['store_id']}\n"
+      "📍 Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}\n"
+      "📍 Destination Location: Lat: ${destination.lat}, Long: ${destination.long}\n"
+      "=============================================================",
+    );
+
+    if (cart != null && cart!.items != null && cart!.items!.isNotEmpty) {
       if (userData != null) {
         if (cart!.storeId == item['store_id']) {
           setState(() {
@@ -595,7 +612,12 @@ class _ProductScreenState extends State<ProductScreen> {
             error: false,
           );
         } else {
-          _showDialog(cartItem, destination, storeLocation, item['store_id']);
+          _handleOtherStore(
+            cartItem,
+            destination,
+            storeLocation,
+            item['store_id'],
+          );
         }
       } else {
         Service.showMessage(
@@ -1226,50 +1248,147 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
-  void _showDialog(item, destination, storeLocation, storeId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext alertContext) {
-        return AlertDialog(
-          backgroundColor: kPrimaryColor,
-          title: Text(Provider.of<ZLanguage>(context).warning),
-          content: Text(Provider.of<ZLanguage>(context).itemsFound),
-          actions: [
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).cancel,
-                style: TextStyle(
-                  color: kBlackColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(alertContext).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).clear,
-                style: TextStyle(
-                  color: kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  cart!.toJson();
-                  Service.remove('cart');
-                  Service.remove('aliexpressCart');
-                  cart = Cart();
-                  addToCart(item, destination, storeLocation, storeId);
-                });
+  /// Item is from a store other than the cart's: merge into the combo's
+  /// second store, or ask whether to clear or order from both stores.
+  Future<void> _handleOtherStore(
+    Item item,
+    DestinationAddress destination,
+    StoreLocation storeLocation,
+    String storeId,
+  ) async {
+    // ── Re-entrancy guard ─────────────────────────────────────────────────
+    // Prevents multiple rapid taps from racing through while the async
+    // distance-check API call is awaited.
+    if (_comboDistanceCheckInProgress) return;
 
-                Navigator.of(alertContext).pop();
-                // Future.delayed(Duration(seconds: 2));
-                // Navigator.of(context).pop();
-              },
-            ),
-          ],
+    // ── Distance check ────────────────────────────────────────────────────
+    // Block before showing any dialog if the stores are too far apart.
+    // Fail-closed: if store locations are missing or the API call fails,
+    // block the combo rather than allowing an unchecked add.
+    final firstStoreLoc = cart?.storeLocation;
+    if (cart != null) {
+      // If location data is missing, block combo (fail-closed)
+      if (firstStoreLoc == null ||
+          firstStoreLoc.lat == null ||
+          firstStoreLoc.long == null ||
+          storeLocation.lat == null ||
+          storeLocation.long == null) {
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: "Store location unavailable. Cannot verify combo distance.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+
+      _comboDistanceCheckInProgress = true;
+      try {
+        final distRes = await ComboService.StoreDistancegetMax(
+          context,
+          userData: userData,
+          storeIdA: cart!.storeId ?? '',
+          storeIdB: storeId,
+        );
+        if (!mounted) return;
+
+        // Fail-closed: API failure → block
+        if (distRes == null || distRes['success'] != true) {
+          Service.showMessage(
+            context: context,
+            title: "Could not verify store distance. Please try again.",
+            error: true,
+            duration: 4,
+          );
+          return;
+        }
+
+        final double maxDistM =
+            (distRes['max_distance'] as num? ?? 0.0).toDouble();
+        final double actualDistM =
+            AddressValidationService.calculateDistanceInMeters(
+          firstStoreLoc.lat!,
+          firstStoreLoc.long!,
+          storeLocation.lat!,
+          storeLocation.long!,
+        );
+        if (actualDistM > maxDistM) {
+          if (!mounted) return;
+          await showComboTooFarDialog(
+            context: context,
+            actualKm: actualDistM / 1000.0,
+            maxKm: maxDistM / 1000.0,
+          );
+          return; // blocked — no combo dialog shown
+        }
+      } finally {
+        _comboDistanceCheckInProgress = false;
+      }
+    }
+    // ── end distance check ─────────────────────────────────────────────────
+
+    if (await ComboCart.addToSecondStoreIfMatches(storeId, item)) {
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: "Item added to cart",
+        error: false,
+      );
+      return;
+    }
+    final comboFull = await ComboCart.load() != null;
+    final allowCombo = await ComboCart.canStartWith(cart);
+    if (!mounted) return;
+    _showDialog(
+      item,
+      destination,
+      storeLocation,
+      storeId,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+    );
+  }
+
+  void _showDialog(
+    item,
+    destination,
+    storeLocation,
+    storeId, {
+    bool allowCombo = false,
+    bool comboFull = false,
+  }) {
+    showStoreConflictDialog(
+      context: context,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+      onClear: () {
+        setState(() {
+          Service.remove('cart');
+          Service.remove('aliexpressCart');
+          ComboCart.clear();
+          cart = Cart();
+          addToCart(item, destination, storeLocation, storeId);
+        });
+        Service.showMessage(
+          context: context,
+          title: "Item added to cart",
+          error: false,
+        );
+      },
+      onCombo: () async {
+        await ComboCart.start(
+          userData: userData,
+          storeId: storeId,
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
         );
       },
     );

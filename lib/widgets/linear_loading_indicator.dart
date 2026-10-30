@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
@@ -24,33 +23,37 @@ class LinearLoadingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      child: Container(
-        height: height ?? getProportionateScreenHeight(kDefaultPadding * 5),
-        width: width ?? getProportionateScreenWidth(kDefaultPadding * 5),
-        decoration: BoxDecoration(
-          color: backgroundColor ?? kGreyColor.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(kDefaultPadding),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: getProportionateScreenHeight(kDefaultPadding / 2),
-            children: [
-              SpinKitWave(
-                color: iconColor ?? kSecondaryColor,
-                size: getProportionateScreenWidth(kDefaultPadding),
-              ),
-              Text(
-                title ?? "Loading...",
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                  color: kPrimaryColor,
-                  fontSize: fontSize ?? 14,
-                ),
-              ),
-            ],
+      constraints: BoxConstraints(
+        minHeight: height ?? getProportionateScreenHeight(kDefaultPadding * 5),
+        minWidth: width ?? getProportionateScreenWidth(kDefaultPadding * 5),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: getProportionateScreenWidth(kDefaultPadding),
+        vertical: getProportionateScreenHeight(kDefaultPadding),
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? kGreyColor.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(kDefaultPadding),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: getProportionateScreenHeight(kDefaultPadding / 2),
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              iconColor ?? kSecondaryColor,
+            ),
           ),
-        ),
+          Text(
+            title ?? "Loading...",
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelLarge!.copyWith(
+              color: kPrimaryColor,
+              fontSize: fontSize ?? 14,
+            ),
+          ),
+        ],
       ),
     );
   }

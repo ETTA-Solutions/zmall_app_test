@@ -175,6 +175,7 @@ class _BodyState extends State<Body> {
       await Service.saveBool('logged', false);
       await Service.remove('user');
       await Service.remove('cart');
+      await Service.remove('combo_cart');
       await Service.remove('aliexpressCart');
 
       ///newly added for aliexpress
@@ -232,6 +233,7 @@ class _BodyState extends State<Body> {
         await Service.saveBool('logged', false);
         await Service.remove('user');
         await Service.remove('cart');
+        await Service.remove('combo_cart');
         await Service.remove('aliexpressCart'); //NEW
         await Service.remove('images');
         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
@@ -336,6 +338,7 @@ class _BodyState extends State<Body> {
       await Service.saveBool('logged', false);
       await Service.remove('user');
       await Service.remove('cart');
+      await Service.remove('combo_cart');
       await Service.remove('aliexpressCart');
       await Service.remove('images');
       await Service.remove('p_items');

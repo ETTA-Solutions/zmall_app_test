@@ -1590,7 +1590,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     };
 
     var body = json.encode(data);
-    // debugPrint("invoice body $body");
+    debugPrint("[COMBO-DEBUG] get_order_cart_invoice BODY: $body");
     try {
       http.Response response = await http
           .post(
@@ -1612,6 +1612,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      debugPrint(
+        "[COMBO-DEBUG] get_order_cart_invoice RESPONSE: ${response.body}",
+      );
       final decoded = json.decode(response.body);
       // TEMP DEBUG: compare with chatbot checkout
       debugPrint("🔎 [MAIN CHECKOUT] invoice payload: $body", wrapWidth: 800);

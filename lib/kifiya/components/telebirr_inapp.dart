@@ -43,15 +43,15 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
         'appId': appId,
         'shortCode': shortCode,
       };
-      // debugPrint('Invoking native placeOrder method with arguments:>>>> $arguments\n');
+      debugPrint('[TelebirrInApp][iOS] Invoking native placeOrder with arguments: $arguments');
 
       final response = await _channel.invokeMethod('placeOrder', arguments);
-      // debugPrint("Native iOS Response:>>>> ${response.toString()}\n");
+      debugPrint('[TelebirrInApp][iOS] Native iOS Response: $response');
 
       // Check if the response is a map and contains status and code
-      if (response.isNotEmpty) {
-        final int code = int.parse(response['code'].toString());
-        // debugPrint("iOS Code:>>>> $code");
+      if (response != null && response.isNotEmpty) {
+        final int code = int.tryParse(response['code'].toString()) ?? -1;
+        debugPrint('[TelebirrInApp][iOS] Parsed code: $code, status: ${response['status']}, errMsg: ${response['errMsg']}');
         Map<String, dynamic> _paymentResult = {
           "code": code,
           "status": response['status'].toString(),
@@ -59,38 +59,14 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
           "message": response['errMsg'].toString(),
         };
 
-        ///Confirm payment verification
-        if (code == 0) {
-          // var confirmPaymentResponce = await confirmPayment(
-          //   code: code,
-          //   status: response['status'].toString(),
-          //   traceNo: widget.traceNo,
-          //   message: response['errMsg'].toString(),
-          // );
-          // debugPrint("confirmPaymentResponce:>>>> $confirmPaymentResponce");
-          // if (confirmPaymentResponce != null &&
-          //     confirmPaymentResponce["success"]) {
-          _handlePaymentResponse(code: code);
-          Future.delayed(
-            Duration(seconds: 2),
-            () => Navigator.pop(context, _paymentResult),
-          );
-          // } else {
-          //   _handlePaymentResponse(code: -99);
-          //   Future.delayed(
-          //     Duration(seconds: 2),
-          //     () => Navigator.pop(context, _paymentResult),
-          //   );
-          // }
-        } else {
-          _handlePaymentResponse(code: code);
-          Future.delayed(
-            Duration(seconds: 2),
-            () => Navigator.pop(context, _paymentResult),
-          );
-        }
+        _handlePaymentResponse(code: code);
+        Future.delayed(
+          Duration(seconds: 2),
+          () => Navigator.pop(context, _paymentResult),
+        );
       } else {
         // Unexpected response format
+        debugPrint('[TelebirrInApp][iOS] Unexpected empty/null response from native SDK');
         _handlePaymentResponse(code: -1);
         Future.delayed(
           Duration(seconds: 2),
@@ -98,32 +74,17 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
         );
       }
     } on PlatformException catch (e) {
-      _handlePaymentResponse(code: e.details["code"]);
+      debugPrint('[TelebirrInApp][iOS] PlatformException caught: code=${e.code}, message=${e.message}, details=${e.details}');
+      int errorCode = -1;
+      if (e.details is Map && e.details["code"] != null) {
+        errorCode = int.tryParse(e.details["code"].toString()) ?? -1;
+      }
+      _handlePaymentResponse(code: errorCode, errorMessage: e.message);
       Future.delayed(Duration(seconds: 2), () => Navigator.pop(context, false));
-      // debugPrint('PlatformException caught:');
-      // debugPrint('Error details: ${e.details}');
-      // debugPrint('Error message: ${e.message}');
-      // debugPrint('Error code: ${e.details["code"]}');
-      // _handlePaymentResponse(code: e.details["code"]);
-      //   if (mounted) {
-      //     // Check if the widget is still mounted
-      //     Future.delayed(Duration(seconds: 2), () {
-      //       if (mounted) {
-      //         Navigator.pop(
-      //           context,
-      //          false
-      //         );
-      //       }
-      //     });
-      //   }
-      // } catch (e) {
-      // debugPrint('Unexpected error in placeOrderIOS: $e');
-      //  Future.delayed(
-      //     Duration(seconds: 2),
-      //     () => Navigator.pop(
-      //           context,
-      //           false
-      //         ));
+    } catch (e, stackTrace) {
+      debugPrint('[TelebirrInApp][iOS] Unexpected error in placeOrderIOS: $e\n$stackTrace');
+      _handlePaymentResponse(code: -1);
+      Future.delayed(Duration(seconds: 2), () => Navigator.pop(context, false));
     }
   }
 
@@ -138,17 +99,19 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
         'appId': appId,
         'shortCode': shortCode,
       };
+      debugPrint('[TelebirrInApp][Android] Invoking native placeOrder with arguments: $arguments');
 
-      final Map<Object?, Object?> response = await _channel.invokeMethod(
+      final dynamic response = await _channel.invokeMethod(
         'placeOrder',
         arguments,
       );
 
-      // debugPrint("***Response From Native (Android/iOS)***: ${response.toString()}");
+      debugPrint('[TelebirrInApp][Android] Native Android Response: $response');
 
       // Check if the response is a map and contains status and code
-      if (response.isNotEmpty) {
-        final int code = int.parse(response['code'].toString());
+      if (response != null && response is Map && response.isNotEmpty) {
+        final int code = int.tryParse(response['code'].toString()) ?? -1;
+        debugPrint('[TelebirrInApp][Android] Parsed code: $code, status: ${response['status']}, errMsg: ${response['errMsg']}');
         Map<String, dynamic> _paymentResult = {
           "code": code,
           "status": response['status'].toString(),
@@ -156,29 +119,14 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
           "message": response['errMsg'].toString(),
         };
 
-        ///Confirm payment verification
         if (code == 0) {
-          // var confirmPaymentResponce = await confirmPayment(
-          //   code: code,
-          //   status: response['status'].toString(),
-          //   traceNo: widget.traceNo,
-          //   message: response['errMsg'].toString(),
-          // );
-          // if (confirmPaymentResponce != null &&
-          //     confirmPaymentResponce["success"]) {
           _handlePaymentResponse(code: code);
           Future.delayed(
             Duration(seconds: 2),
             () => Navigator.pop(context, _paymentResult),
           );
-          // } else {
-          //   Future.delayed(
-          //     Duration(seconds: 2),
-          //     () => Navigator.pop(context, _paymentResult),
-          //   );
-          // }
         } else {
-          _handlePaymentResponse(code: -99);
+          _handlePaymentResponse(code: code != -1 ? code : -99);
           Future.delayed(
             Duration(seconds: 2),
             () => Navigator.pop(context, _paymentResult),
@@ -186,6 +134,7 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
         }
       } else {
         // Unexpected response format
+        debugPrint('[TelebirrInApp][Android] Unexpected empty/null response from native SDK');
         _handlePaymentResponse(code: -1);
         Future.delayed(
           Duration(seconds: 2),
@@ -193,7 +142,16 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
         );
       }
     } on PlatformException catch (e) {
-      _handlePaymentResponse(code: e.details["code"]);
+      debugPrint('[TelebirrInApp][Android] PlatformException caught: code=${e.code}, message=${e.message}, details=${e.details}');
+      int errorCode = -1;
+      if (e.details is Map && e.details["code"] != null) {
+        errorCode = int.tryParse(e.details["code"].toString()) ?? -1;
+      }
+      _handlePaymentResponse(code: errorCode, errorMessage: e.message);
+      Future.delayed(Duration(seconds: 2), () => Navigator.pop(context, false));
+    } catch (e, stackTrace) {
+      debugPrint('[TelebirrInApp][Android] Unexpected error in placeOrder: $e\n$stackTrace');
+      _handlePaymentResponse(code: -1);
       Future.delayed(Duration(seconds: 2), () => Navigator.pop(context, false));
     }
   }
@@ -248,8 +206,9 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
           break;
       }
     }
-    // Display the message in the UI
+    debugPrint('[TelebirrInApp] _handlePaymentResponse: code=$code, errorMessage=$errorMessage -> isError=$isError, message="$message"');
 
+    // Display the message in the UI
     Service.showMessage(
       context: context,
       title: message,
@@ -261,6 +220,7 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[TelebirrInApp] Initializing TelebirrInApp for amount=${widget.amount}, traceNo=${widget.traceNo}, phone=${widget.phone}');
     getRreceiveCode(
       amount: "${widget.amount}",
       traceNo: widget.traceNo,
@@ -276,6 +236,7 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
         centerTitle: true,
         leading: BackButton(
           onPressed: () {
+            debugPrint('[TelebirrInApp] User clicked back button');
             Navigator.pop(context, false);
           },
         ),
@@ -365,52 +326,14 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
     );
   }
 
-  // Future<dynamic> confirmPayment({
-  //   required int code,
-  //   required String traceNo,
-  //   required String status,
-  //   required String message,
-  // }) async {
-  //   var url = "https://pgw.shekla.app/telebirrInapp/in_app_call_back";
-  //   Map data = {
-  //     "code": code,
-  //     "status": status,
-  //     "traceNo": traceNo,
-  //     "message": message,
-  //   };
-  //   var body = json.encode(data);
-  //   try {
-  //     http.Response response = await http
-  //         .post(
-  //           Uri.parse(url),
-  //           headers: <String, String>{
-  //             "Content-Type": "application/json",
-  //             "Accept": "application/json",
-  //           },
-  //           body: body,
-  //         )
-  //         .timeout(
-  //           Duration(seconds: 15),
-  //           onTimeout: () {
-  //             throw TimeoutException("The connection has timed out!");
-  //           },
-  //         );
-  //     return json.decode(response.body);
-  //   } catch (e) {
-  //     return null;
-  //   }
-  // }
-
   Future<dynamic> getRreceiveCode({
     required String amount,
     required String traceNo,
     required String phone,
   }) async {
     final deviceType = Platform.isIOS ? "iOS" : "android";
-    var url =
-        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/telebirr_inapp/create_order";
-    // "https://pgw.shekla.app/telebirrInapp/create_order";
-    var responseData;
+    var baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    var url = "$baseUrl/api/telebirr_inapp/create_order";
     Map data = {
       "traceNo": traceNo,
       "phone": phone,
@@ -419,6 +342,7 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
       "isInapp": true,
     };
     var body = json.encode(data);
+    debugPrint('[TelebirrInApp] getRreceiveCode -> POST $url\nPayload: $body\nDevice: $deviceType');
     try {
       http.Response response = await http
           .post(
@@ -436,31 +360,45 @@ class _TelebirrInAppState extends State<TelebirrInApp> {
             },
           );
 
-      setState(() {
-        responseData = json.decode(response.body);
-      });
+      debugPrint('[TelebirrInApp] getRreceiveCode response status: ${response.statusCode}, body: ${response.body}');
+      var responseData = json.decode(response.body);
+
       if (responseData != null &&
+          responseData['createOrderResult'] != null &&
           responseData['createOrderResult']['result']
-                  .toString()
+                  ?.toString()
                   .toLowerCase() ==
               'success') {
+        final appId = responseData["appId"]?.toString() ?? "";
+        final shortCode = responseData["shortCode"]?.toString() ?? "";
+        final receiveCode = responseData['createOrderResult']?['biz_content']?['receiveCode']?.toString() ?? "";
+        debugPrint('[TelebirrInApp] create_order success: appId=$appId, shortCode=$shortCode, receiveCode=$receiveCode');
+
         //////check platform and call function based on the device placeOrderAndroid or placeOrderIos
-        deviceType == "android"
-            ? placeOrder(
-                appId: responseData["appId"],
-                shortCode: responseData["shortCode"],
-                receiveCode:
-                    responseData['createOrderResult']['biz_content']['receiveCode'],
-              )
-            : placeOrderIOS(
-                appId: responseData["appId"],
-                shortCode: responseData["shortCode"],
-                receiveCode:
-                    responseData['createOrderResult']['biz_content']['receiveCode'],
-              );
+        if (deviceType == "android") {
+          placeOrder(
+            appId: appId,
+            shortCode: shortCode,
+            receiveCode: receiveCode,
+          );
+        } else {
+          placeOrderIOS(
+            appId: appId,
+            shortCode: shortCode,
+            receiveCode: receiveCode,
+          );
+        }
+      } else {
+        debugPrint('[TelebirrInApp] create_order returned error response: $responseData');
+        _handlePaymentResponse(
+          code: -1,
+          errorMessage: responseData?['createOrderResult']?['message']?.toString(),
+        );
       }
-      return json.decode(response.body);
-    } catch (e) {
+      return responseData;
+    } catch (e, stackTrace) {
+      debugPrint('[TelebirrInApp] Error in getRreceiveCode: $e\n$stackTrace');
+      _handlePaymentResponse(code: -1, errorMessage: "Error initiating payment: $e");
       return null;
     }
   }

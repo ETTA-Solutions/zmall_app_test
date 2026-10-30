@@ -80,8 +80,8 @@ class _WegagenUssdState extends State<WegagenUssd> {
   /// follow only these lines.
   void _logPaymentResult(dynamic data, bool approved) {
     // final params = (data is Map && data['params'] is Map)
-        // ? data['params'] as Map
-        // : const {};
+    // ? data['params'] as Map
+    // : const {};
 
     // String row(String icon, String label, dynamic value) =>
     //     '[Wegagen] $icon $label: ${value ?? '-'}';
@@ -153,7 +153,7 @@ class _WegagenUssdState extends State<WegagenUssd> {
                 ],
               ),
               Image.asset(
-                "images/payment/wegagen.png",
+                "images/payment/wegagen_real.png",
                 height: getProportionateScreenHeight(kDefaultPadding * 10),
                 width: getProportionateScreenWidth(kDefaultPadding * 10),
               ),
@@ -191,14 +191,17 @@ class _WegagenUssdState extends State<WegagenUssd> {
     // casts it to `order_payment.unique_id` (a Number). Sending the compound
     // `unique` (with underscores) caused a 500 CastError. Strip to digits only
     // so the cast can never fail.
-    final invoiceId = widget.orderPaymentUniqueId.replaceAll(RegExp(r'[^0-9]'), '');
-
+    final invoiceId = widget.orderPaymentUniqueId.replaceAll(
+      RegExp(r'[^0-9]'),
+      '',
+    );
 
     Map data = {
-      "requestId": "purchase-${widget.traceNo}", //purchase-widget.traceNo format
+      "requestId":
+          "purchase-${widget.traceNo}", //purchase-widget.traceNo format
       "referenceId": widget.traceNo, //just use trace number
       "invoiceId": invoiceId,
-      "accountNo":  "251${widget.phone}", //for dynamic use
+      "accountNo": "251${widget.phone}", //for dynamic use
       "amount": widget.hisab.toStringAsFixed(2),
       "description": "ZMall order payment",
     };

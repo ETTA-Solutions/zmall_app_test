@@ -117,6 +117,87 @@ class _OrderDetailState extends State<OrderDetail> {
   //   );
   // }
 
+  // ---------------------------------------------------------------------------
+  // Combo cross-reference banner (§order-detail-combo-banner)
+  //
+  // Shown at the top of the Order Status tab when this order is part of a
+  // two-store combo.  Detects combo membership via:
+  //   1. order['combo_id']
+  //   2. order['order_payment_detail']?['combo_id']
+  //
+  // Tapping the banner pops back to the store-picker bottom sheet or the
+  // orders list — no extra route plumbing needed.
+  // ---------------------------------------------------------------------------
+  String? _resolveComboId() {
+    final raw = widget.order;
+    final id = raw['combo_id'] ?? raw['order_payment_detail']?['combo_id'];
+    if (id == null) return null;
+    final s = id.toString();
+    return s.isNotEmpty ? s : null;
+  }
+
+  Widget _buildComboCrossRefBanner() {
+    final comboId = _resolveComboId();
+    if (comboId == null) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        margin: EdgeInsets.symmetric(
+          horizontal: getProportionateScreenWidth(kDefaultPadding),
+          vertical: getProportionateScreenHeight(kDefaultPadding / 3),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: getProportionateScreenWidth(kDefaultPadding / 1.5),
+          vertical: getProportionateScreenHeight(kDefaultPadding / 2),
+        ),
+        decoration: BoxDecoration(
+          color: kSecondaryColor.withValues(alpha: 0.08),
+          border: Border.all(color: kSecondaryColor.withValues(alpha: 0.30)),
+          borderRadius: BorderRadius.circular(kDefaultPadding / 1.2),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              HeroiconsOutline.shoppingBag,
+              size: getProportionateScreenHeight(16),
+              color: kSecondaryColor,
+            ),
+            SizedBox(width: getProportionateScreenWidth(kDefaultPadding / 2)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Part of a combo order (2 stores · 1 driver)',
+                    style: TextStyle(
+                      color: kSecondaryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: getProportionateScreenHeight(12.5),
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Tap to view the other store\'s order',
+                    style: TextStyle(
+                      color: kSecondaryColor.withValues(alpha: 0.75),
+                      fontSize: getProportionateScreenHeight(11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              HeroiconsOutline.chevronRight,
+              size: getProportionateScreenHeight(16),
+              color: kSecondaryColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   //
   void _getOrderStatus() async {
     var data = await getOrderStatus();
@@ -338,6 +419,9 @@ class _OrderDetailState extends State<OrderDetail> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── Combo cross-reference banner ───────────────────
+                        // Visible only when this order is part of a combo.
+                        _buildComboCrossRefBanner(),
                         ////order price section///
                         Container(
                           padding: EdgeInsets.symmetric(

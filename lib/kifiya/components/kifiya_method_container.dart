@@ -11,6 +11,7 @@ class KifiyaMethodContainer extends StatelessWidget {
     required this.kifiyaMethod,
     required this.imagePath,
     required this.press,
+    this.isSoon = false,
   });
 
   final bool selected;
@@ -18,10 +19,11 @@ class KifiyaMethodContainer extends StatelessWidget {
   final String title;
   final String imagePath;
   final GestureTapCallback press;
+  final bool isSoon;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       // alignment: Alignment.center,
       width: getProportionateScreenWidth(100),
       height: getProportionateScreenWidth(100),
@@ -89,6 +91,37 @@ class KifiyaMethodContainer extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+
+    if (!isSoon) return card;
+
+    return Opacity(
+      opacity: 0.65,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          card,
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: kSecondaryColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                "Soon",
+                style: TextStyle(
+                  color: kPrimaryColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

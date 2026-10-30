@@ -1,0 +1,2748 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>COMBO_MOBILE_CHANGES.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="combo-order-mobile-changes">Combo Order: Mobile Changes</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Branch</strong></td>
+<td><code>new_combo</code></td>
+</tr>
+<tr>
+<td><strong>Date</strong></td>
+<td>2026-10-04</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Built, <code>flutter analyze lib</code> shows 0 errors. <strong>Not yet tested on a device or against the test backend.</strong> Not committed.</td>
+</tr>
+<tr>
+<td><strong>Related</strong></td>
+<td><code>zmall_files/combo/COMBO_ORDER_IMPLEMENTATION.md</code> (the spec this follows)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="contents">Contents</h2>
+<ol>
+<li><a href="#1-summary">Summary</a></li>
+<li><a href="#2-user-flow">User flow</a></li>
+<li><a href="#3-design-decisions">Design decisions</a></li>
+<li><a href="#4-file-list">File list</a></li>
+<li><a href="#5-new-files-full-code">New files (full code)</a></li>
+<li><a href="#6-changed-files-diffs">Changed files (diffs)</a></li>
+<li><a href="#7-not-done-yet--open-questions">Not done yet / open questions</a></li>
+<li><a href="#8-how-to-test">How to test</a></li>
+</ol>
+<h2 id="1-summary">1. Summary</h2>
+<p>Customers can now order from <strong>2 stores in one checkout</strong>, and one driver delivers both. The app uses the 4 backend endpoints:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Endpoint</th>
+<th>Called from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>combo_add_item_in_cart</code></td>
+<td><code>DeliveryScreen._addToComboCart</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>combo_get_order_cart_invoice</code></td>
+<td><code>ComboCheckoutScreen._getInvoice</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>combo_pay_order_payment</code></td>
+<td><code>ComboCheckoutScreen._pay</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>combo_create_order</code></td>
+<td><code>ComboCheckoutScreen._createOrder</code></td>
+</tr>
+</tbody>
+</table>
+<p>Single-store ordering is unchanged. If there is no <code>combo_cart</code>, every screen takes the old path.</p>
+<h2 id="2-user-flow">2. User flow</h2>
+<pre class="hljs"><code><div>Item / Product / Store screen
+  ├─ same store as cart            → merge (unchanged)
+  ├─ same store as combo store 2   → merge into store 2
+  ├─ new store, no combo yet       → dialog: [Cancel] [Clear] [Order from both stores]
+  └─ new store, combo already full → dialog: [Cancel] [Clear]   (&quot;at most 2 stores&quot;)
+        │
+        ▼
+Cart: store 1 items + &quot;Second store · same delivery&quot; section, total = both stores
+        │  (store 1 emptied → store 2 becomes the normal cart)
+        │  (store 2 emptied → combo removed)
+        ▼
+DeliveryScreen ── combo_add_item_in_cart ──► combo_id + cart_id per store_id
+        │  (self-pickup blocked)
+        ▼
+ComboCheckoutScreen
+   ├─ computeComboRoute: farther store = origin (store_a), Directions API (falls back to haversine)
+   ├─ combo_get_order_cart_invoice ──► order_payment per store, combined totals
+   ├─ choose Cash or Wallet
+   ├─ change_user_wallet_status(is_use_wallet)
+   ├─ combo_pay_order_payment
+   └─ combo_create_order ──► clear cart + combo_cart → ReportScreen
+</div></code></pre>
+<h2 id="3-design-decisions">3. Design decisions</h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Store 1 stays in the normal <code>cart</code> key. Only store 2 and the server ids go in <code>combo_cart</code>.</td>
+<td>Every existing screen (cart badge, item screens, delivery, single checkout) keeps reading <code>cart</code> without changes. The spec suggested putting both carts in <code>combo_cart</code>, but that would have broken those screens.</td>
+</tr>
+<tr>
+<td>Ids are saved <strong>by <code>store_id</code></strong>, never as &quot;a&quot;/&quot;b&quot;.</td>
+<td>The server's <code>store_a</code>/<code>store_b</code> labels swap after the route is computed.</td>
+</tr>
+<tr>
+<td>The farther store from the customer is the origin (<code>store_a</code>).</td>
+<td>The store-to-store leg is the same both ways, so ending at the nearer store gives the shorter trip. Driver search starts around <code>store_a</code>.</td>
+</tr>
+<tr>
+<td><code>total_distance</code> is sent in meters and <code>total_time</code> in seconds, rounded.</td>
+<td>Matches what web sends (863 m / 282 s).</td>
+</tr>
+<tr>
+<td>Wallet uses <code>change_user_wallet_status</code> first, then pays with <code>is_payment_mode_cash: true</code>.</td>
+<td>This is how the existing <code>KifiyaScreen</code> pays with wallet. The spec says &quot;false = wallet&quot;, but that doesn't match the app's current flow.</td>
+</tr>
+<tr>
+<td><code>order_from</code> is <code>&quot;android&quot;</code> / <code>&quot;ios&quot;</code>.</td>
+<td>Web sends <code>&quot;web&quot;</code>. <strong>Confirm with the backend.</strong></td>
+</tr>
+<tr>
+<td>Only cash and wallet are offered.</td>
+<td>The backend doesn't support external gateways for combo yet.</td>
+</tr>
+<tr>
+<td>A separate <code>ComboCheckoutScreen</code> instead of changing <code>CheckoutScreen</code> / <code>KifiyaScreen</code>.</td>
+<td>Those screens are 2,200 and 4,200 lines and already busy. Keeping combo separate avoids breaking single-store checkout.</td>
+</tr>
+<tr>
+<td>After a successful pay, the screen remembers <code>_paid</code> and won't let the user go back. A retry only calls create.</td>
+<td>Prevents paying twice if create fails.</td>
+</tr>
+<tr>
+<td>Every new item resets the server ids, but <code>combo_id</code> is kept.</td>
+<td>The delivery screen re-syncs and sends the same <code>combo_id</code>, as the spec asks.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-file-list">4. File list</h2>
+<p><strong>New</strong></p>
+<ul>
+<li><code>lib/combo/models/combo_cart.dart</code>: Local combo state. Holds the <strong>second</strong> store's cart and the ids the server returns, keyed by <code>store_id</code>. Saved under the <code>combo_cart</code> key.</li>
+<li><code>lib/combo/services/combo_service.dart</code>: The 4 combo HTTP calls, plus <code>change_user_wallet_status</code>, <code>get_detail</code> and the store detail call. Also turns error responses into readable text.</li>
+<li><code>lib/combo/combo_route.dart</code>: Picks the pickup order (the farther store goes first) and gets the whole-trip distance and time from Google Directions. Falls back to straight-line distance.</li>
+<li><code>lib/combo/combo_checkout_screen.dart</code>: New checkout screen for 2 stores: route → invoice → wallet/cash → pay → create → success.</li>
+<li><code>lib/combo/widgets/store_conflict_dialog.dart</code>: Shared &quot;different store&quot; dialog with <strong>Cancel / Clear / Order from both stores</strong>.</li>
+<li><code>lib/combo/widgets/combo_store_section.dart</code>: Cart section for the second store: items, +/− quantity, remove, subtotal, &quot;Add more?&quot;.</li>
+</ul>
+<p><strong>Changed</strong></p>
+<ul>
+<li><code>lib/item/components/body.dart</code>: Item screen. A different-store item now goes through <code>_handleOtherStore</code>: it merges into the combo's second store, or shows the new dialog. Clear also removes <code>combo_cart</code>.</li>
+<li><code>lib/product/product_screen.dart</code>: Store product list. Same change as the item screen. Shows a message instead of closing the screen.</li>
+<li><code>lib/notifications/notification_store.dart</code>: Store screen opened from a notification or &quot;Add more?&quot;. Same change, plus a <code>language.dart</code> import.</li>
+<li><code>lib/cart/components/body.dart</code>: Cart screen. Loads <code>combo_cart</code>, shows <code>ComboStoreSection</code> as the last list row and includes store 2 in the total. If store 1 is emptied, store 2 becomes the normal cart. Clear also removes the combo.</li>
+<li><code>lib/delivery/delivery_screen.dart</code>: Delivery screen. If a combo exists, <code>_addToCart</code> calls <code>_addToComboCart</code>: it blocks self-pickup, calls <code>combo_add_item_in_cart</code>, saves <code>combo_id</code> and the cart ids by <code>store_id</code>, then opens <code>ComboCheckoutScreen</code>.</li>
+<li><code>lib/models/language.dart</code>: New strings (English and Chinese): <code>orderFromBothStores</code>, <code>comboItemsFound</code>, <code>comboStoreLimit</code>, <code>comboAdded</code>.</li>
+<li><code>lib/services/service.dart</code>: Logout (<code>clearUserData</code>) also removes <code>combo_cart</code>.</li>
+<li><code>lib/services/core_services.dart</code>: Cache clear also removes <code>combo_cart</code>.</li>
+<li><code>lib/profile/components/body.dart</code>: Logout and delete-account paths (3 places) also remove <code>combo_cart</code>.</li>
+</ul>
+<blockquote>
+<p>Some files were already modified on this branch before this work: <code>checkout_screen.dart</code>, <code>kifiya_screen.dart</code>, <code>telebirr_inapp.dart</code>, <code>wegagen_ussd.dart</code>, <code>constants.dart</code> and others. Those changes are <strong>not</strong> part of this document.</p>
+</blockquote>
+<h2 id="5-new-files-full-code">5. New files (full code)</h2>
+<h3 id="51-libcombomodelscombocartdart">5.1 <code>lib/combo/models/combo_cart.dart</code></h3>
+<p>Local combo state. Holds the <strong>second</strong> store's cart and the ids the server returns, keyed by <code>store_id</code>. Saved under the <code>combo_cart</code> key.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/cart.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/services/service.dart'</span>;
+
+<span class="hljs-comment">/// <span class="markdown">Local state for a two-store (combo) order.</span></span>
+<span class="hljs-comment">///
+<span class="markdown">/// The first store stays in the normal <span class="hljs-code">`cart`</span> key so every existing screen</span></span>
+<span class="hljs-comment">/// <span class="markdown">keeps working. This object holds the second store and the ids returned by</span></span>
+<span class="hljs-comment">/// <span class="markdown">the <span class="hljs-code">`combo_*`</span> endpoints. Ids are always keyed by store_id, because the</span></span>
+<span class="hljs-comment">/// <span class="markdown">server's <span class="hljs-code">`store_a`</span> / <span class="hljs-code">`store_b`</span> labels change after the route is computed.</span></span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboCart</span> </span>{
+  <span class="hljs-keyword">static</span> <span class="hljs-keyword">const</span> <span class="hljs-built_in">String</span> storageKey = <span class="hljs-string">'combo_cart'</span>;
+
+  ComboCart({
+    required <span class="hljs-keyword">this</span>.second,
+    <span class="hljs-keyword">this</span>.comboId,
+    <span class="hljs-keyword">this</span>.originStoreId,
+    <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;? cartIdByStore,
+    <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;? orderPaymentIdByStore,
+  }) : cartIdByStore = cartIdByStore ?? {},
+       orderPaymentIdByStore = orderPaymentIdByStore ?? {};
+
+  <span class="hljs-comment">/// <span class="markdown">Second store's cart (items, store id, store location).</span></span>
+  Cart second;
+
+  <span class="hljs-comment">/// <span class="markdown">From combo<span class="hljs-emphasis">_add_</span>item<span class="hljs-emphasis">_in_</span>cart.</span></span>
+  <span class="hljs-built_in">String</span>? comboId;
+
+  <span class="hljs-comment">/// <span class="markdown">Farther store from the customer; sent as <span class="hljs-code">`store_a`</span> from the invoice on.</span></span>
+  <span class="hljs-built_in">String</span>? originStoreId;
+
+  <span class="hljs-comment">/// <span class="markdown">store<span class="hljs-emphasis">_id -&gt; cart_</span>id, from combo<span class="hljs-emphasis">_add_</span>item<span class="hljs-emphasis">_in_</span>cart.</span></span>
+  <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt; cartIdByStore;
+
+  <span class="hljs-comment">/// <span class="markdown">store<span class="hljs-emphasis">_id -&gt; order_</span>payment <span class="hljs-emphasis">_id, from combo_</span>get<span class="hljs-emphasis">_order_</span>cart_invoice.</span></span>
+  <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt; orderPaymentIdByStore;
+
+  <span class="hljs-built_in">String</span>? <span class="hljs-keyword">get</span> secondStoreId =&gt; second.storeId;
+
+  <span class="hljs-keyword">factory</span> ComboCart.fromJson(<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt; json) =&gt; ComboCart(
+    second: Cart.fromJson(json[<span class="hljs-string">'second'</span>]),
+    comboId: json[<span class="hljs-string">'combo_id'</span>],
+    originStoreId: json[<span class="hljs-string">'origin_store_id'</span>],
+    cartIdByStore: <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;.from(json[<span class="hljs-string">'cart_id_by_store'</span>] ?? {}),
+    orderPaymentIdByStore: <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;.from(
+      json[<span class="hljs-string">'order_payment_id_by_store'</span>] ?? {},
+    ),
+  );
+
+  <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt; toJson() =&gt; {
+    <span class="hljs-string">'second'</span>: second.toJson(),
+    <span class="hljs-string">'combo_id'</span>: comboId,
+    <span class="hljs-string">'origin_store_id'</span>: originStoreId,
+    <span class="hljs-string">'cart_id_by_store'</span>: cartIdByStore,
+    <span class="hljs-string">'order_payment_id_by_store'</span>: orderPaymentIdByStore,
+  };
+
+  <span class="hljs-keyword">static</span> Future&lt;ComboCart?&gt; load() <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> data = <span class="hljs-keyword">await</span> Service.read(storageKey);
+    <span class="hljs-keyword">if</span> (data == <span class="hljs-keyword">null</span>) <span class="hljs-keyword">return</span> <span class="hljs-keyword">null</span>;
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">final</span> combo = ComboCart.fromJson(<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;.from(data));
+      <span class="hljs-keyword">if</span> (combo.second.items == <span class="hljs-keyword">null</span> || combo.second.items!.isEmpty) {
+        <span class="hljs-keyword">await</span> clear();
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">null</span>;
+      }
+      <span class="hljs-keyword">return</span> combo;
+    } <span class="hljs-keyword">catch</span> (_) {
+      <span class="hljs-keyword">await</span> clear();
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">null</span>;
+    }
+  }
+
+  Future&lt;<span class="hljs-keyword">void</span>&gt; save() =&gt; Service.save(storageKey, toJson());
+
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-keyword">void</span>&gt; clear() =&gt; Service.remove(storageKey);
+
+  <span class="hljs-comment">/// <span class="markdown">Starts a combo with [item] as the first item of the second store.</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;ComboCart&gt; start({
+    required <span class="hljs-built_in">dynamic</span> userData,
+    required <span class="hljs-built_in">String</span> storeId,
+    required Item item,
+    required StoreLocation storeLocation,
+    required DestinationAddress destination,
+  }) <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> combo = ComboCart(
+      second: Cart(
+        userId: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'_id'</span>],
+        serverToken: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'server_token'</span>],
+        items: [item],
+        storeId: storeId,
+        storeLocation: storeLocation,
+        destinationAddress: destination,
+      ),
+    );
+    <span class="hljs-keyword">await</span> combo.save();
+    <span class="hljs-keyword">return</span> combo;
+  }
+
+  <span class="hljs-comment">/// <span class="markdown">Merges [item] into the second store when [storeId] is that store.</span></span>
+  <span class="hljs-comment">/// <span class="markdown">Returns false when there is no combo or it belongs to another store.</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">bool</span>&gt; addToSecondStoreIfMatches(
+    <span class="hljs-built_in">String</span>? storeId,
+    Item item,
+  ) <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> combo = <span class="hljs-keyword">await</span> load();
+    <span class="hljs-keyword">if</span> (combo == <span class="hljs-keyword">null</span> || combo.secondStoreId != storeId) <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    Service.addOrMergeCartItem(combo.second, item);
+    <span class="hljs-comment">// Items changed, so server-side ids are stale.</span>
+    combo.resetServerState();
+    <span class="hljs-keyword">await</span> combo.save();
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">true</span>;
+  }
+
+  <span class="hljs-comment">/// <span class="markdown">Whether a new store may become the second store of a combo.</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">bool</span>&gt; canStartWith(Cart? firstCart) <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">if</span> (firstCart == <span class="hljs-keyword">null</span> || firstCart.storeId == <span class="hljs-keyword">null</span>) <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    <span class="hljs-keyword">if</span> (firstCart.items == <span class="hljs-keyword">null</span> || firstCart.items!.isEmpty) <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    <span class="hljs-keyword">if</span> (firstCart.isLaundryService) <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">await</span> load() != <span class="hljs-keyword">null</span>) <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    <span class="hljs-keyword">final</span> aliCart = <span class="hljs-keyword">await</span> Service.read(<span class="hljs-string">'aliexpressCart'</span>);
+    <span class="hljs-keyword">if</span> (aliCart != <span class="hljs-keyword">null</span>) {
+      <span class="hljs-keyword">try</span> {
+        <span class="hljs-keyword">if</span> (AliExpressCart.fromJson(aliCart).cart.storeId ==
+            firstCart.storeId) {
+          <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+        }
+      } <span class="hljs-keyword">catch</span> (_) {}
+    }
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">true</span>;
+  }
+
+  <span class="hljs-comment">/// <span class="markdown">Keeps combo_id (the server reuses it on re-sync) but drops ids that</span></span>
+  <span class="hljs-comment">/// <span class="markdown">belong to an older version of the carts.</span></span>
+  <span class="hljs-keyword">void</span> resetServerState() {
+    cartIdByStore.clear();
+    orderPaymentIdByStore.clear();
+    originStoreId = <span class="hljs-keyword">null</span>;
+  }
+}
+</div></code></pre>
+<h3 id="52-libcomboservicescomboservicedart">5.2 <code>lib/combo/services/combo_service.dart</code></h3>
+<p>The 4 combo HTTP calls, plus <code>change_user_wallet_status</code>, <code>get_detail</code> and the store detail call. Also turns error responses into readable text.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> <span class="hljs-string">'dart:async'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'dart:convert'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'dart:io'</span>;
+
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:flutter/foundation.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:flutter/material.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:http/http.dart'</span> <span class="hljs-keyword">as</span> http;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:provider/provider.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/combo/combo_route.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/combo/models/combo_cart.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/cart.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/metadata.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/utils/constants.dart'</span>;
+
+<span class="hljs-comment">/// <span class="markdown">HTTP calls for combo (two-store) orders.</span></span>
+<span class="hljs-comment">///
+<span class="markdown">/// Every method returns the decoded body, or null on timeout / network error.</span></span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboService</span> </span>{
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; _post(
+    BuildContext context,
+    <span class="hljs-built_in">String</span> path,
+    <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt; body, {
+    <span class="hljs-built_in">int</span> timeout = <span class="hljs-number">30</span>,
+  }) <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> url =
+        <span class="hljs-string">"<span class="hljs-subst">${Provider.of&lt;ZMetaData&gt;(context, listen: <span class="hljs-keyword">false</span>).baseUrl}</span>/api/user/<span class="hljs-subst">$path</span>"</span>;
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">if</span> (kDebugMode) debugPrint(<span class="hljs-string">"[COMBO] <span class="hljs-subst">$path</span> BODY: <span class="hljs-subst">${json.encode(body)}</span>"</span>);
+      <span class="hljs-keyword">final</span> response = <span class="hljs-keyword">await</span> http
+          .post(
+            <span class="hljs-built_in">Uri</span>.parse(url),
+            headers: &lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">String</span>&gt;{
+              <span class="hljs-string">"Content-Type"</span>: <span class="hljs-string">"application/json"</span>,
+              <span class="hljs-string">"Accept"</span>: <span class="hljs-string">"application/json"</span>,
+            },
+            body: json.encode(body),
+          )
+          .timeout(
+            <span class="hljs-built_in">Duration</span>(seconds: timeout),
+            onTimeout: () {
+              <span class="hljs-keyword">throw</span> TimeoutException(<span class="hljs-string">"The connection has timed out!"</span>);
+            },
+          );
+      <span class="hljs-keyword">if</span> (kDebugMode) debugPrint(<span class="hljs-string">"[COMBO] <span class="hljs-subst">$path</span> RESPONSE: <span class="hljs-subst">${response.body}</span>"</span>);
+      <span class="hljs-keyword">return</span> <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;.from(json.decode(response.body));
+    } <span class="hljs-keyword">catch</span> (e) {
+      <span class="hljs-keyword">if</span> (kDebugMode) debugPrint(<span class="hljs-string">"[COMBO] <span class="hljs-subst">$path</span> ERROR: <span class="hljs-subst">$e</span>"</span>);
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">null</span>;
+    }
+  }
+
+  <span class="hljs-keyword">static</span> <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt; _items(Cart cart) =&gt; {
+    <span class="hljs-string">"store_id"</span>: cart.storeId,
+    <span class="hljs-string">"items"</span>: cart.items!.map((item) =&gt; item.toJson()).toList(),
+  };
+
+  <span class="hljs-comment">/// <span class="markdown">Step 1: sends both carts. Response holds combo<span class="hljs-emphasis">_id and a cart_</span>id per store.</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; addItemInCart(
+    BuildContext context, {
+    required <span class="hljs-built_in">dynamic</span> userData,
+    required Cart first,
+    required ComboCart combo,
+    required DestinationAddress destination,
+    required <span class="hljs-built_in">String</span> username,
+    required <span class="hljs-built_in">String</span> phone,
+  }) =&gt; _post(context, <span class="hljs-string">"combo_add_item_in_cart"</span>, {
+    <span class="hljs-string">"user_id"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'_id'</span>],
+    <span class="hljs-string">"server_token"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'server_token'</span>],
+    <span class="hljs-keyword">if</span> (combo.comboId != <span class="hljs-keyword">null</span>) <span class="hljs-string">"combo_id"</span>: combo.comboId,
+    <span class="hljs-string">"destination_address"</span>: destination.toJson(),
+    <span class="hljs-string">"delivery_type"</span>: <span class="hljs-number">1</span>,
+    <span class="hljs-string">"username"</span>: username,
+    <span class="hljs-string">"phone"</span>: phone,
+    <span class="hljs-string">"store_a"</span>: _items(first),
+    <span class="hljs-string">"store_b"</span>: _items(combo.second),
+  });
+
+  <span class="hljs-comment">/// <span class="markdown">Step 2: prices both carts. <span class="hljs-code">`store_a`</span> must be the route origin.</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; getInvoice(
+    BuildContext context, {
+    required <span class="hljs-built_in">dynamic</span> userData,
+    required ComboCart combo,
+    required ComboRoute route,
+  }) =&gt; _post(context, <span class="hljs-string">"combo_get_order_cart_invoice"</span>, {
+    <span class="hljs-string">"user_id"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'_id'</span>],
+    <span class="hljs-string">"server_token"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'server_token'</span>],
+    <span class="hljs-string">"combo_id"</span>: combo.comboId,
+    <span class="hljs-string">"order_type"</span>: <span class="hljs-number">7</span>,
+    <span class="hljs-string">"total_time"</span>: route.totalTime.round(),
+    <span class="hljs-string">"total_distance"</span>: route.totalDistance.round(),
+    <span class="hljs-string">"store_a"</span>: {
+      <span class="hljs-string">"store_id"</span>: route.originStoreId,
+      <span class="hljs-string">"cart_id"</span>: combo.cartIdByStore[route.originStoreId],
+    },
+    <span class="hljs-string">"store_b"</span>: {
+      <span class="hljs-string">"store_id"</span>: route.waypointStoreId,
+      <span class="hljs-string">"cart_id"</span>: combo.cartIdByStore[route.waypointStoreId],
+    },
+  });
+
+  <span class="hljs-comment">/// <span class="markdown">Step 3: pays both order payments. Like single-store pay<span class="hljs-emphasis">_order_</span>payment,</span></span>
+  <span class="hljs-comment">/// <span class="markdown">cash and wallet both send is<span class="hljs-emphasis">_payment_</span>mode_cash: true; the wallet is</span></span>
+  <span class="hljs-comment">/// <span class="markdown">chosen beforehand with [setWalletUse].</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; pay(
+    BuildContext context, {
+    required <span class="hljs-built_in">dynamic</span> userData,
+    required <span class="hljs-built_in">String</span> originPaymentId,
+    required <span class="hljs-built_in">String</span> waypointPaymentId,
+    <span class="hljs-built_in">String</span> otp = <span class="hljs-string">""</span>,
+  }) =&gt; _post(context, <span class="hljs-string">"combo_pay_order_payment"</span>, {
+    <span class="hljs-string">"user_id"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'_id'</span>],
+    <span class="hljs-string">"server_token"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'server_token'</span>],
+    <span class="hljs-string">"store_a_order_payment_id"</span>: originPaymentId,
+    <span class="hljs-string">"store_b_order_payment_id"</span>: waypointPaymentId,
+    <span class="hljs-string">"is_payment_mode_cash"</span>: <span class="hljs-keyword">true</span>,
+    <span class="hljs-string">"order_type"</span>: <span class="hljs-number">7</span>,
+    <span class="hljs-string">"otp"</span>: otp,
+  }, timeout: <span class="hljs-number">40</span>);
+
+  <span class="hljs-comment">/// <span class="markdown">Step 4: creates the two orders. <span class="hljs-code">`store_a_cart_id`</span> is the origin's cart.</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; createOrder(
+    BuildContext context, {
+    required <span class="hljs-built_in">dynamic</span> userData,
+    required <span class="hljs-built_in">String</span> comboId,
+    required <span class="hljs-built_in">String</span> originCartId,
+    required <span class="hljs-built_in">String</span> waypointCartId,
+  }) =&gt; _post(context, <span class="hljs-string">"combo_create_order"</span>, {
+    <span class="hljs-string">"user_id"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'_id'</span>],
+    <span class="hljs-string">"server_token"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'server_token'</span>],
+    <span class="hljs-string">"combo_id"</span>: comboId,
+    <span class="hljs-string">"store_a_cart_id"</span>: originCartId,
+    <span class="hljs-string">"store_b_cart_id"</span>: waypointCartId,
+    <span class="hljs-string">"is_user_pick_up_order"</span>: <span class="hljs-keyword">false</span>,
+    <span class="hljs-string">"order_from"</span>: Platform.isIOS ? <span class="hljs-string">"ios"</span> : <span class="hljs-string">"android"</span>,
+  }, timeout: <span class="hljs-number">50</span>);
+
+  <span class="hljs-comment">/// <span class="markdown">Same call the payment screen makes before paying.</span></span>
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; setWalletUse(
+    BuildContext context, {
+    required <span class="hljs-built_in">dynamic</span> userData,
+    required <span class="hljs-built_in">bool</span> useWallet,
+  }) =&gt; _post(context, <span class="hljs-string">"change_user_wallet_status"</span>, {
+    <span class="hljs-string">"user_id"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'_id'</span>],
+    <span class="hljs-string">"is_use_wallet"</span>: useWallet,
+    <span class="hljs-string">"server_token"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'server_token'</span>],
+  }, timeout: <span class="hljs-number">20</span>);
+
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; getUserDetail(
+    BuildContext context, {
+    required <span class="hljs-built_in">dynamic</span> userData,
+  }) =&gt; _post(context, <span class="hljs-string">"get_detail"</span>, {
+    <span class="hljs-string">"user_id"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'_id'</span>],
+    <span class="hljs-string">"server_token"</span>: userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'server_token'</span>],
+  }, timeout: <span class="hljs-number">20</span>);
+
+  <span class="hljs-keyword">static</span> Future&lt;<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;?&gt; getStoreDetail(
+    BuildContext context, {
+    required <span class="hljs-built_in">String</span> storeId,
+  }) =&gt; _post(context, <span class="hljs-string">"user_get_store_product_item_list"</span>, {
+    <span class="hljs-string">"store_id"</span>: storeId,
+  }, timeout: <span class="hljs-number">20</span>);
+
+  <span class="hljs-comment">/// <span class="markdown">Best readable error from a combo response. Combo endpoints return</span></span>
+  <span class="hljs-comment">/// <span class="markdown">plain-text errors in <span class="hljs-code">`error`</span>/<span class="hljs-code">`message`</span>; wrapped single-store calls</span></span>
+  <span class="hljs-comment">/// <span class="markdown">return numeric <span class="hljs-code">`error_code`</span>s.</span></span>
+  <span class="hljs-keyword">static</span> <span class="hljs-built_in">String</span> errorText(<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;? data, {<span class="hljs-built_in">String</span>? fallback}) {
+    <span class="hljs-keyword">if</span> (data == <span class="hljs-keyword">null</span>) {
+      <span class="hljs-keyword">return</span> <span class="hljs-string">"Something went wrong! Check your internet and try again"</span>;
+    }
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">final</span> side <span class="hljs-keyword">in</span> [<span class="hljs-string">"store_a"</span>, <span class="hljs-string">"store_b"</span>]) {
+      <span class="hljs-keyword">final</span> sideData = data[side];
+      <span class="hljs-keyword">if</span> (sideData <span class="hljs-keyword">is</span> <span class="hljs-built_in">Map</span> &amp;&amp; sideData[<span class="hljs-string">'success'</span>] == <span class="hljs-keyword">false</span>) {
+        <span class="hljs-keyword">return</span> errorText(<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;.from(sideData));
+      }
+    }
+    <span class="hljs-keyword">final</span> code = data[<span class="hljs-string">'error_code'</span>];
+    <span class="hljs-keyword">if</span> (code != <span class="hljs-keyword">null</span> &amp;&amp; errorCodes[<span class="hljs-string">'<span class="hljs-subst">$code</span>'</span>] != <span class="hljs-keyword">null</span>) {
+      <span class="hljs-keyword">return</span> <span class="hljs-string">"<span class="hljs-subst">${errorCodes[<span class="hljs-string">'<span class="hljs-subst">$code</span>'</span>]}</span>"</span>;
+    }
+    <span class="hljs-keyword">if</span> (code == <span class="hljs-string">"YOUR_WALLET_AMOUNT_NEGATIVE"</span>) {
+      <span class="hljs-keyword">return</span> <span class="hljs-string">"Not enough wallet balance. Pay with cash or top up your wallet."</span>;
+    }
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">final</span> key <span class="hljs-keyword">in</span> [<span class="hljs-string">"error"</span>, <span class="hljs-string">"error_message"</span>, <span class="hljs-string">"message"</span>]) {
+      <span class="hljs-keyword">final</span> value = data[key];
+      <span class="hljs-keyword">if</span> (value <span class="hljs-keyword">is</span> <span class="hljs-built_in">String</span> &amp;&amp; value.isNotEmpty) <span class="hljs-keyword">return</span> value;
+    }
+    <span class="hljs-keyword">return</span> fallback ?? <span class="hljs-string">"Something went wrong. Please try again."</span>;
+  }
+
+  <span class="hljs-keyword">static</span> <span class="hljs-built_in">bool</span> isSessionExpired(<span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;? data) =&gt;
+      data != <span class="hljs-keyword">null</span> &amp;&amp; <span class="hljs-string">"<span class="hljs-subst">${data[<span class="hljs-string">'error_code'</span>]}</span>"</span> == <span class="hljs-string">"999"</span>;
+}
+</div></code></pre>
+<h3 id="53-libcombocomboroutedart">5.3 <code>lib/combo/combo_route.dart</code></h3>
+<p>Picks the pickup order (the farther store goes first) and gets the whole-trip distance and time from Google Directions. Falls back to straight-line distance.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> <span class="hljs-string">'dart:convert'</span>;
+
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:http/http.dart'</span> <span class="hljs-keyword">as</span> http;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/services/address_validation_service.dart'</span>;
+
+<span class="hljs-comment">/// <span class="markdown">Pickup order and trip totals for a combo delivery.</span></span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboRoute</span> </span>{
+  ComboRoute({
+    required <span class="hljs-keyword">this</span>.originStoreId,
+    required <span class="hljs-keyword">this</span>.waypointStoreId,
+    required <span class="hljs-keyword">this</span>.totalDistance,
+    required <span class="hljs-keyword">this</span>.totalTime,
+    required <span class="hljs-keyword">this</span>.fromFallback,
+  });
+
+  <span class="hljs-comment">/// <span class="markdown">Picked up first; sent as <span class="hljs-code">`store_a`</span>.</span></span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">String</span> originStoreId;
+
+  <span class="hljs-comment">/// <span class="markdown">Picked up second; sent as <span class="hljs-code">`store_b`</span>.</span></span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">String</span> waypointStoreId;
+
+  <span class="hljs-comment">/// <span class="markdown">Meters, whole trip (origin -&gt; waypoint -&gt; customer).</span></span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">double</span> totalDistance;
+
+  <span class="hljs-comment">/// <span class="markdown">Seconds, whole trip.</span></span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">double</span> totalTime;
+
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">bool</span> fromFallback;
+}
+
+<span class="hljs-comment">/// <span class="markdown">The farther store from the customer is the origin. The store-to-store leg</span></span>
+<span class="hljs-comment">/// <span class="markdown">is the same both ways, so ending at the nearer store gives the shorter trip.</span></span>
+Future&lt;ComboRoute&gt; computeComboRoute({
+  required <span class="hljs-built_in">String</span> storeIdX,
+  required <span class="hljs-built_in">double</span> xLat,
+  required <span class="hljs-built_in">double</span> xLng,
+  required <span class="hljs-built_in">String</span> storeIdY,
+  required <span class="hljs-built_in">double</span> yLat,
+  required <span class="hljs-built_in">double</span> yLng,
+  required <span class="hljs-built_in">double</span> custLat,
+  required <span class="hljs-built_in">double</span> custLng,
+  required <span class="hljs-built_in">String</span> apiKey,
+}) <span class="hljs-keyword">async</span> {
+  <span class="hljs-keyword">final</span> dx = AddressValidationService.calculateDistanceInMeters(
+    xLat,
+    xLng,
+    custLat,
+    custLng,
+  );
+  <span class="hljs-keyword">final</span> dy = AddressValidationService.calculateDistanceInMeters(
+    yLat,
+    yLng,
+    custLat,
+    custLng,
+  );
+  <span class="hljs-keyword">final</span> xIsOrigin = dx &gt;= dy;
+
+  <span class="hljs-keyword">final</span> originId = xIsOrigin ? storeIdX : storeIdY;
+  <span class="hljs-keyword">final</span> waypointId = xIsOrigin ? storeIdY : storeIdX;
+  <span class="hljs-keyword">final</span> oLat = xIsOrigin ? xLat : yLat, oLng = xIsOrigin ? xLng : yLng;
+  <span class="hljs-keyword">final</span> wLat = xIsOrigin ? yLat : xLat, wLng = xIsOrigin ? yLng : xLng;
+
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">final</span> url =
+        <span class="hljs-string">'https://maps.googleapis.com/maps/api/directions/json'</span>
+        <span class="hljs-string">'?origin=<span class="hljs-subst">${oLat.toStringAsFixed(<span class="hljs-number">6</span>)}</span>,<span class="hljs-subst">${oLng.toStringAsFixed(<span class="hljs-number">6</span>)}</span>'</span>
+        <span class="hljs-string">'&amp;destination=<span class="hljs-subst">$custLat</span>,<span class="hljs-subst">$custLng</span>'</span>
+        <span class="hljs-string">'&amp;waypoints=<span class="hljs-subst">${wLat.toStringAsFixed(<span class="hljs-number">6</span>)}</span>,<span class="hljs-subst">${wLng.toStringAsFixed(<span class="hljs-number">6</span>)}</span>'</span>
+        <span class="hljs-string">'&amp;mode=driving&amp;key=<span class="hljs-subst">$apiKey</span>'</span>;
+    <span class="hljs-keyword">final</span> response = <span class="hljs-keyword">await</span> http
+        .<span class="hljs-keyword">get</span>(<span class="hljs-built_in">Uri</span>.parse(url))
+        .timeout(<span class="hljs-keyword">const</span> <span class="hljs-built_in">Duration</span>(seconds: <span class="hljs-number">10</span>));
+    <span class="hljs-keyword">final</span> data = json.decode(response.body);
+    <span class="hljs-keyword">if</span> (data[<span class="hljs-string">'status'</span>] == <span class="hljs-string">'OK'</span>) {
+      <span class="hljs-keyword">final</span> legs = data[<span class="hljs-string">'routes'</span>][<span class="hljs-number">0</span>][<span class="hljs-string">'legs'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">List</span>;
+      <span class="hljs-built_in">double</span> distance = <span class="hljs-number">0</span>, time = <span class="hljs-number">0</span>;
+      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">final</span> leg <span class="hljs-keyword">in</span> legs) {
+        distance += (leg[<span class="hljs-string">'distance'</span>][<span class="hljs-string">'value'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">num</span>).toDouble();
+        time += (leg[<span class="hljs-string">'duration'</span>][<span class="hljs-string">'value'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">num</span>).toDouble();
+      }
+      <span class="hljs-keyword">return</span> ComboRoute(
+        originStoreId: originId,
+        waypointStoreId: waypointId,
+        totalDistance: distance,
+        totalTime: time,
+        fromFallback: <span class="hljs-keyword">false</span>,
+      );
+    }
+  } <span class="hljs-keyword">catch</span> (_) {}
+
+  <span class="hljs-comment">// Fallback: two straight-line legs, ~2 min per km (same as checkout).</span>
+  <span class="hljs-keyword">final</span> distance =
+      AddressValidationService.calculateDistanceInMeters(
+        oLat,
+        oLng,
+        wLat,
+        wLng,
+      ) +
+      AddressValidationService.calculateDistanceInMeters(
+        wLat,
+        wLng,
+        custLat,
+        custLng,
+      );
+  <span class="hljs-keyword">return</span> ComboRoute(
+    originStoreId: originId,
+    waypointStoreId: waypointId,
+    totalDistance: distance,
+    totalTime: distance / <span class="hljs-number">1000</span> * <span class="hljs-number">120</span>,
+    fromFallback: <span class="hljs-keyword">true</span>,
+  );
+}
+</div></code></pre>
+<h3 id="54-libcombocombocheckoutscreendart">5.4 <code>lib/combo/combo_checkout_screen.dart</code></h3>
+<p>New checkout screen for 2 stores: route → invoice → wallet/cash → pay → create → success.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> <span class="hljs-string">'package:flutter/material.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:heroicons_flutter/heroicons_flutter.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:provider/provider.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/combo/combo_route.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/combo/models/combo_cart.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/combo/services/combo_service.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/custom_widgets/custom_button.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/login/login_screen.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/cart.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/language.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/metadata.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/report/report_screen.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/services/core_services.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/services/service.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/utils/constants.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/utils/size_config.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/widgets/linear_loading_indicator.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/widgets/order_status_row.dart'</span>;
+
+<span class="hljs-comment">/// <span class="markdown">Checkout for a two-store order: route -&gt; invoice -&gt; pay -&gt; create.</span></span>
+<span class="hljs-comment">///
+<span class="markdown">/// Only cash and wallet are offered; the combo endpoints don't support</span></span>
+<span class="hljs-comment">/// <span class="markdown">external gateways yet.</span></span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboCheckoutScreen</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">StatefulWidget</span> </span>{
+  <span class="hljs-keyword">const</span> ComboCheckoutScreen({<span class="hljs-keyword">super</span>.key});
+
+  <span class="hljs-meta">@override</span>
+  State&lt;ComboCheckoutScreen&gt; createState() =&gt; _ComboCheckoutScreenState();
+}
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">_ComboCheckoutScreenState</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">State</span>&lt;<span class="hljs-title">ComboCheckoutScreen</span>&gt; </span>{
+  <span class="hljs-keyword">var</span> userData;
+  Cart? cart;
+  ComboCart? combo;
+  ComboRoute? route;
+  <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;? invoice;
+
+  <span class="hljs-comment">/// <span class="markdown">Invoice side (order<span class="hljs-emphasis">_payment, store, vehicles) by store_</span>id.</span></span>
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;&gt; _sideByStore = {};
+
+  <span class="hljs-built_in">bool</span> _loading = <span class="hljs-keyword">true</span>;
+  <span class="hljs-built_in">bool</span> _placing = <span class="hljs-keyword">false</span>;
+  <span class="hljs-built_in">bool</span> _paid = <span class="hljs-keyword">false</span>;
+  <span class="hljs-built_in">bool</span> _useWallet = <span class="hljs-keyword">false</span>;
+  <span class="hljs-built_in">double</span> walletBalance = <span class="hljs-number">0</span>;
+  <span class="hljs-built_in">String</span>? _invoiceError;
+
+  <span class="hljs-meta">@override</span>
+  <span class="hljs-keyword">void</span> initState() {
+    <span class="hljs-keyword">super</span>.initState();
+    _init();
+  }
+
+  Future&lt;<span class="hljs-keyword">void</span>&gt; _init() <span class="hljs-keyword">async</span> {
+    userData = <span class="hljs-keyword">await</span> Service.read(<span class="hljs-string">'user'</span>);
+    <span class="hljs-keyword">final</span> cartData = <span class="hljs-keyword">await</span> Service.read(<span class="hljs-string">'cart'</span>);
+    combo = <span class="hljs-keyword">await</span> ComboCart.load();
+    <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span>;
+    <span class="hljs-keyword">if</span> (userData == <span class="hljs-keyword">null</span> || cartData == <span class="hljs-keyword">null</span> || combo == <span class="hljs-keyword">null</span>) {
+      Service.showMessage(
+        context: context,
+        title: <span class="hljs-string">"Your cart has changed. Please try again."</span>,
+        error: <span class="hljs-keyword">true</span>,
+      );
+      Navigator.of(context).pop();
+      <span class="hljs-keyword">return</span>;
+    }
+    cart = Cart.fromJson(cartData);
+    walletBalance = <span class="hljs-built_in">double</span>.tryParse(<span class="hljs-string">'<span class="hljs-subst">${userData[<span class="hljs-string">'user'</span>][<span class="hljs-string">'wallet'</span>]}</span>'</span>) ?? <span class="hljs-number">0</span>;
+    _refreshWallet();
+    <span class="hljs-keyword">await</span> _getInvoice();
+  }
+
+  Future&lt;<span class="hljs-keyword">void</span>&gt; _refreshWallet() <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> data = <span class="hljs-keyword">await</span> ComboService.getUserDetail(context, userData: userData);
+    <span class="hljs-keyword">if</span> (!mounted || data == <span class="hljs-keyword">null</span> || data[<span class="hljs-string">'success'</span>] != <span class="hljs-keyword">true</span>) <span class="hljs-keyword">return</span>;
+    setState(() {
+      userData = data;
+      walletBalance = <span class="hljs-built_in">double</span>.tryParse(<span class="hljs-string">'<span class="hljs-subst">${data[<span class="hljs-string">'user'</span>][<span class="hljs-string">'wallet'</span>]}</span>'</span>) ?? <span class="hljs-number">0</span>;
+    });
+    Service.save(<span class="hljs-string">'user'</span>, data);
+  }
+
+  Future&lt;<span class="hljs-keyword">void</span>&gt; _getInvoice() <span class="hljs-keyword">async</span> {
+    setState(() {
+      _loading = <span class="hljs-keyword">true</span>;
+      _invoiceError = <span class="hljs-keyword">null</span>;
+    });
+
+    <span class="hljs-keyword">final</span> destination = cart!.destinationAddress!;
+    <span class="hljs-keyword">final</span> first = cart!.storeLocation!;
+    <span class="hljs-keyword">final</span> second = combo!.second.storeLocation!;
+    route = <span class="hljs-keyword">await</span> computeComboRoute(
+      storeIdX: cart!.storeId!,
+      xLat: first.lat!,
+      xLng: first.long!,
+      storeIdY: combo!.second.storeId!,
+      yLat: second.lat!,
+      yLng: second.long!,
+      custLat: destination.lat!,
+      custLng: destination.long!,
+      apiKey: apiKey,
+    );
+    <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span>;
+
+    <span class="hljs-keyword">final</span> data = <span class="hljs-keyword">await</span> ComboService.getInvoice(
+      context,
+      userData: userData,
+      combo: combo!,
+      route: route!,
+    );
+    <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span>;
+
+    <span class="hljs-keyword">if</span> (data != <span class="hljs-keyword">null</span> &amp;&amp; data[<span class="hljs-string">'success'</span>] == <span class="hljs-keyword">true</span>) {
+      _sideByStore.clear();
+      combo!.orderPaymentIdByStore.clear();
+      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">final</span> side <span class="hljs-keyword">in</span> [<span class="hljs-string">'store_a'</span>, <span class="hljs-string">'store_b'</span>]) {
+        <span class="hljs-keyword">final</span> sideData = <span class="hljs-built_in">Map</span>&lt;<span class="hljs-built_in">String</span>, <span class="hljs-built_in">dynamic</span>&gt;.from(data[side]);
+        <span class="hljs-keyword">final</span> payment = sideData[<span class="hljs-string">'order_payment'</span>];
+        <span class="hljs-keyword">final</span> storeId = <span class="hljs-string">'<span class="hljs-subst">${payment[<span class="hljs-string">'store_id'</span>]}</span>'</span>;
+        _sideByStore[storeId] = sideData;
+        combo!.orderPaymentIdByStore[storeId] = <span class="hljs-string">'<span class="hljs-subst">${payment[<span class="hljs-string">'_id'</span>]}</span>'</span>;
+      }
+      combo!.originStoreId = route!.originStoreId;
+      <span class="hljs-keyword">await</span> combo!.save();
+      <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span>;
+      setState(() {
+        invoice = data;
+        _paid = <span class="hljs-keyword">false</span>;
+        <span class="hljs-keyword">if</span> (_cashNotAccepted) _useWallet = <span class="hljs-keyword">true</span>;
+        _loading = <span class="hljs-keyword">false</span>;
+      });
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (ComboService.isSessionExpired(data)) {
+      <span class="hljs-keyword">await</span> _logout();
+    } <span class="hljs-keyword">else</span> {
+      setState(() {
+        invoice = <span class="hljs-keyword">null</span>;
+        _invoiceError = ComboService.errorText(data);
+        _loading = <span class="hljs-keyword">false</span>;
+      });
+    }
+  }
+
+  Future&lt;<span class="hljs-keyword">void</span>&gt; _logout() <span class="hljs-keyword">async</span> {
+    Service.showMessage(
+      context: context,
+      title: <span class="hljs-string">"<span class="hljs-subst">${errorCodes[<span class="hljs-string">'999'</span>]}</span>!"</span>,
+      error: <span class="hljs-keyword">true</span>,
+    );
+    <span class="hljs-keyword">await</span> CoreServices.clearCache();
+    <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span>;
+    Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+  }
+
+  <span class="hljs-built_in">List</span>&lt;<span class="hljs-built_in">String</span>&gt; <span class="hljs-keyword">get</span> _pickupOrder =&gt; [
+    route!.originStoreId,
+    route!.waypointStoreId,
+  ];
+
+  <span class="hljs-built_in">double</span> <span class="hljs-keyword">get</span> _total =&gt;
+      (invoice?[<span class="hljs-string">'combined_user_pay_payment'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">num</span>?)?.toDouble() ?? <span class="hljs-number">0</span>;
+
+  <span class="hljs-built_in">bool</span> <span class="hljs-keyword">get</span> _cashNotAccepted =&gt; _sideByStore.values.any(
+    (side) =&gt; side[<span class="hljs-string">'store'</span>]?[<span class="hljs-string">'accept_only_cashless_payment'</span>] == <span class="hljs-keyword">true</span>,
+  );
+
+  Future&lt;<span class="hljs-keyword">void</span>&gt; _placeOrder() <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">if</span> (_placing || invoice == <span class="hljs-keyword">null</span>) <span class="hljs-keyword">return</span>;
+    <span class="hljs-keyword">if</span> (_useWallet &amp;&amp; walletBalance &lt; _total) {
+      Service.showMessage(
+        context: context,
+        title:
+            <span class="hljs-string">"Not enough wallet balance. Pay with cash or top up your wallet."</span>,
+        error: <span class="hljs-keyword">true</span>,
+        duration: <span class="hljs-number">4</span>,
+      );
+      <span class="hljs-keyword">return</span>;
+    }
+    <span class="hljs-keyword">if</span> (!_useWallet &amp;&amp; _cashNotAccepted) {
+      Service.showMessage(
+        context: context,
+        title: <span class="hljs-string">"One of the stores accepts only digital payment."</span>,
+        error: <span class="hljs-keyword">true</span>,
+        duration: <span class="hljs-number">4</span>,
+      );
+      <span class="hljs-keyword">return</span>;
+    }
+
+    setState(() {
+      _placing = <span class="hljs-keyword">true</span>;
+    });
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">if</span> (!_paid &amp;&amp; !<span class="hljs-keyword">await</span> _pay()) <span class="hljs-keyword">return</span>;
+      <span class="hljs-keyword">await</span> _createOrder();
+    } <span class="hljs-keyword">finally</span> {
+      <span class="hljs-keyword">if</span> (mounted) {
+        setState(() {
+          _placing = <span class="hljs-keyword">false</span>;
+        });
+      }
+    }
+  }
+
+  Future&lt;<span class="hljs-built_in">bool</span>&gt; _pay() <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> walletData = <span class="hljs-keyword">await</span> ComboService.setWalletUse(
+      context,
+      userData: userData,
+      useWallet: _useWallet,
+    );
+    <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    <span class="hljs-keyword">if</span> (walletData == <span class="hljs-keyword">null</span> || walletData[<span class="hljs-string">'success'</span>] != <span class="hljs-keyword">true</span>) {
+      <span class="hljs-keyword">if</span> (ComboService.isSessionExpired(walletData)) {
+        <span class="hljs-keyword">await</span> _logout();
+      } <span class="hljs-keyword">else</span> {
+        Service.showMessage(
+          context: context,
+          title: ComboService.errorText(walletData),
+          error: <span class="hljs-keyword">true</span>,
+        );
+      }
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    }
+
+    <span class="hljs-keyword">final</span> origin = route!.originStoreId, waypoint = route!.waypointStoreId;
+    <span class="hljs-keyword">final</span> data = <span class="hljs-keyword">await</span> ComboService.pay(
+      context,
+      userData: userData,
+      originPaymentId: combo!.orderPaymentIdByStore[origin]!,
+      waypointPaymentId: combo!.orderPaymentIdByStore[waypoint]!,
+    );
+    <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    <span class="hljs-keyword">if</span> (data != <span class="hljs-keyword">null</span> &amp;&amp; data[<span class="hljs-string">'success'</span>] == <span class="hljs-keyword">true</span>) {
+      _paid = <span class="hljs-keyword">true</span>;
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">true</span>;
+    }
+    <span class="hljs-keyword">if</span> (ComboService.isSessionExpired(data)) {
+      <span class="hljs-keyword">await</span> _logout();
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+    }
+    <span class="hljs-keyword">final</span> error = ComboService.errorText(data);
+    Service.showMessage(
+      context: context,
+      title: error,
+      error: <span class="hljs-keyword">true</span>,
+      duration: <span class="hljs-number">4</span>,
+    );
+    <span class="hljs-keyword">if</span> (error.toLowerCase().contains(<span class="hljs-string">"order_payment not found"</span>)) {
+      _getInvoice();
+    }
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+  }
+
+  Future&lt;<span class="hljs-keyword">void</span>&gt; _createOrder() <span class="hljs-keyword">async</span> {
+    <span class="hljs-keyword">final</span> origin = route!.originStoreId, waypoint = route!.waypointStoreId;
+    <span class="hljs-keyword">final</span> data = <span class="hljs-keyword">await</span> ComboService.createOrder(
+      context,
+      userData: userData,
+      comboId: combo!.comboId!,
+      originCartId: combo!.cartIdByStore[origin]!,
+      waypointCartId: combo!.cartIdByStore[waypoint]!,
+    );
+    <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span>;
+
+    <span class="hljs-keyword">if</span> (data != <span class="hljs-keyword">null</span> &amp;&amp; data[<span class="hljs-string">'success'</span>] == <span class="hljs-keyword">true</span>) {
+      <span class="hljs-keyword">final</span> orderIds = <span class="hljs-built_in">List</span>.from(data[<span class="hljs-string">'order_unique_ids'</span>] ?? []);
+      <span class="hljs-keyword">await</span> Service.remove(<span class="hljs-string">'cart'</span>);
+      <span class="hljs-keyword">await</span> Service.remove(<span class="hljs-string">'aliexpressCart'</span>);
+      <span class="hljs-keyword">await</span> ComboCart.clear();
+      <span class="hljs-keyword">if</span> (!mounted) <span class="hljs-keyword">return</span>;
+      Service.showMessage(
+        context: context,
+        title: orderIds.isNotEmpty
+            ? <span class="hljs-string">"Orders #<span class="hljs-subst">${orderIds.join(<span class="hljs-string">' and #'</span>)}</span> created"</span>
+            : <span class="hljs-string">"Order successfully created"</span>,
+        error: <span class="hljs-keyword">false</span>,
+        duration: <span class="hljs-number">3</span>,
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =&gt; ReportScreen(
+            price: _total,
+            orderPaymentUniqueId: orderIds.join(<span class="hljs-string">','</span>),
+          ),
+        ),
+      );
+      <span class="hljs-keyword">return</span>;
+    }
+
+    <span class="hljs-comment">// Payment went through; keep the combo so the user can retry create.</span>
+    <span class="hljs-keyword">if</span> (ComboService.isSessionExpired(data)) {
+      <span class="hljs-keyword">await</span> _logout();
+      <span class="hljs-keyword">return</span>;
+    }
+    Service.showMessage(
+      context: context,
+      title:
+          <span class="hljs-string">"<span class="hljs-subst">${ComboService.errorText(data, fallback: <span class="hljs-string">'Failed to create the order.'</span>)}</span> "</span>
+          <span class="hljs-string">"Your payment was received. Tap Place Order to retry, or call 8707 for help."</span>,
+      error: <span class="hljs-keyword">true</span>,
+      duration: <span class="hljs-number">6</span>,
+    );
+  }
+
+  <span class="hljs-meta">@override</span>
+  Widget build(BuildContext context) {
+    <span class="hljs-keyword">final</span> lang = Provider.of&lt;ZLanguage&gt;(context);
+    <span class="hljs-keyword">final</span> currency = Provider.of&lt;ZMetaData&gt;(context, listen: <span class="hljs-keyword">false</span>).currency;
+
+    <span class="hljs-keyword">return</span> PopScope(
+      canPop: !_placing &amp;&amp; !_paid,
+      onPopInvokedWithResult: (didPop, _) {
+        <span class="hljs-keyword">if</span> (!didPop &amp;&amp; _paid) {
+          Service.showMessage(
+            context: context,
+            title: <span class="hljs-string">"Payment received. Tap Place Order to finish your order."</span>,
+            error: <span class="hljs-keyword">true</span>,
+            duration: <span class="hljs-number">4</span>,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: kPrimaryColor,
+        appBar: AppBar(
+          title: Text(lang.checkout, style: TextStyle(color: kBlackColor)),
+        ),
+        bottomNavigationBar: invoice == <span class="hljs-keyword">null</span>
+            ? <span class="hljs-keyword">null</span>
+            : SafeArea(
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: getProportionateScreenHeight(kDefaultPadding / <span class="hljs-number">4</span>),
+                    horizontal: getProportionateScreenHeight(kDefaultPadding),
+                  ),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor,
+                    border: Border(top: BorderSide(color: kWhiteColor)),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(kDefaultPadding),
+                      topRight: Radius.circular(kDefaultPadding),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: getProportionateScreenHeight(kDefaultPadding / <span class="hljs-number">2</span>),
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(<span class="hljs-string">"<span class="hljs-subst">${lang.total}</span> :"</span>),
+                          SizedBox(width: kDefaultPadding / <span class="hljs-number">2</span>),
+                          Text(
+                            <span class="hljs-string">"<span class="hljs-subst">$currency</span> <span class="hljs-subst">${_total.toStringAsFixed(<span class="hljs-number">2</span>)}</span>"</span>,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      CustomButton(
+                        isLoading: _placing,
+                        title: lang.placeOrder,
+                        press: _placeOrder,
+                        color: kSecondaryColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+        body: ModalProgressHUD(
+          inAsyncCall: _loading,
+          color: kPrimaryColor,
+          progressIndicator: LinearLoadingIndicator(
+            title: <span class="hljs-string">"Calculating your order..."</span>,
+          ),
+          child: _invoiceError != <span class="hljs-keyword">null</span>
+              ? _errorView()
+              : invoice == <span class="hljs-keyword">null</span>
+              ? SizedBox.shrink()
+              : ListView(
+                  padding: EdgeInsets.all(
+                    getProportionateScreenWidth(kDefaultPadding),
+                  ),
+                  children: [
+                    _card(
+                      child: OrderStatusRow(
+                        title: <span class="hljs-string">"Deliver to · 2 stores, 1 driver"</span>,
+                        icon: HeroiconsOutline.mapPin,
+                        iconBackgroundColor: kPrimaryColor,
+                        value:
+                            cart!.destinationAddress?.name ??
+                            <span class="hljs-string">"Current location"</span>,
+                      ),
+                    ),
+                    <span class="hljs-keyword">for</span> (<span class="hljs-built_in">int</span> i = <span class="hljs-number">0</span>; i &lt; _pickupOrder.length; i++)
+                      _storeCard(i + <span class="hljs-number">1</span>, _pickupOrder[i], currency),
+                    _summaryCard(currency),
+                    _paymentCard(currency),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _errorView() =&gt; Center(
+    child: Padding(
+      padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        spacing: kDefaultPadding,
+        children: [
+          Icon(Icons.error_outline, color: kSecondaryColor, size: <span class="hljs-number">48</span>),
+          Text(_invoiceError!, textAlign: TextAlign.center),
+          CustomButton(
+            title: <span class="hljs-string">"Try again"</span>,
+            press: _getInvoice,
+            color: kSecondaryColor,
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _card({required Widget child}) =&gt; Container(
+    width: <span class="hljs-built_in">double</span>.infinity,
+    margin: EdgeInsets.only(bottom: getProportionateScreenHeight(<span class="hljs-number">12</span>)),
+    padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding * <span class="hljs-number">.75</span>)),
+    decoration: BoxDecoration(
+      color: kWhiteColor,
+      borderRadius: BorderRadius.circular(kDefaultPadding),
+    ),
+    child: child,
+  );
+
+  Widget _row(<span class="hljs-built_in">String</span> label, <span class="hljs-built_in">String</span> value, {<span class="hljs-built_in">bool</span> bold = <span class="hljs-keyword">false</span>}) {
+    <span class="hljs-keyword">final</span> style = TextStyle(
+      fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+      color: kBlackColor,
+    );
+    <span class="hljs-keyword">return</span> Padding(
+      padding: EdgeInsets.symmetric(vertical: <span class="hljs-number">3</span>),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: Text(label, style: style)),
+          SizedBox(width: kDefaultPadding / <span class="hljs-number">2</span>),
+          Text(value, style: style),
+        ],
+      ),
+    );
+  }
+
+  Widget _storeCard(<span class="hljs-built_in">int</span> pickup, <span class="hljs-built_in">String</span> storeId, <span class="hljs-built_in">String</span>? currency) {
+    <span class="hljs-keyword">final</span> side = _sideByStore[storeId] ?? {};
+    <span class="hljs-keyword">final</span> payment = side[<span class="hljs-string">'order_payment'</span>] ?? {};
+    <span class="hljs-keyword">final</span> storeName = side[<span class="hljs-string">'store'</span>]?[<span class="hljs-string">'name'</span>] ?? <span class="hljs-string">"Store <span class="hljs-subst">$pickup</span>"</span>;
+    <span class="hljs-keyword">final</span> items = storeId == cart!.storeId
+        ? cart!.items ?? []
+        : combo!.second.items ?? [];
+
+    <span class="hljs-keyword">return</span> _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          OrderStatusRow(
+            title: <span class="hljs-string">"Pickup <span class="hljs-subst">$pickup</span>"</span>,
+            icon: HeroiconsOutline.buildingStorefront,
+            iconBackgroundColor: kPrimaryColor,
+            value: Service.capitalizeFirstLetters(storeName),
+          ),
+          Divider(color: kPrimaryColor),
+          <span class="hljs-keyword">for</span> (<span class="hljs-keyword">final</span> item <span class="hljs-keyword">in</span> items)
+            _row(
+              <span class="hljs-string">"<span class="hljs-subst">${item.quantity}</span> × <span class="hljs-subst">${Service.capitalizeFirstLetters(item.itemName ?? <span class="hljs-string">''</span>)}</span>"</span>,
+              <span class="hljs-string">"<span class="hljs-subst">$currency</span> <span class="hljs-subst">${(item.price ?? <span class="hljs-number">0</span>).toStringAsFixed(<span class="hljs-number">2</span>)}</span>"</span>,
+            ),
+          Divider(color: kPrimaryColor),
+          _row(
+            <span class="hljs-string">"Items"</span>,
+            <span class="hljs-string">"<span class="hljs-subst">$currency</span> <span class="hljs-subst">${_money(payment[<span class="hljs-string">'total_cart_price'</span>])}</span>"</span>,
+            bold: <span class="hljs-keyword">true</span>,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryCard(<span class="hljs-built_in">String</span>? currency) {
+    <span class="hljs-keyword">final</span> itemsTotal = _sideByStore.values.fold&lt;<span class="hljs-built_in">double</span>&gt;(
+      <span class="hljs-number">0</span>,
+      (sum, side) =&gt;
+          sum + ((side[<span class="hljs-string">'order_payment'</span>]?[<span class="hljs-string">'total_cart_price'</span>] <span class="hljs-keyword">as</span> <span class="hljs-built_in">num</span>?) ?? <span class="hljs-number">0</span>),
+    );
+    <span class="hljs-keyword">return</span> _card(
+      child: Column(
+        children: [
+          _row(
+            <span class="hljs-string">"Items (2 stores)"</span>,
+            <span class="hljs-string">"<span class="hljs-subst">$currency</span> <span class="hljs-subst">${itemsTotal.toStringAsFixed(<span class="hljs-number">2</span>)}</span>"</span>,
+          ),
+          _row(
+            <span class="hljs-string">"Delivery"</span>,
+            <span class="hljs-string">"<span class="hljs-subst">$currency</span> <span class="hljs-subst">${_money(invoice![<span class="hljs-string">'combined_delivery_price'</span>])}</span>"</span>,
+          ),
+          Divider(color: kPrimaryColor),
+          _row(
+            Provider.of&lt;ZLanguage&gt;(context, listen: <span class="hljs-keyword">false</span>).total,
+            <span class="hljs-string">"<span class="hljs-subst">$currency</span> <span class="hljs-subst">${_total.toStringAsFixed(<span class="hljs-number">2</span>)}</span>"</span>,
+            bold: <span class="hljs-keyword">true</span>,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentCard(<span class="hljs-built_in">String</span>? currency) {
+    <span class="hljs-keyword">return</span> _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            <span class="hljs-string">"Payment method"</span>,
+            style: TextStyle(fontWeight: FontWeight.bold, color: kBlackColor),
+          ),
+          _paymentOption(
+            selected: !_useWallet,
+            title: <span class="hljs-string">"Cash on delivery"</span>,
+            subtitle: _cashNotAccepted
+                ? <span class="hljs-string">"Not accepted by one of the stores"</span>
+                : <span class="hljs-keyword">null</span>,
+            onTap: _cashNotAccepted || _paid
+                ? <span class="hljs-keyword">null</span>
+                : () =&gt; setState(() =&gt; _useWallet = <span class="hljs-keyword">false</span>),
+          ),
+          _paymentOption(
+            selected: _useWallet,
+            title: <span class="hljs-string">"Wallet"</span>,
+            subtitle: <span class="hljs-string">"Balance: <span class="hljs-subst">$currency</span> <span class="hljs-subst">${walletBalance.toStringAsFixed(<span class="hljs-number">2</span>)}</span>"</span>,
+            onTap: _paid ? <span class="hljs-keyword">null</span> : () =&gt; setState(() =&gt; _useWallet = <span class="hljs-keyword">true</span>),
+          ),
+          Text(
+            <span class="hljs-string">"Other payment methods are not available yet for orders from 2 stores."</span>,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: kGreyColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentOption({
+    required <span class="hljs-built_in">bool</span> selected,
+    required <span class="hljs-built_in">String</span> title,
+    <span class="hljs-built_in">String</span>? subtitle,
+    VoidCallback? onTap,
+  }) =&gt; ListTile(
+    contentPadding: EdgeInsets.zero,
+    enabled: onTap != <span class="hljs-keyword">null</span>,
+    onTap: onTap,
+    leading: Icon(
+      selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+      color: onTap == <span class="hljs-keyword">null</span> &amp;&amp; !selected ? kGreyColor : kSecondaryColor,
+    ),
+    title: Text(title),
+    subtitle: subtitle != <span class="hljs-keyword">null</span> ? Text(subtitle) : <span class="hljs-keyword">null</span>,
+  );
+
+  <span class="hljs-built_in">String</span> _money(<span class="hljs-built_in">dynamic</span> value) =&gt;
+      ((value <span class="hljs-keyword">as</span> <span class="hljs-built_in">num</span>?) ?? <span class="hljs-number">0</span>).toDouble().toStringAsFixed(<span class="hljs-number">2</span>);
+}
+</div></code></pre>
+<h3 id="55-libcombowidgetsstoreconflictdialogdart">5.5 <code>lib/combo/widgets/store_conflict_dialog.dart</code></h3>
+<p>Shared &quot;different store&quot; dialog with <strong>Cancel / Clear / Order from both stores</strong>.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> <span class="hljs-string">'package:flutter/material.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:provider/provider.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/language.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/utils/constants.dart'</span>;
+
+<span class="hljs-comment">/// <span class="markdown">Shown when an item comes from a store other than the one in the cart.</span></span>
+<span class="hljs-comment">///
+<span class="markdown">/// [allowCombo] adds "Order from both stores". [comboFull] means two stores</span></span>
+<span class="hljs-comment">/// <span class="markdown">are already in the cart, so only clearing is possible.</span></span>
+<span class="hljs-comment">/// <span class="markdown">The dialog closes itself before calling [onClear] / [onCombo].</span></span>
+Future&lt;<span class="hljs-keyword">void</span>&gt; showStoreConflictDialog({
+  required BuildContext context,
+  required <span class="hljs-built_in">bool</span> allowCombo,
+  required <span class="hljs-built_in">bool</span> comboFull,
+  required VoidCallback onClear,
+  required VoidCallback onCombo,
+}) {
+  <span class="hljs-keyword">final</span> lang = Provider.of&lt;ZLanguage&gt;(context, listen: <span class="hljs-keyword">false</span>);
+  <span class="hljs-keyword">return</span> showDialog(
+    context: context,
+    builder: (dialogContext) =&gt; AlertDialog(
+      backgroundColor: kPrimaryColor,
+      title: Text(lang.warning),
+      content: Text(
+        comboFull
+            ? lang.comboStoreLimit
+            : allowCombo
+            ? lang.comboItemsFound
+            : lang.itemsFound,
+      ),
+      actionsOverflowDirection: VerticalDirection.up,
+      actionsOverflowButtonSpacing: kDefaultPadding / <span class="hljs-number">4</span>,
+      actions: [
+        TextButton(
+          onPressed: () =&gt; Navigator.of(dialogContext).pop(),
+          child: Text(
+            lang.cancel,
+            style: TextStyle(color: kBlackColor, fontWeight: FontWeight.bold),
+          ),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.of(dialogContext).pop();
+            onClear();
+          },
+          child: Text(
+            lang.clear,
+            style: TextStyle(
+              color: allowCombo ? kGreyColor : kSecondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        <span class="hljs-keyword">if</span> (allowCombo)
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              onCombo();
+            },
+            child: Text(
+              lang.orderFromBothStores,
+              style: TextStyle(
+                color: kSecondaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+</div></code></pre>
+<h3 id="56-libcombowidgetscombostoresectiondart">5.6 <code>lib/combo/widgets/combo_store_section.dart</code></h3>
+<p>Cart section for the second store: items, +/− quantity, remove, subtotal, &quot;Add more?&quot;.</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> <span class="hljs-string">'package:flutter/material.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:heroicons_flutter/heroicons_flutter.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:provider/provider.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/combo/models/combo_cart.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/language.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/models/metadata.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/notifications/notification_store.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/services/service.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/store/components/image_container.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/utils/constants.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/utils/size_config.dart'</span>;
+<span class="hljs-keyword">import</span> <span class="hljs-string">'package:zmall/widgets/order_status_row.dart'</span>;
+
+<span class="hljs-comment">/// <span class="markdown">Cart section for the second store of a combo order.</span></span>
+<span class="hljs-comment">///
+<span class="markdown">/// Edits [comboCart] in place, then calls [onChanged] so the parent can save</span></span>
+<span class="hljs-comment">/// <span class="markdown">it and update totals.</span></span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ComboStoreSection</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">StatelessWidget</span> </span>{
+  <span class="hljs-keyword">const</span> ComboStoreSection({
+    <span class="hljs-keyword">super</span>.key,
+    required <span class="hljs-keyword">this</span>.comboCart,
+    required <span class="hljs-keyword">this</span>.storeName,
+    required <span class="hljs-keyword">this</span>.onChanged,
+    <span class="hljs-keyword">this</span>.onReturnFromStore,
+  });
+
+  <span class="hljs-keyword">final</span> ComboCart comboCart;
+  <span class="hljs-keyword">final</span> <span class="hljs-built_in">String</span> storeName;
+  <span class="hljs-keyword">final</span> VoidCallback onChanged;
+  <span class="hljs-keyword">final</span> VoidCallback? onReturnFromStore;
+
+  <span class="hljs-meta">@override</span>
+  Widget build(BuildContext context) {
+    <span class="hljs-keyword">final</span> items = comboCart.second.items ?? [];
+    <span class="hljs-keyword">final</span> currency = Provider.of&lt;ZMetaData&gt;(context, listen: <span class="hljs-keyword">false</span>).currency;
+    <span class="hljs-keyword">final</span> subtotal = items.fold&lt;<span class="hljs-built_in">double</span>&gt;(<span class="hljs-number">0</span>, (sum, i) =&gt; sum + (i.price ?? <span class="hljs-number">0</span>));
+
+    <span class="hljs-keyword">return</span> Padding(
+      padding: EdgeInsets.only(
+        top: getProportionateScreenHeight(kDefaultPadding / <span class="hljs-number">2</span>),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: getProportionateScreenHeight(kDefaultPadding / <span class="hljs-number">3</span>),
+        children: [
+          Container(
+            padding: EdgeInsets.all(
+              getProportionateScreenWidth(kDefaultPadding / <span class="hljs-number">2</span>),
+            ),
+            decoration: BoxDecoration(
+              color: kWhiteColor,
+              borderRadius: BorderRadius.circular(kDefaultPadding),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OrderStatusRow(
+                    title: <span class="hljs-string">"Second store · same delivery"</span>,
+                    iconBackgroundColor: kPrimaryColor,
+                    icon: HeroiconsOutline.buildingStorefront,
+                    fontSize: getProportionateScreenHeight(<span class="hljs-number">14</span>),
+                    value: storeName.isNotEmpty
+                        ? Service.capitalizeFirstLetters(storeName)
+                        : <span class="hljs-string">"Store 2"</span>,
+                  ),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        kDefaultPadding / <span class="hljs-number">1.5</span>,
+                      ),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =&gt; NotificationStore(
+                          storeId: comboCart.second.storeId!,
+                        ),
+                      ),
+                    ).then((_) =&gt; onReturnFromStore?.call());
+                  },
+                  child: Text(
+                    <span class="hljs-string">"Add more?"</span>,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          <span class="hljs-keyword">for</span> (<span class="hljs-built_in">int</span> index = <span class="hljs-number">0</span>; index &lt; items.length; index++)
+            _itemRow(context, index, currency),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: getProportionateScreenWidth(kDefaultPadding / <span class="hljs-number">2</span>),
+              ),
+              child: Text(
+                <span class="hljs-string">"Subtotal: <span class="hljs-subst">$currency</span> <span class="hljs-subst">${subtotal.toStringAsFixed(<span class="hljs-number">2</span>)}</span>"</span>,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: kGreyColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
+        ],
+      ),
+    );
+  }
+
+  Widget _itemRow(BuildContext context, <span class="hljs-built_in">int</span> index, <span class="hljs-built_in">String</span>? currency) {
+    <span class="hljs-keyword">final</span> item = comboCart.second.items![index];
+    <span class="hljs-keyword">return</span> Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: getProportionateScreenWidth(kDefaultPadding / <span class="hljs-number">2</span>),
+        vertical: getProportionateScreenHeight(kDefaultPadding / <span class="hljs-number">4</span>),
+      ),
+      decoration: BoxDecoration(
+        color: kPrimaryColor,
+        border: Border.all(color: kWhiteColor, width: <span class="hljs-number">2</span>),
+        borderRadius: BorderRadius.circular(kDefaultPadding),
+      ),
+      child: Row(
+        children: [
+          ImageContainer(url: item.imageURL),
+          SizedBox(width: getProportionateScreenWidth(kDefaultPadding / <span class="hljs-number">2</span>)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: getProportionateScreenHeight(kDefaultPadding / <span class="hljs-number">5</span>),
+              children: [
+                Text(
+                  Service.capitalizeFirstLetters(item.itemName ?? <span class="hljs-string">""</span>),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: kBlackColor,
+                  ),
+                  softWrap: <span class="hljs-keyword">true</span>,
+                ),
+                Text(
+                  <span class="hljs-string">"<span class="hljs-subst">$currency</span> <span class="hljs-subst">${(item.price ?? <span class="hljs-number">0</span>).toStringAsFixed(<span class="hljs-number">2</span>)}</span>"</span>,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: kGreyColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                <span class="hljs-keyword">if</span> (item.noteForItem.isNotEmpty) Text(item.noteForItem),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.remove_circle_outline,
+                      color: item.quantity != <span class="hljs-number">1</span> ? kSecondaryColor : kGreyColor,
+                    ),
+                    onPressed: () {
+                      <span class="hljs-keyword">if</span> (item.quantity == <span class="hljs-number">1</span>) {
+                        Service.showMessage(
+                          context: context,
+                          title: <span class="hljs-string">"Minimum order quantity is 1!"</span>,
+                          error: <span class="hljs-keyword">true</span>,
+                        );
+                        <span class="hljs-keyword">return</span>;
+                      }
+                      _setQuantity(index, item.quantity! - <span class="hljs-number">1</span>);
+                    },
+                  ),
+                  Text(
+                    <span class="hljs-string">"<span class="hljs-subst">${item.quantity}</span>"</span>,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: kBlackColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add_circle, color: kSecondaryColor),
+                    onPressed: () =&gt; _setQuantity(index, item.quantity! + <span class="hljs-number">1</span>),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  comboCart.second.items!.removeAt(index);
+                  onChanged();
+                },
+                child: Text(
+                  Provider.of&lt;ZLanguage&gt;(context).remove,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontSize: <span class="hljs-number">12</span>,
+                    color: kSecondaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  <span class="hljs-keyword">void</span> _setQuantity(<span class="hljs-built_in">int</span> index, <span class="hljs-built_in">int</span> quantity) {
+    <span class="hljs-keyword">final</span> item = comboCart.second.items![index];
+    <span class="hljs-keyword">final</span> unitPrice = item.price! / item.quantity!;
+    item.quantity = quantity;
+    item.price = unitPrice * quantity;
+    onChanged();
+  }
+}
+</div></code></pre>
+<h2 id="6-changed-files-diffs">6. Changed files (diffs)</h2>
+<p>Unified diff against <code>HEAD</code>: lines starting with <code>+</code> were added and lines starting with <code>-</code> were removed.</p>
+<h3 id="61-libitemcomponentsbodydart">6.1 <code>lib/item/components/body.dart</code></h3>
+<p>Item screen. A different-store item now goes through <code>_handleOtherStore</code>: it merges into the combo's second store, or shows the new dialog. Clear also removes <code>combo_cart</code>.</p>
+<pre class="hljs"><code><div>diff --git a/lib/item/components/body.dart b/lib/item/components/body.dart
+index a3a1011..8324d76 100644
+<span class="hljs-comment">--- a/lib/item/components/body.dart</span>
+<span class="hljs-comment">+++ b/lib/item/components/body.dart</span>
+@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
+ import 'package:flutter/material.dart';
+ import 'package:provider/provider.dart';
+ import 'package:zmall/utils/constants.dart';
+<span class="hljs-addition">+import 'package:zmall/combo/models/combo_cart.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';</span>
+ import 'package:zmall/custom_widgets/custom_button.dart';
+ import 'package:zmall/item/components/photo_viewer.dart';
+ import 'package:zmall/login/login_screen.dart';
+@@ -336,7 +338,11 @@ class _BodyState extends State&lt;Body&gt; {
+                                   Navigator.of(context).pop();
+                                 });
+                               } else {
+<span class="hljs-deletion">-                                _showDialog(item, destination, storeLocation);</span>
+<span class="hljs-addition">+                                _handleOtherStore(</span>
+<span class="hljs-addition">+                                  item,</span>
+<span class="hljs-addition">+                                  destination,</span>
+<span class="hljs-addition">+                                  storeLocation,</span>
+<span class="hljs-addition">+                                );</span>
+                               }
+                             } else {
+                               Service.showMessage(
+@@ -935,43 +941,70 @@ class _BodyState extends State&lt;Body&gt; {
+     );
+   }
+ 
+<span class="hljs-deletion">-  void _showDialog(item, destination, storeLocation) {</span>
+<span class="hljs-deletion">-    showDialog(</span>
+<span class="hljs-addition">+  /// Item is from a store other than the cart's: merge into the combo's</span>
+<span class="hljs-addition">+  /// second store, or ask whether to clear or order from both stores.</span>
+<span class="hljs-addition">+  Future&lt;void&gt; _handleOtherStore(</span>
+<span class="hljs-addition">+    Item item,</span>
+<span class="hljs-addition">+    DestinationAddress destination,</span>
+<span class="hljs-addition">+    StoreLocation storeLocation,</span>
+<span class="hljs-addition">+  ) async {</span>
+<span class="hljs-addition">+    if (await ComboCart.addToSecondStoreIfMatches(</span>
+<span class="hljs-addition">+      widget.item['store_id'],</span>
+<span class="hljs-addition">+      item,</span>
+<span class="hljs-addition">+    )) {</span>
+<span class="hljs-addition">+      if (!mounted) return;</span>
+<span class="hljs-addition">+      Navigator.of(context).pop();</span>
+<span class="hljs-addition">+      return;</span>
+<span class="hljs-addition">+    }</span>
+<span class="hljs-addition">+    final comboFull = await ComboCart.load() != null;</span>
+<span class="hljs-addition">+    final allowCombo = await ComboCart.canStartWith(cart);</span>
+<span class="hljs-addition">+    if (!mounted) return;</span>
+<span class="hljs-addition">+    _showDialog(</span>
+<span class="hljs-addition">+      item,</span>
+<span class="hljs-addition">+      destination,</span>
+<span class="hljs-addition">+      storeLocation,</span>
+<span class="hljs-addition">+      allowCombo: allowCombo,</span>
+<span class="hljs-addition">+      comboFull: comboFull,</span>
+<span class="hljs-addition">+    );</span>
+<span class="hljs-addition">+  }</span>
+<span class="hljs-addition">+</span>
+<span class="hljs-addition">+  void _showDialog(</span>
+<span class="hljs-addition">+    item,</span>
+<span class="hljs-addition">+    destination,</span>
+<span class="hljs-addition">+    storeLocation, {</span>
+<span class="hljs-addition">+    bool allowCombo = false,</span>
+<span class="hljs-addition">+    bool comboFull = false,</span>
+<span class="hljs-addition">+  }) {</span>
+<span class="hljs-addition">+    showStoreConflictDialog(</span>
+       context: context,
+<span class="hljs-deletion">-      builder: (_) =&gt; AlertDialog(</span>
+<span class="hljs-deletion">-        backgroundColor: kPrimaryColor,</span>
+<span class="hljs-deletion">-        title: Text(Provider.of&lt;ZLanguage&gt;(context).warning),</span>
+<span class="hljs-deletion">-        content: Text(Provider.of&lt;ZLanguage&gt;(context).itemsFound),</span>
+<span class="hljs-deletion">-        actions: [</span>
+<span class="hljs-deletion">-          TextButton(</span>
+<span class="hljs-deletion">-            onPressed: () =&gt; Navigator.pop(context),</span>
+<span class="hljs-deletion">-            child: Text(</span>
+<span class="hljs-deletion">-              Provider.of&lt;ZLanguage&gt;(context).cancel,</span>
+<span class="hljs-deletion">-              style: TextStyle(color: kBlackColor, fontWeight: FontWeight.bold),</span>
+<span class="hljs-deletion">-            ),</span>
+<span class="hljs-deletion">-          ),</span>
+<span class="hljs-deletion">-          TextButton(</span>
+<span class="hljs-deletion">-            onPressed: () {</span>
+<span class="hljs-deletion">-              setState(() {</span>
+<span class="hljs-deletion">-                Service.remove('cart');</span>
+<span class="hljs-deletion">-                Service.remove('aliexpressCart');</span>
+<span class="hljs-deletion">-                cart = Cart();</span>
+<span class="hljs-deletion">-                addToCart(item, destination, storeLocation);</span>
+<span class="hljs-deletion">-              });</span>
+<span class="hljs-deletion">-              Navigator.of(context)</span>
+<span class="hljs-deletion">-                ..pop()</span>
+<span class="hljs-deletion">-                ..pop();</span>
+<span class="hljs-deletion">-            },</span>
+<span class="hljs-deletion">-            child: Text(</span>
+<span class="hljs-deletion">-              Provider.of&lt;ZLanguage&gt;(context).clear,</span>
+<span class="hljs-deletion">-              style: TextStyle(</span>
+<span class="hljs-deletion">-                color: kSecondaryColor,</span>
+<span class="hljs-deletion">-                fontWeight: FontWeight.bold,</span>
+<span class="hljs-deletion">-              ),</span>
+<span class="hljs-deletion">-            ),</span>
+<span class="hljs-deletion">-          ),</span>
+<span class="hljs-deletion">-        ],</span>
+<span class="hljs-deletion">-      ),</span>
+<span class="hljs-addition">+      allowCombo: allowCombo,</span>
+<span class="hljs-addition">+      comboFull: comboFull,</span>
+<span class="hljs-addition">+      onClear: () {</span>
+<span class="hljs-addition">+        setState(() {</span>
+<span class="hljs-addition">+          Service.remove('cart');</span>
+<span class="hljs-addition">+          Service.remove('aliexpressCart');</span>
+<span class="hljs-addition">+          ComboCart.clear();</span>
+<span class="hljs-addition">+          cart = Cart();</span>
+<span class="hljs-addition">+          addToCart(item, destination, storeLocation);</span>
+<span class="hljs-addition">+        });</span>
+<span class="hljs-addition">+        Navigator.of(context).pop();</span>
+<span class="hljs-addition">+      },</span>
+<span class="hljs-addition">+      onCombo: () async {</span>
+<span class="hljs-addition">+        await ComboCart.start(</span>
+<span class="hljs-addition">+          userData: userData,</span>
+<span class="hljs-addition">+          storeId: widget.item['store_id'],</span>
+<span class="hljs-addition">+          item: item,</span>
+<span class="hljs-addition">+          storeLocation: storeLocation,</span>
+<span class="hljs-addition">+          destination: destination,</span>
+<span class="hljs-addition">+        );</span>
+<span class="hljs-addition">+        if (!mounted) return;</span>
+<span class="hljs-addition">+        Service.showMessage(</span>
+<span class="hljs-addition">+          context: context,</span>
+<span class="hljs-addition">+          title: Provider.of&lt;ZLanguage&gt;(context, listen: false).comboAdded,</span>
+<span class="hljs-addition">+          error: false,</span>
+<span class="hljs-addition">+        );</span>
+<span class="hljs-addition">+        Navigator.of(context).pop();</span>
+<span class="hljs-addition">+      },</span>
+     );
+   }
+ }
+</div></code></pre>
+<h3 id="62-libproductproductscreendart">6.2 <code>lib/product/product_screen.dart</code></h3>
+<p>Store product list. Same change as the item screen. Shows a message instead of closing the screen.</p>
+<pre class="hljs"><code><div>diff --git a/lib/product/product_screen.dart b/lib/product/product_screen.dart
+index 90eb7be..c5fa30b 100644
+<span class="hljs-comment">--- a/lib/product/product_screen.dart</span>
+<span class="hljs-comment">+++ b/lib/product/product_screen.dart</span>
+@@ -12,6 +12,8 @@ import 'package:zmall/custom_widgets/custom_button.dart';
+ import 'package:zmall/item/item_screen.dart';
+ import 'package:zmall/login/login_screen.dart';
+ import 'package:zmall/models/cart.dart';
+<span class="hljs-addition">+import 'package:zmall/combo/models/combo_cart.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';</span>
+ import 'package:zmall/models/language.dart';
+ import 'package:zmall/models/metadata.dart';
+ import 'package:zmall/services/service.dart';
+@@ -594,7 +596,12 @@ class _ProductScreenState extends State&lt;ProductScreen&gt; {
+             error: false,
+           );
+         } else {
+<span class="hljs-deletion">-          _showDialog(cartItem, destination, storeLocation, item['store_id']);</span>
+<span class="hljs-addition">+          _handleOtherStore(</span>
+<span class="hljs-addition">+            cartItem,</span>
+<span class="hljs-addition">+            destination,</span>
+<span class="hljs-addition">+            storeLocation,</span>
+<span class="hljs-addition">+            item['store_id'],</span>
+<span class="hljs-addition">+          );</span>
+         }
+       } else {
+         Service.showMessage(
+@@ -1225,50 +1232,70 @@ class _ProductScreenState extends State&lt;ProductScreen&gt; {
+     }
+   }
+ 
+<span class="hljs-deletion">-  void _showDialog(item, destination, storeLocation, storeId) {</span>
+<span class="hljs-deletion">-    showDialog(</span>
+<span class="hljs-addition">+  /// Item is from a store other than the cart's: merge into the combo's</span>
+<span class="hljs-addition">+  /// second store, or ask whether to clear or order from both stores.</span>
+<span class="hljs-addition">+  Future&lt;void&gt; _handleOtherStore(</span>
+<span class="hljs-addition">+    Item item,</span>
+<span class="hljs-addition">+    DestinationAddress destination,</span>
+<span class="hljs-addition">+    StoreLocation storeLocation,</span>
+<span class="hljs-addition">+    String storeId,</span>
+<span class="hljs-addition">+  ) async {</span>
+<span class="hljs-addition">+    if (await ComboCart.addToSecondStoreIfMatches(storeId, item)) {</span>
+<span class="hljs-addition">+      if (!mounted) return;</span>
+<span class="hljs-addition">+      Service.showMessage(</span>
+<span class="hljs-addition">+        context: context,</span>
+<span class="hljs-addition">+        title: "Item added to cart",</span>
+<span class="hljs-addition">+        error: false,</span>
+<span class="hljs-addition">+      );</span>
+<span class="hljs-addition">+      return;</span>
+<span class="hljs-addition">+    }</span>
+<span class="hljs-addition">+    final comboFull = await ComboCart.load() != null;</span>
+<span class="hljs-addition">+    final allowCombo = await ComboCart.canStartWith(cart);</span>
+<span class="hljs-addition">+    if (!mounted) return;</span>
+<span class="hljs-addition">+    _showDialog(</span>
+<span class="hljs-addition">+      item,</span>
+<span class="hljs-addition">+      destination,</span>
+<span class="hljs-addition">+      storeLocation,</span>
+<span class="hljs-addition">+      storeId,</span>
+<span class="hljs-addition">+      allowCombo: allowCombo,</span>
+<span class="hljs-addition">+      comboFull: comboFull,</span>
+<span class="hljs-addition">+    );</span>
+<span class="hljs-addition">+  }</span>
+<span class="hljs-addition">+</span>
+<span class="hljs-addition">+  void _showDialog(</span>
+<span class="hljs-addition">+    item,</span>
+<span class="hljs-addition">+    destination,</span>
+<span class="hljs-addition">+    storeLocation,</span>
+<span class="hljs-addition">+    storeId, {</span>
+<span class="hljs-addition">+    bool allowCombo = false,</span>
+<span class="hljs-addition">+    bool comboFull = false,</span>
+<span class="hljs-addition">+  }) {</span>
+<span class="hljs-addition">+    showStoreConflictDialog(</span>
+       context: context,
+<span class="hljs-deletion">-      builder: (BuildContext alertContext) {</span>
+<span class="hljs-deletion">-        return AlertDialog(</span>
+<span class="hljs-deletion">-          backgroundColor: kPrimaryColor,</span>
+<span class="hljs-deletion">-          title: Text(Provider.of&lt;ZLanguage&gt;(context).warning),</span>
+<span class="hljs-deletion">-          content: Text(Provider.of&lt;ZLanguage&gt;(context).itemsFound),</span>
+<span class="hljs-deletion">-          actions: [</span>
+<span class="hljs-deletion">-            TextButton(</span>
+<span class="hljs-deletion">-              child: Text(</span>
+<span class="hljs-deletion">-                Provider.of&lt;ZLanguage&gt;(context).cancel,</span>
+<span class="hljs-deletion">-                style: TextStyle(</span>
+<span class="hljs-deletion">-                  color: kBlackColor,</span>
+<span class="hljs-deletion">-                  fontWeight: FontWeight.bold,</span>
+<span class="hljs-deletion">-                ),</span>
+<span class="hljs-deletion">-              ),</span>
+<span class="hljs-deletion">-              onPressed: () {</span>
+<span class="hljs-deletion">-                Navigator.of(alertContext).pop();</span>
+<span class="hljs-deletion">-              },</span>
+<span class="hljs-deletion">-            ),</span>
+<span class="hljs-deletion">-            TextButton(</span>
+<span class="hljs-deletion">-              child: Text(</span>
+<span class="hljs-deletion">-                Provider.of&lt;ZLanguage&gt;(context).clear,</span>
+<span class="hljs-deletion">-                style: TextStyle(</span>
+<span class="hljs-deletion">-                  color: kSecondaryColor,</span>
+<span class="hljs-deletion">-                  fontWeight: FontWeight.bold,</span>
+<span class="hljs-deletion">-                ),</span>
+<span class="hljs-deletion">-              ),</span>
+<span class="hljs-deletion">-              onPressed: () {</span>
+<span class="hljs-deletion">-                setState(() {</span>
+<span class="hljs-deletion">-                  cart!.toJson();</span>
+<span class="hljs-deletion">-                  Service.remove('cart');</span>
+<span class="hljs-deletion">-                  Service.remove('aliexpressCart');</span>
+<span class="hljs-deletion">-                  cart = Cart();</span>
+<span class="hljs-deletion">-                  addToCart(item, destination, storeLocation, storeId);</span>
+<span class="hljs-deletion">-                });</span>
+<span class="hljs-deletion">-</span>
+<span class="hljs-deletion">-                Navigator.of(alertContext).pop();</span>
+<span class="hljs-deletion">-                // Future.delayed(Duration(seconds: 2));</span>
+<span class="hljs-deletion">-                // Navigator.of(context).pop();</span>
+<span class="hljs-deletion">-              },</span>
+<span class="hljs-deletion">-            ),</span>
+<span class="hljs-deletion">-          ],</span>
+<span class="hljs-addition">+      allowCombo: allowCombo,</span>
+<span class="hljs-addition">+      comboFull: comboFull,</span>
+<span class="hljs-addition">+      onClear: () {</span>
+<span class="hljs-addition">+        setState(() {</span>
+<span class="hljs-addition">+          Service.remove('cart');</span>
+<span class="hljs-addition">+          Service.remove('aliexpressCart');</span>
+<span class="hljs-addition">+          ComboCart.clear();</span>
+<span class="hljs-addition">+          cart = Cart();</span>
+<span class="hljs-addition">+          addToCart(item, destination, storeLocation, storeId);</span>
+<span class="hljs-addition">+        });</span>
+<span class="hljs-addition">+      },</span>
+<span class="hljs-addition">+      onCombo: () async {</span>
+<span class="hljs-addition">+        await ComboCart.start(</span>
+<span class="hljs-addition">+          userData: userData,</span>
+<span class="hljs-addition">+          storeId: storeId,</span>
+<span class="hljs-addition">+          item: item,</span>
+<span class="hljs-addition">+          storeLocation: storeLocation,</span>
+<span class="hljs-addition">+          destination: destination,</span>
+<span class="hljs-addition">+        );</span>
+<span class="hljs-addition">+        if (!mounted) return;</span>
+<span class="hljs-addition">+        Service.showMessage(</span>
+<span class="hljs-addition">+          context: context,</span>
+<span class="hljs-addition">+          title: Provider.of&lt;ZLanguage&gt;(context, listen: false).comboAdded,</span>
+<span class="hljs-addition">+          error: false,</span>
+         );
+       },
+     );
+</div></code></pre>
+<h3 id="63-libnotificationsnotificationstoredart">6.3 <code>lib/notifications/notification_store.dart</code></h3>
+<p>Store screen opened from a notification or &quot;Add more?&quot;. Same change, plus a <code>language.dart</code> import.</p>
+<pre class="hljs"><code><div>diff --git a/lib/notifications/notification_store.dart b/lib/notifications/notification_store.dart
+index 31363ba..fb30041 100644
+<span class="hljs-comment">--- a/lib/notifications/notification_store.dart</span>
+<span class="hljs-comment">+++ b/lib/notifications/notification_store.dart</span>
+@@ -10,6 +10,9 @@ import 'package:zmall/custom_widgets/custom_button.dart';
+ import 'package:zmall/item/item_screen.dart';
+ import 'package:zmall/login/login_screen.dart';
+ import 'package:zmall/models/cart.dart';
+<span class="hljs-addition">+import 'package:zmall/combo/models/combo_cart.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/models/language.dart';</span>
+ import 'package:zmall/models/metadata.dart';
+ import 'package:zmall/services/service.dart';
+ import 'package:zmall/utils/pagination_controller.dart';
+@@ -347,7 +350,7 @@ class _NotificationStoreState extends State&lt;NotificationStore&gt; {
+                                     error: false,
+                                   );
+                                 } else {
+<span class="hljs-deletion">-                                  _showDialog(</span>
+<span class="hljs-addition">+                                  _handleOtherStore(</span>
+                                     cartItem,
+                                     destination,
+                                     storeLocation,
+@@ -521,52 +524,70 @@ class _NotificationStoreState extends State&lt;NotificationStore&gt; {
+     }
+   }
+ 
+<span class="hljs-deletion">-  void _showDialog(item, destination, storeLocation, storeId) {</span>
+<span class="hljs-deletion">-    showDialog(</span>
+<span class="hljs-addition">+  /// Item is from a store other than the cart's: merge into the combo's</span>
+<span class="hljs-addition">+  /// second store, or ask whether to clear or order from both stores.</span>
+<span class="hljs-addition">+  Future&lt;void&gt; _handleOtherStore(</span>
+<span class="hljs-addition">+    Item item,</span>
+<span class="hljs-addition">+    DestinationAddress destination,</span>
+<span class="hljs-addition">+    StoreLocation storeLocation,</span>
+<span class="hljs-addition">+    String storeId,</span>
+<span class="hljs-addition">+  ) async {</span>
+<span class="hljs-addition">+    if (await ComboCart.addToSecondStoreIfMatches(storeId, item)) {</span>
+<span class="hljs-addition">+      if (!mounted) return;</span>
+<span class="hljs-addition">+      Service.showMessage(</span>
+<span class="hljs-addition">+        context: context,</span>
+<span class="hljs-addition">+        title: "Item added to cart",</span>
+<span class="hljs-addition">+        error: false,</span>
+<span class="hljs-addition">+      );</span>
+<span class="hljs-addition">+      return;</span>
+<span class="hljs-addition">+    }</span>
+<span class="hljs-addition">+    final comboFull = await ComboCart.load() != null;</span>
+<span class="hljs-addition">+    final allowCombo = await ComboCart.canStartWith(cart);</span>
+<span class="hljs-addition">+    if (!mounted) return;</span>
+<span class="hljs-addition">+    _showDialog(</span>
+<span class="hljs-addition">+      item,</span>
+<span class="hljs-addition">+      destination,</span>
+<span class="hljs-addition">+      storeLocation,</span>
+<span class="hljs-addition">+      storeId,</span>
+<span class="hljs-addition">+      allowCombo: allowCombo,</span>
+<span class="hljs-addition">+      comboFull: comboFull,</span>
+<span class="hljs-addition">+    );</span>
+<span class="hljs-addition">+  }</span>
+<span class="hljs-addition">+</span>
+<span class="hljs-addition">+  void _showDialog(</span>
+<span class="hljs-addition">+    item,</span>
+<span class="hljs-addition">+    destination,</span>
+<span class="hljs-addition">+    storeLocation,</span>
+<span class="hljs-addition">+    storeId, {</span>
+<span class="hljs-addition">+    bool allowCombo = false,</span>
+<span class="hljs-addition">+    bool comboFull = false,</span>
+<span class="hljs-addition">+  }) {</span>
+<span class="hljs-addition">+    showStoreConflictDialog(</span>
+       context: context,
+<span class="hljs-deletion">-      builder: (BuildContext alertContext) {</span>
+<span class="hljs-deletion">-        return AlertDialog(</span>
+<span class="hljs-deletion">-          backgroundColor: kPrimaryColor,</span>
+<span class="hljs-deletion">-          title: Text("Warning"),</span>
+<span class="hljs-deletion">-          content: Text(</span>
+<span class="hljs-deletion">-            "Item(s) from a different store found in cart! Would you like to clear your cart?",</span>
+<span class="hljs-deletion">-          ),</span>
+<span class="hljs-deletion">-          actions: [</span>
+<span class="hljs-deletion">-            TextButton(</span>
+<span class="hljs-deletion">-              child: Text(</span>
+<span class="hljs-deletion">-                "Cancel",</span>
+<span class="hljs-deletion">-                style: TextStyle(</span>
+<span class="hljs-deletion">-                  color: kBlackColor,</span>
+<span class="hljs-deletion">-                  fontWeight: FontWeight.bold,</span>
+<span class="hljs-deletion">-                ),</span>
+<span class="hljs-deletion">-              ),</span>
+<span class="hljs-deletion">-              onPressed: () {</span>
+<span class="hljs-deletion">-                Navigator.of(alertContext).pop();</span>
+<span class="hljs-deletion">-              },</span>
+<span class="hljs-deletion">-            ),</span>
+<span class="hljs-deletion">-            TextButton(</span>
+<span class="hljs-deletion">-              child: Text(</span>
+<span class="hljs-deletion">-                "Clear",</span>
+<span class="hljs-deletion">-                style: TextStyle(</span>
+<span class="hljs-deletion">-                  color: kSecondaryColor,</span>
+<span class="hljs-deletion">-                  fontWeight: FontWeight.bold,</span>
+<span class="hljs-deletion">-                ),</span>
+<span class="hljs-deletion">-              ),</span>
+<span class="hljs-deletion">-              onPressed: () {</span>
+<span class="hljs-deletion">-                setState(() {</span>
+<span class="hljs-deletion">-                  cart!.toJson();</span>
+<span class="hljs-deletion">-                  Service.remove('cart');</span>
+<span class="hljs-deletion">-                  Service.remove('aliexpressCart');</span>
+<span class="hljs-deletion">-                  cart = Cart();</span>
+<span class="hljs-deletion">-                  addToCart(item, destination, storeLocation, storeId);</span>
+<span class="hljs-deletion">-                });</span>
+<span class="hljs-deletion">-</span>
+<span class="hljs-deletion">-                Navigator.of(alertContext).pop();</span>
+<span class="hljs-deletion">-                // Future.delayed(Duration(seconds: 2));</span>
+<span class="hljs-deletion">-                // Navigator.of(context).pop();</span>
+<span class="hljs-deletion">-              },</span>
+<span class="hljs-deletion">-            ),</span>
+<span class="hljs-deletion">-          ],</span>
+<span class="hljs-addition">+      allowCombo: allowCombo,</span>
+<span class="hljs-addition">+      comboFull: comboFull,</span>
+<span class="hljs-addition">+      onClear: () {</span>
+<span class="hljs-addition">+        setState(() {</span>
+<span class="hljs-addition">+          Service.remove('cart');</span>
+<span class="hljs-addition">+          Service.remove('aliexpressCart');</span>
+<span class="hljs-addition">+          ComboCart.clear();</span>
+<span class="hljs-addition">+          cart = Cart();</span>
+<span class="hljs-addition">+          addToCart(item, destination, storeLocation, storeId);</span>
+<span class="hljs-addition">+        });</span>
+<span class="hljs-addition">+      },</span>
+<span class="hljs-addition">+      onCombo: () async {</span>
+<span class="hljs-addition">+        await ComboCart.start(</span>
+<span class="hljs-addition">+          userData: userData,</span>
+<span class="hljs-addition">+          storeId: storeId,</span>
+<span class="hljs-addition">+          item: item,</span>
+<span class="hljs-addition">+          storeLocation: storeLocation,</span>
+<span class="hljs-addition">+          destination: destination,</span>
+<span class="hljs-addition">+        );</span>
+<span class="hljs-addition">+        if (!mounted) return;</span>
+<span class="hljs-addition">+        Service.showMessage(</span>
+<span class="hljs-addition">+          context: context,</span>
+<span class="hljs-addition">+          title: Provider.of&lt;ZLanguage&gt;(context, listen: false).comboAdded,</span>
+<span class="hljs-addition">+          error: false,</span>
+         );
+       },
+     );
+</div></code></pre>
+<h3 id="64-libcartcomponentsbodydart">6.4 <code>lib/cart/components/body.dart</code></h3>
+<p>Cart screen. Loads <code>combo_cart</code>, shows <code>ComboStoreSection</code> as the last list row and includes store 2 in the total. If store 1 is emptied, store 2 becomes the normal cart. Clear also removes the combo.</p>
+<pre class="hljs"><code><div>diff --git a/lib/cart/components/body.dart b/lib/cart/components/body.dart
+index a096ee8..68be359 100644
+<span class="hljs-comment">--- a/lib/cart/components/body.dart</span>
+<span class="hljs-comment">+++ b/lib/cart/components/body.dart</span>
+@@ -17,6 +17,9 @@ import 'package:zmall/custom_widgets/custom_button.dart';
+ import 'package:zmall/delivery/delivery_screen.dart';
+ import 'package:zmall/lunch_home/lunch_home_screen.dart';
+ import 'package:zmall/models/cart.dart';
+<span class="hljs-addition">+import 'package:zmall/combo/models/combo_cart.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/combo/services/combo_service.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/combo/widgets/combo_store_section.dart';</span>
+ import 'package:zmall/models/language.dart';
+ import 'package:zmall/models/metadata.dart';
+ import 'package:zmall/notifications/notification_store.dart';
+@@ -36,6 +39,8 @@ class _BodyState extends State&lt;Body&gt; with TickerProviderStateMixin {
+   bool isLocationServicesEnabled = false;
+   Cart? cart;
+   AliExpressCart? aliexpressCart;
+<span class="hljs-addition">+  ComboCart? comboCart;</span>
+<span class="hljs-addition">+  String comboStoreName = '';</span>
+   bool _loading = true;
+   double price = 0;
+   var appClose;
+@@ -72,11 +77,70 @@ class _BodyState extends State&lt;Body&gt; with TickerProviderStateMixin {
+     cart?.items?.forEach((item) {
+       tempPrice += item.price!;
+     });
+<span class="hljs-addition">+    comboCart?.second.items?.forEach((item) {</span>
+<span class="hljs-addition">+      tempPrice += item.price!;</span>
+<span class="hljs-addition">+    });</span>
+     setState(() {
+       price = tempPrice;
+     });
+   }
+ 
+<span class="hljs-addition">+  Future&lt;void&gt; _loadComboCart() async {</span>
+<span class="hljs-addition">+    final combo = await ComboCart.load();</span>
+<span class="hljs-addition">+    if (!mounted) return;</span>
+<span class="hljs-addition">+    setState(() {</span>
+<span class="hljs-addition">+      comboCart = combo;</span>
+<span class="hljs-addition">+    });</span>
+<span class="hljs-addition">+    if (combo != null &amp;&amp; comboStoreName.isEmpty) {</span>
+<span class="hljs-addition">+      final data = await ComboService.getStoreDetail(</span>
+<span class="hljs-addition">+        context,</span>
+<span class="hljs-addition">+        storeId: combo.second.storeId!,</span>
+<span class="hljs-addition">+      );</span>
+<span class="hljs-addition">+      if (!mounted) return;</span>
+<span class="hljs-addition">+      if (data != null &amp;&amp; data['success'] == true) {</span>
+<span class="hljs-addition">+        setState(() {</span>
+<span class="hljs-addition">+          comboStoreName = data['store']['name'] ?? '';</span>
+<span class="hljs-addition">+        });</span>
+<span class="hljs-addition">+      }</span>
+<span class="hljs-addition">+    }</span>
+<span class="hljs-addition">+  }</span>
+<span class="hljs-addition">+</span>
+<span class="hljs-addition">+  void _onComboChanged() {</span>
+<span class="hljs-addition">+    if (comboCart == null) return;</span>
+<span class="hljs-addition">+    if (comboCart!.second.items!.isEmpty) {</span>
+<span class="hljs-addition">+      ComboCart.clear();</span>
+<span class="hljs-addition">+      setState(() {</span>
+<span class="hljs-addition">+        comboCart = null;</span>
+<span class="hljs-addition">+        comboStoreName = '';</span>
+<span class="hljs-addition">+      });</span>
+<span class="hljs-addition">+    } else {</span>
+<span class="hljs-addition">+      comboCart!.save();</span>
+<span class="hljs-addition">+      setState(() {});</span>
+<span class="hljs-addition">+    }</span>
+<span class="hljs-addition">+    calculatePrice();</span>
+<span class="hljs-addition">+  }</span>
+<span class="hljs-addition">+</span>
+<span class="hljs-addition">+  /// When the first store is emptied, the second store becomes the normal</span>
+<span class="hljs-addition">+  /// single-store cart.</span>
+<span class="hljs-addition">+  void _promoteComboIfFirstEmpty() {</span>
+<span class="hljs-addition">+    if (comboCart == null || cart == null || cart!.items!.isNotEmpty) return;</span>
+<span class="hljs-addition">+    final second = comboCart!.second;</span>
+<span class="hljs-addition">+    second.serverToken = cart!.serverToken;</span>
+<span class="hljs-addition">+    setState(() {</span>
+<span class="hljs-addition">+      cart = second;</span>
+<span class="hljs-addition">+      storeID = second.storeId;</span>
+<span class="hljs-addition">+      storeName = comboStoreName;</span>
+<span class="hljs-addition">+      extraItems = null;</span>
+<span class="hljs-addition">+      comboCart = null;</span>
+<span class="hljs-addition">+      comboStoreName = '';</span>
+<span class="hljs-addition">+    });</span>
+<span class="hljs-addition">+    Service.save('cart', cart!.toJson());</span>
+<span class="hljs-addition">+    ComboCart.clear();</span>
+<span class="hljs-addition">+    _getStoreExtraItemList();</span>
+<span class="hljs-addition">+    _getStoreDetail();</span>
+<span class="hljs-addition">+    calculatePrice();</span>
+<span class="hljs-addition">+  }</span>
+<span class="hljs-addition">+</span>
+   void getCart() async {
+     setState(() {
+       _loading = true;
+@@ -106,6 +170,7 @@ class _BodyState extends State&lt;Body&gt; with TickerProviderStateMixin {
+         //   debugPrint("ALI CART NOT FOUND&gt;&gt;&gt;");
+         // }
+         _getStoreExtraItemList();
+<span class="hljs-addition">+        await _loadComboCart();</span>
+ 
+         calculatePrice();
+         if (cart != null &amp;&amp; cart!.items!.isNotEmpty) {
+@@ -596,7 +661,8 @@ class _BodyState extends State&lt;Body&gt; with TickerProviderStateMixin {
+                   Expanded(
+                     child: ListView.separated(
+                       shrinkWrap: true,
+<span class="hljs-deletion">-                      itemCount: cart!.toJson()['items'].length ?? 0,</span>
+<span class="hljs-addition">+                      itemCount:</span>
+<span class="hljs-addition">+                          cart!.items!.length + (comboCart != null ? 1 : 0),</span>
+                       padding: EdgeInsets.only(
+                         left: getProportionateScreenWidth(kDefaultPadding / 2),
+                         right: getProportionateScreenWidth(kDefaultPadding / 2),
+@@ -609,6 +675,14 @@ class _BodyState extends State&lt;Body&gt; with TickerProviderStateMixin {
+                             ),
+                           ),
+                       itemBuilder: (context, index) {
+<span class="hljs-addition">+                        if (index == cart!.items!.length) {</span>
+<span class="hljs-addition">+                          return ComboStoreSection(</span>
+<span class="hljs-addition">+                            comboCart: comboCart!,</span>
+<span class="hljs-addition">+                            storeName: comboStoreName,</span>
+<span class="hljs-addition">+                            onChanged: _onComboChanged,</span>
+<span class="hljs-addition">+                            onReturnFromStore: getCart,</span>
+<span class="hljs-addition">+                          );</span>
+<span class="hljs-addition">+                        }</span>
+                         final item = cart!.items?[index];
+                         final isLunchBox =
+                             item?.itemName?.contains('ምሳቃ') ?? false;
+@@ -854,6 +928,7 @@ class _BodyState extends State&lt;Body&gt; with TickerProviderStateMixin {
+                                                 }
+                                               });
+                                               calculatePrice();
+<span class="hljs-addition">+                                              _promoteComboIfFirstEmpty();</span>
+                                             },
+                                             child: Text(
+                                               Provider.of&lt;ZLanguage&gt;(
+@@ -1267,6 +1342,7 @@ class _BodyState extends State&lt;Body&gt; with TickerProviderStateMixin {
+                   cart!.toJson();
+                   Service.remove('cart');
+                   Service.remove('aliexpressCart'); ////NEW
+<span class="hljs-addition">+                  ComboCart.clear();</span>
+                   cart = Cart();
+                   addToCart(item, destination, storeLocation, storeId);
+                 });
+</div></code></pre>
+<h3 id="65-libdeliverydeliveryscreendart">6.5 <code>lib/delivery/delivery_screen.dart</code></h3>
+<p>Delivery screen. If a combo exists, <code>_addToCart</code> calls <code>_addToComboCart</code>: it blocks self-pickup, calls <code>combo_add_item_in_cart</code>, saves <code>combo_id</code> and the cart ids by <code>store_id</code>, then opens <code>ComboCheckoutScreen</code>.</p>
+<pre class="hljs"><code><div>diff --git a/lib/delivery/delivery_screen.dart b/lib/delivery/delivery_screen.dart
+index 91c9836..ccb9dd92 100644
+<span class="hljs-comment">--- a/lib/delivery/delivery_screen.dart</span>
+<span class="hljs-comment">+++ b/lib/delivery/delivery_screen.dart</span>
+@@ -9,6 +9,9 @@ import 'package:flutter/material.dart';
+ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
+ import 'package:provider/provider.dart';
+ import 'package:zmall/checkout/checkout_screen.dart';
+<span class="hljs-addition">+import 'package:zmall/combo/combo_checkout_screen.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/combo/models/combo_cart.dart';</span>
+<span class="hljs-addition">+import 'package:zmall/combo/services/combo_service.dart';</span>
+ import 'package:zmall/utils/constants.dart';
+ import 'package:zmall/services/core_services.dart';
+ import 'package:zmall/custom_widgets/custom_button.dart';
+@@ -384,6 +387,12 @@ class _DeliveryScreenState extends State&lt;DeliveryScreen&gt; {
+     setState(() {
+       _loading = true;
+     });
+<span class="hljs-addition">+    final combo = await ComboCart.load();</span>
+<span class="hljs-addition">+    if (!mounted) return;</span>
+<span class="hljs-addition">+    if (combo != null) {</span>
+<span class="hljs-addition">+      await _addToComboCart(combo);</span>
+<span class="hljs-addition">+      return;</span>
+<span class="hljs-addition">+    }</span>
+     var data = await addToCart();
+     if (!mounted) return;
+     if (data != null &amp;&amp; data['success']) {
+@@ -425,6 +434,83 @@ class _DeliveryScreenState extends State&lt;DeliveryScreen&gt; {
+     }
+   }
+ 
+<span class="hljs-addition">+  /// Combo order: sends both stores in one call, then opens combo checkout.</span>
+<span class="hljs-addition">+  Future&lt;void&gt; _addToComboCart(ComboCart combo) async {</span>
+<span class="hljs-addition">+    if (selfPickup) {</span>
+<span class="hljs-addition">+      setState(() {</span>
+<span class="hljs-addition">+        _loading = false;</span>
+<span class="hljs-addition">+      });</span>
+<span class="hljs-addition">+      Service.showMessage(</span>
+<span class="hljs-addition">+        context: context,</span>
+<span class="hljs-addition">+        title: "Self pickup is not available when ordering from 2 stores.",</span>
+<span class="hljs-addition">+        error: true,</span>
+<span class="hljs-addition">+        duration: 4,</span>
+<span class="hljs-addition">+      );</span>
+<span class="hljs-addition">+      return;</span>
+<span class="hljs-addition">+    }</span>
+<span class="hljs-addition">+    final data = await ComboService.addItemInCart(</span>
+<span class="hljs-addition">+      context,</span>
+<span class="hljs-addition">+      userData: userData,</span>
+<span class="hljs-addition">+      first: cart!,</span>
+<span class="hljs-addition">+      combo: combo,</span>
+<span class="hljs-addition">+      destination: cart!.destinationAddress!,</span>
+<span class="hljs-addition">+      username: isForOthers</span>
+<span class="hljs-addition">+          ? receiverName</span>
+<span class="hljs-addition">+          : "${userData['user']['first_name']} ${userData['user']['last_name']}",</span>
+<span class="hljs-addition">+      phone: isForOthers ? receiverPhone : "${userData['user']['phone']}",</span>
+<span class="hljs-addition">+    );</span>
+<span class="hljs-addition">+    if (!mounted) return;</span>
+<span class="hljs-addition">+    setState(() {</span>
+<span class="hljs-addition">+      _loading = false;</span>
+<span class="hljs-addition">+    });</span>
+<span class="hljs-addition">+</span>
+<span class="hljs-addition">+    if (data != null &amp;&amp; data['success'] == true) {</span>
+<span class="hljs-addition">+      combo.resetServerState();</span>
+<span class="hljs-addition">+      combo.comboId = data['combo_id'];</span>
+<span class="hljs-addition">+      // Map by store_id: the a/b labels change at the invoice step.</span>
+<span class="hljs-addition">+      for (final side in ['store_a', 'store_b']) {</span>
+<span class="hljs-addition">+        final sideData = data[side];</span>
+<span class="hljs-addition">+        if (sideData is Map &amp;&amp;</span>
+<span class="hljs-addition">+            sideData['store_id'] != null &amp;&amp;</span>
+<span class="hljs-addition">+            sideData['cart_id'] != null) {</span>
+<span class="hljs-addition">+          combo.cartIdByStore['${sideData['store_id']}'] =</span>
+<span class="hljs-addition">+              '${sideData['cart_id']}';</span>
+<span class="hljs-addition">+        }</span>
+<span class="hljs-addition">+      }</span>
+<span class="hljs-addition">+      if (combo.comboId == null || combo.cartIdByStore.length != 2) {</span>
+<span class="hljs-addition">+        Service.showMessage(</span>
+<span class="hljs-addition">+          context: context,</span>
+<span class="hljs-addition">+          title: "Something went wrong. Please try again.",</span>
+<span class="hljs-addition">+          error: true,</span>
+<span class="hljs-addition">+        );</span>
+<span class="hljs-addition">+        return;</span>
+<span class="hljs-addition">+      }</span>
+<span class="hljs-addition">+      await combo.save();</span>
+<span class="hljs-addition">+      if (!mounted) return;</span>
+<span class="hljs-addition">+      Navigator.push(</span>
+<span class="hljs-addition">+        context,</span>
+<span class="hljs-addition">+        MaterialPageRoute(builder: (context) =&gt; ComboCheckoutScreen()),</span>
+<span class="hljs-addition">+      );</span>
+<span class="hljs-addition">+    } else if (ComboService.isSessionExpired(data)) {</span>
+<span class="hljs-addition">+      Service.showMessage(</span>
+<span class="hljs-addition">+        context: context,</span>
+<span class="hljs-addition">+        title: "${errorCodes['999']}!",</span>
+<span class="hljs-addition">+        error: true,</span>
+<span class="hljs-addition">+      );</span>
+<span class="hljs-addition">+      await Service.saveBool('logged', false);</span>
+<span class="hljs-addition">+      await Service.remove('user');</span>
+<span class="hljs-addition">+      if (!mounted) return;</span>
+<span class="hljs-addition">+      Navigator.pushReplacementNamed(context, LoginScreen.routeName);</span>
+<span class="hljs-addition">+    } else {</span>
+<span class="hljs-addition">+      Service.showMessage(</span>
+<span class="hljs-addition">+        context: context,</span>
+<span class="hljs-addition">+        title: ComboService.errorText(data),</span>
+<span class="hljs-addition">+        error: true,</span>
+<span class="hljs-addition">+        duration: 5,</span>
+<span class="hljs-addition">+      );</span>
+<span class="hljs-addition">+    }</span>
+<span class="hljs-addition">+  }</span>
+<span class="hljs-addition">+</span>
+   Widget wrapperContainer({
+     required List&lt;Widget&gt; children,
+     double? height,
+@@ -1262,6 +1348,8 @@ class _DeliveryScreenState extends State&lt;DeliveryScreen&gt; {
+     }
+ 
+     var body = json.encode(cart!.toJson());
+<span class="hljs-addition">+    debugPrint("[COMBO-DEBUG] add_item_in_cart URL: $url");</span>
+<span class="hljs-addition">+    debugPrint("[COMBO-DEBUG] add_item_in_cart BODY: $body");</span>
+     try {
+       http.Response response = await http
+           .post(
+@@ -1278,6 +1366,7 @@ class _DeliveryScreenState extends State&lt;DeliveryScreen&gt; {
+               throw TimeoutException("The connection has timed out!");
+             },
+           );
+<span class="hljs-addition">+      debugPrint("[COMBO-DEBUG] add_item_in_cart RESPONSE: ${response.body}");</span>
+       if (mounted)
+         setState(() {
+           this.responseData = json.decode(response.body);
+</div></code></pre>
+<h3 id="66-libmodelslanguagedart">6.6 <code>lib/models/language.dart</code></h3>
+<p>New strings (English and Chinese): <code>orderFromBothStores</code>, <code>comboItemsFound</code>, <code>comboStoreLimit</code>, <code>comboAdded</code>.</p>
+<pre class="hljs"><code><div>diff --git a/lib/models/language.dart b/lib/models/language.dart
+index 340c4a5..b28705d 100644
+<span class="hljs-comment">--- a/lib/models/language.dart</span>
+<span class="hljs-comment">+++ b/lib/models/language.dart</span>
+@@ -68,6 +68,12 @@ class ZLanguage extends ChangeNotifier {
+   String itemsFound =
+       "Item(s) from a different store found in cart! Would you like to clear your cart?";
+   String clear = "Clear";
+<span class="hljs-addition">+  String orderFromBothStores = "Order from both stores";</span>
+<span class="hljs-addition">+  String comboItemsFound =</span>
+<span class="hljs-addition">+      "Your cart has items from another store. Order from both stores in one delivery, or clear your cart?";</span>
+<span class="hljs-addition">+  String comboStoreLimit =</span>
+<span class="hljs-addition">+      "You can order from at most 2 stores at once. Clear your cart to order from this store?";</span>
+<span class="hljs-addition">+  String comboAdded = "Added. You are ordering from 2 stores in one delivery.";</span>
+   String addToCart = "Add to cart";
+   String goToCart = "Go to Cart";
+ 
+@@ -221,6 +227,12 @@ class ZLanguage extends ChangeNotifier {
+       warning = "Warning";
+       itemsFound =
+           "Item(s) from a different store found in cart! Would you like to clear your cart?";
+<span class="hljs-addition">+      orderFromBothStores = "Order from both stores";</span>
+<span class="hljs-addition">+      comboItemsFound =</span>
+<span class="hljs-addition">+          "Your cart has items from another store. Order from both stores in one delivery, or clear your cart?";</span>
+<span class="hljs-addition">+      comboStoreLimit =</span>
+<span class="hljs-addition">+          "You can order from at most 2 stores at once. Clear your cart to order from this store?";</span>
+<span class="hljs-addition">+      comboAdded = "Added. You are ordering from 2 stores in one delivery.";</span>
+       addToCart = "Add to cart";
+       goToCart = "Go to Cart";
+ 
+@@ -370,6 +382,10 @@ class ZLanguage extends ChangeNotifier {
+       clear = "清空";
+       warning = "提醒";
+       itemsFound = "车库里已经有另一家商店的品目！确认先清空购物车？";
+<span class="hljs-addition">+      orderFromBothStores = "两家店一起下单";</span>
+<span class="hljs-addition">+      comboItemsFound = "购物车里已有另一家商店的商品。两家店一起配送，还是清空购物车？";</span>
+<span class="hljs-addition">+      comboStoreLimit = "一次最多只能从两家店下单。清空购物车后再从这家店下单？";</span>
+<span class="hljs-addition">+      comboAdded = "已加入。您正在从两家店下单，一次配送。";</span>
+       addToCart = "加入购物库";
+       goToCart = "购物库";
+</div></code></pre>
+<h3 id="67-libservicesservicedart">6.7 <code>lib/services/service.dart</code></h3>
+<p>Logout (<code>clearUserData</code>) also removes <code>combo_cart</code>.</p>
+<pre class="hljs"><code><div>diff --git a/lib/services/service.dart b/lib/services/service.dart
+index 8b0a58e..5d44791 100644
+<span class="hljs-comment">--- a/lib/services/service.dart</span>
+<span class="hljs-comment">+++ b/lib/services/service.dart</span>
+@@ -135,6 +135,7 @@ class Service {
+     await Service.saveBool('logged', false);
+     await Service.remove('user');
+     await Service.remove('cart');
+<span class="hljs-addition">+    await Service.remove('combo_cart');</span>
+     await Service.remove('aliexpressCart'); //NEW
+     await Service.remove('images');
+   }
+</div></code></pre>
+<h3 id="68-libservicescoreservicesdart">6.8 <code>lib/services/core_services.dart</code></h3>
+<p>Cache clear also removes <code>combo_cart</code>.</p>
+<pre class="hljs"><code><div>diff --git a/lib/services/core_services.dart b/lib/services/core_services.dart
+index c8a785b..c8c9738 100644
+<span class="hljs-comment">--- a/lib/services/core_services.dart</span>
+<span class="hljs-comment">+++ b/lib/services/core_services.dart</span>
+@@ -514,6 +514,7 @@ class CoreServices {
+     await Service.saveBool('logged', false);
+     await Service.remove('user');
+     await Service.remove('cart');
+<span class="hljs-addition">+    await Service.remove('combo_cart');</span>
+     await Service.remove('aliexpressCart'); //
+     await Service.remove('images');
+     await Service.remove('p_items');
+</div></code></pre>
+<h3 id="69-libprofilecomponentsbodydart">6.9 <code>lib/profile/components/body.dart</code></h3>
+<p>Logout and delete-account paths (3 places) also remove <code>combo_cart</code>.</p>
+<pre class="hljs"><code><div>diff --git a/lib/profile/components/body.dart b/lib/profile/components/body.dart
+index e2ff89d..bbccc93 100644
+<span class="hljs-comment">--- a/lib/profile/components/body.dart</span>
+<span class="hljs-comment">+++ b/lib/profile/components/body.dart</span>
+@@ -175,6 +175,7 @@ class _BodyState extends State&lt;Body&gt; {
+       await Service.saveBool('logged', false);
+       await Service.remove('user');
+       await Service.remove('cart');
+<span class="hljs-addition">+      await Service.remove('combo_cart');</span>
+       await Service.remove('aliexpressCart');
+ 
+       ///newly added for aliexpress
+@@ -232,6 +233,7 @@ class _BodyState extends State&lt;Body&gt; {
+         await Service.saveBool('logged', false);
+         await Service.remove('user');
+         await Service.remove('cart');
+<span class="hljs-addition">+        await Service.remove('combo_cart');</span>
+         await Service.remove('aliexpressCart'); //NEW
+         await Service.remove('images');
+         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+@@ -336,6 +338,7 @@ class _BodyState extends State&lt;Body&gt; {
+       await Service.saveBool('logged', false);
+       await Service.remove('user');
+       await Service.remove('cart');
+<span class="hljs-addition">+      await Service.remove('combo_cart');</span>
+       await Service.remove('aliexpressCart');
+       await Service.remove('images');
+       await Service.remove('p_items');
+</div></code></pre>
+<h2 id="7-not-done-yet--open-questions">7. Not done yet / open questions</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Owner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Not tested</strong> on a device or against <code>testbackend.zmall.et</code>.</td>
+<td>Mobile</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>order_from</code> value for mobile (<code>android</code>/<code>ios</code> is a guess).</td>
+<td>Backend</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Pay succeeds but create fails:</strong> the screen keeps the user there to retry create. There is no backend rollback yet.</td>
+<td>Backend + product</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Server rejections (&quot;different city&quot;, &quot;too far apart&quot;, &quot;store not found&quot;) only show the message. There is no one-tap &quot;keep one store&quot; yet. The user removes the items in the cart.</td>
+<td>Mobile</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The cart badge probably counts only store 1 items (not checked).</td>
+<td>Mobile</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The orders list doesn't group the 2 orders by <code>combo_id</code> yet.</td>
+<td>Mobile</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Not available for combo: Telebirr / Wegagen / Kifiya cards, promo codes, tips, scheduled orders, self-pickup, AliExpress, laundry.</td>
+<td>Backend / product</td>
+</tr>
+<tr>
+<td>8</td>
+<td>The invoice response contains store password hashes, bank account and wallet. The backend should remove those fields.</td>
+<td>Backend (urgent)</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Debug logs (<code>[COMBO] ... BODY</code>) print <code>server_token</code> in debug builds only.</td>
+<td>Mobile</td>
+</tr>
+</tbody>
+</table>
+<h2 id="8-how-to-test">8. How to test</h2>
+<ol>
+<li>Log in, then add an item from <strong>store A</strong>.</li>
+<li>Open an item from <strong>store B</strong> (same city) and tap Add to cart. The dialog appears. Tap <strong>Order from both stores</strong>.</li>
+<li>Open the cart. Store A items are on top, the &quot;Second store · same delivery&quot; section is below, and the total includes both.</li>
+<li>Tap Checkout, pick an address, then Continue. Logcat shows <code>[COMBO] combo_add_item_in_cart</code>.</li>
+<li>The combo checkout loads. Check that <code>store_a</code> in the invoice body is the store <strong>farther</strong> from the address.</li>
+<li>Choose <strong>Cash</strong> and tap Place Order. Two order numbers are shown, then the report screen opens.</li>
+<li>Check that the cart is empty afterwards and that both orders show in the admin panel with the same <code>combo_id</code>.</li>
+</ol>
+<p>Also check:</p>
+<ul>
+<li><input type="checkbox" id="checkbox0"><label for="checkbox0">Wallet with too little balance shows a blocked message, and nothing is charged.</label></li>
+<li><input type="checkbox" id="checkbox1"><label for="checkbox1">A third store shows only Clear.</label></li>
+<li><input type="checkbox" id="checkbox2"><label for="checkbox2">Removing all store-1 items makes store 2 the normal cart (single-store checkout).</label></li>
+<li><input type="checkbox" id="checkbox3"><label for="checkbox3">Removing all store-2 items removes the combo.</label></li>
+<li><input type="checkbox" id="checkbox4"><label for="checkbox4">Self-pickup is blocked for combo.</label></li>
+<li><input type="checkbox" id="checkbox5"><label for="checkbox5">A normal single-store order still works (regression).</label></li>
+</ul>
+<pre class="hljs"><code><div>adb logcat -v brief flutter:I <span class="hljs-string">'*:S'</span> | grep COMBO
+</div></code></pre>
+
+</body>
+</html>
