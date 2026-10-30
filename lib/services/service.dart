@@ -595,8 +595,7 @@ class Service {
   /// ```
   static Future<bool> isStoreOpen(var store) async {
     List<bool> result = await storeOpen([store]);
-    return true; // BYPASS store closed-time check: always open
-    // return result.isNotEmpty ? result[0] : false;
+    return result.isNotEmpty ? result[0] : false;
   }
 
   /// Determine which stores are currently open based on their schedules (Pattern 2)
@@ -619,9 +618,6 @@ class Service {
   /// }
   /// ```
   static Future<List<bool>> storeOpen(List stores) async {
-    // BYPASS store closed-time check: treat every store as open.
-    return List<bool>.filled(stores.length, true);
-    // ignore: dead_code
     List<bool> isOpen = [];
     DateFormat dateFormat = DateFormat.Hm();
     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
