@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZMall Premium Subscription</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap">
+<style>
+/* Layout: single reading column with a sticky section index on wide screens; code-walkthrough doc */
+:root {
+  --bg: #fbfaff;
+  --surface: #ffffff;
+  --sunk: #f2f0fa;
+  --fg: #1c1830;
+  --muted: #625c78;
+  --line: #e2def0;
+  --accent: #4a3298;
+  --accent-soft: #ece7fb;
+  --ok: #1d7a4c;  --ok-bg: #e3f4ea;
+  --warn: #9a5b00; --warn-bg: #fdf0d9;
+  --bad: #b3261e;  --bad-bg: #fbe4e2;
+  --display: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #13111c; --surface: #1b1827; --sunk: #221e31; --fg: #ebe8f5; --muted: #a39dbb; --line: #332d47;
+  --accent: #b6a3ff; --accent-soft: #2b2446;
+  --ok: #6fd3a0; --ok-bg: #16301f; --warn: #f1b860; --warn-bg: #33270f; --bad: #ff8f86; --bad-bg: #3a1a18;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #13111c; --surface: #1b1827; --sunk: #221e31; --fg: #ebe8f5; --muted: #a39dbb; --line: #332d47;
+  --accent: #b6a3ff; --accent-soft: #2b2446;
+  --ok: #6fd3a0; --ok-bg: #16301f; --warn: #f1b860; --warn-bg: #33270f; --bad: #ff8f86; --bad-bg: #3a1a18;
+  color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 80px; display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 48px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 13px; }
+nav.toc p { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px }
+nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 4px 0 4px 10px; border-left: 2px solid var(--line) }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); border-left-color: var(--accent); outline: none }
+main { min-width: 0; display: grid; gap: 56px }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0,1fr); gap: 24px } nav.toc { display: none } }
+
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15; margin: 0 }
+h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -.02em }
+h2 { font-size: 26px; letter-spacing: -.01em }
+h3 { font-size: 17px; font-family: var(--body); font-weight: 600 }
+section { display: grid; gap: 16px; scroll-margin-top: 24px }
+p { margin: 0; max-width: 68ch }
+.eyebrow { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent) }
+.lede { font-size: 17px; color: var(--muted); max-width: 64ch }
+code, .mono { font-family: var(--mono); font-size: .88em }
+:not(pre) > code { background: var(--sunk); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere }
+a { color: var(--accent) }
+
+header.top { display: grid; gap: 14px }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 12px var(--mono); color: var(--muted) }
+
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px }
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; align-content: start }
+.fact b { font: 600 20px var(--display) }
+.fact span { font-size: 13px; color: var(--muted) }
+
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 560px }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--sunk) }
+tr:last-child td { border-bottom: 0 }
+td code { white-space: nowrap }
+
+pre.code { background: var(--sunk); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 13px/1.55 var(--mono); margin: 0 }
+.cm { color: var(--muted) }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto }
+.fig figcaption { font-size: 13px; color: var(--muted); margin-top: 8px }
+figure { margin: 0 }
+
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; counter-reset: s }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line) }
+.steps li:first-child { border-top: 0 }
+.steps li::before { content: counter(s); font: 500 13px var(--mono); color: var(--accent); background: var(--accent-soft); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center }
+.steps p { max-width: none }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; min-width: 0 }
+
+.pill { display: inline-block; font: 500 11px var(--mono); padding: 2px 8px; border-radius: 99px; letter-spacing: .03em; white-space: nowrap }
+.p-ok { background: var(--ok-bg); color: var(--ok) }
+.p-warn { background: var(--warn-bg); color: var(--warn) }
+.p-bad { background: var(--bad-bg); color: var(--bad) }
+.p-acc { background: var(--accent-soft); color: var(--accent) }
+
+.issues { display: grid; gap: 10px }
+.issue { display: grid; grid-template-columns: 4px minmax(0,1fr); gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 14px 0; overflow: hidden }
+.issue::before { content: ""; border-radius: 0 3px 3px 0 }
+.issue.bad::before { background: var(--bad) } .issue.warn::before { background: var(--warn) } .issue.info::before { background: var(--accent) }
+.issue div { display: grid; gap: 6px; min-width: 0 }
+.issue h3 { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.issue p { font-size: 14px; color: var(--muted) }
+.where { font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere }
+
+.state { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px }
+.state .card h3 { font-size: 15px }
+.state .card p { font-size: 13.5px; color: var(--muted) }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <nav class="toc" aria-label="Sections">
+    <p>On this page</p>
+    <a href="#overview">Overview</a>
+    <a href="#files">Files</a>
+    <a href="#state">Screen state</a>
+    <a href="#flow">End-to-end flow</a>
+    <a href="#inapp">Telebirr InApp</a>
+    <a href="#ussd">Telebirr USSD</a>
+    <a href="#api">Endpoints</a>
+    <a href="#codes">Result codes</a>
+    <a href="#test">Test overrides</a>
+    <a href="#issues">Gaps &amp; risks</a>
+  </nav>
+
+  <main>
+    <header class="top" id="overview">
+      <span class="eyebrow">ZMall Flutter app · code walkthrough</span>
+      <h1>How Premium Subscription works today</h1>
+      <p class="lede">One monthly plan that gives free delivery. The app asks the backend whether the user is subscribed, shows either a status card or a plan card, and takes payment through Telebirr (in-app SDK or USSD push). The app never applies the free delivery itself; that happens on the backend.</p>
+      <div class="meta"><span>branch for_test</span><span>includes uncommitted changes</span><span>read 22 Oct 2026</span></div>
+    </header>
+
+    <div class="summary">
+      <div class="fact"><b>1 plan</b><span>“Monthly Premium”, 30 days by default, built from server values</span></div>
+      <div class="fact"><b>ETB 1</b><span>Hard-coded test price right now (server price is ignored)</span></div>
+      <div class="fact"><b>2 pay methods</b><span>Telebirr InApp SDK and Telebirr USSD</span></div>
+      <div class="fact"><b>60 s</b><span>Activation polling window: 20 tries × 3 s</span></div>
+    </div>
+
+    <section id="files">
+      <span class="eyebrow">Where the code lives</span>
+      <h2>Files</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>File</th><th>Role</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code>lib/profile/components/body.dart:651</code></td><td>Profile list tile “Subscription · Free delivery on all orders”. Pushes <code>SubscriptionScreen(userData)</code> and calls <code>getUser()</code> when you come back.</td><td><span class="pill p-ok">entry point</span></td></tr>
+          <tr><td><code>lib/utils/routes.dart:69</code></td><td>Named route <code>/subscription</code>, passes route args as <code>userData</code>.</td><td><span class="pill p-acc">route</span></td></tr>
+          <tr><td><code>lib/profile/subscription/subscription.dart</code></td><td>The whole screen: state, API load, polling, hero/status card, plan list, benefits, payment-method sheet. 4,728 lines, of which about 2,560 (from ~line 2160) are commented-out older versions.</td><td><span class="pill p-warn">modified</span></td></tr>
+          <tr><td><code>lib/profile/subscription/subscription_kifiya/inapp_subscription_payment.dart</code></td><td><code>SubscriptionPaymentInApp</code>: creates a Telebirr order, opens the native SDK over a MethodChannel, confirms with the gateway, pops <code>true/false</code>.</td><td><span class="pill p-warn">modified</span></td></tr>
+          <tr><td><code>lib/profile/subscription/subscription_kifiya/ussd_subscription_payment.dart</code></td><td><code>SubscriptionPaymentUssd</code>: sends a USSD push to the user’s phone and shows a waiting screen.</td><td><span class="pill p-warn">modified</span></td></tr>
+          <tr><td><code>lib/services/core_services.dart:522</code></td><td><code>CoreServices.getSubscriptionDetail()</code>: POST to <code>/api/user/get_subscription_detail</code>.</td><td><span class="pill p-acc">API</span></td></tr>
+          <tr><td><code>lib/profile/subscription/subscription_provider.dart</code></td><td><code>SubscriptionProvider</code> and <code>SubscriptionProvider2</code> (ChangeNotifier). Only referenced from the backup file.</td><td><span class="pill p-bad">unused</span></td></tr>
+          <tr><td><code>lib/profile/components/subscribe.dart</code></td><td>Despite the name, this is the <b>language picker</b> (English / Chinese). Not part of subscriptions.</td><td><span class="pill p-bad">misnamed</span></td></tr>
+          <tr><td><code>lib/profile/subscription/backups/sunscription_backup.dart</code></td><td>Old fully commented-out implementation.</td><td><span class="pill p-bad">dead</span></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="state">
+      <span class="eyebrow">subscription.dart · _SubscriptionScreenState</span>
+      <h2>Screen state</h2>
+      <p>The screen keeps a handful of fields that come from the backend and picks one of four views from them.</p>
+<pre class="code"><span class="cm">// subscription.dart:71</span>
+bool     _subscriptionEnabled     = true;   <span class="cm">// forced true (server flag ignored)</span>
+num      _subscriptionPrice       = 1;      <span class="cm">// test 1 birr</span>
+int      _subscriptionDurationDays = 30;    <span class="cm">// from subscription_duration_days</span>
+bool     _isActive                = false;  <span class="cm">// from is_active</span>
+DateTime? _subscriptionExpiry;               <span class="cm">// from subscription_expiry (ISO-8601)</span>
+bool     _loading                 = true;
+bool     _isSubscribed            = false;  <span class="cm">// mirrors _isActive</span></pre>
+      <div class="state">
+        <div class="card"><span class="pill p-acc">_loading</span><h3>Loading view</h3><p>Shown on open and while polling after a payment.</p></div>
+        <div class="card"><span class="pill p-bad">!_subscriptionEnabled</span><h3>“Subscription Not Available”</h3><p>Admin kill-switch. Currently unreachable because <code>enabled</code> is forced to <code>true</code>.</p></div>
+        <div class="card"><span class="pill p-ok">_isSubscribed</span><h3>Subscribed view</h3><p>App bar shows <code>PremiumStatusCard</code>: “Premium Member · Active”, a days-left progress bar and a “Manage Subscription” button that opens a details sheet (plan, price, valid-until date).</p></div>
+        <div class="card"><span class="pill p-warn">else</span><h3>Plan view</h3><p>Hero with “Subscribe” button, benefits list and the plan card. Title says “Renew Your Premium” if the cached legacy <code>subscritption_data.is_user_subscribed</code> is true, else “Choose Your Plan”.</p></div>
+      </div>
+      <h3>Where state comes from</h3>
+      <ol class="steps">
+        <li><p><b><code>_loadSubscriptionDetail()</code></b> runs in <code>initState</code>. It calls <code>getSubscriptionDetail(user_id, server_token)</code>. On <code>success == true</code> it sets <code>_isActive</code>, <code>_subscriptionExpiry</code>, <code>_subscriptionDurationDays</code>, and starts the entrance animation.</p></li>
+        <li><p><b><code>_fallbackToLegacyData()</code></b> runs if the call fails or returns <code>success != true</code>. It reads the cached <code>userData.user.subscritption_data</code> (note the existing typo in the field name), takes <code>date_of_subscription + 30 days</code> as expiry, and treats the user as active if <code>is_user_subscribed</code> is true and that date hasn’t passed.</p></li>
+        <li><p><b>Days left</b> = <code>_subscriptionExpiry − now</code> in whole days, clamped to 0–9999. Progress bar = <code>daysLeft / planDay</code>, clamped to 0–1.</p></li>
+      </ol>
+      <p>The plan list is a getter, <code>_subscriptionPlans</code>, which returns a single map (“Monthly Premium”, ETB, purple gradient, three benefits). Every buy button now uses <code>_subscriptionPlans[0]</code>; older code indexed <code>[1]</code> for a second plan that no longer exists.</p>
+    </section>
+
+    <section id="flow">
+      <span class="eyebrow">From profile tap to active membership</span>
+      <h2>End-to-end flow</h2>
+      <figure class="fig">
+<pre class="mermaid">
+flowchart TD
+  A[Profile → Subscription tile] --> B[SubscriptionScreen.initState]
+  B --> C{POST /api/user/get_subscription_detail}
+  C -- success --> D{is_active?}
+  C -- error / success=false --> L[Fallback: cached subscritption_data] --> D
+  D -- yes --> S[Subscribed view<br/>PremiumStatusCard + Manage sheet]
+  D -- no --> P[Plan view<br/>Hero + benefits + plan card]
+  P -- Subscribe --> M[ShowPaymentOption bottom sheet<br/>traceNo = uuid v4, 10 chars]
+  M -- Telebirr InApp --> I[SubscriptionPaymentInApp]
+  M -- Telebirr USSD --> U[SubscriptionPaymentUssd]
+  I -- pops true --> Q[_buyProduct → _pollUntilActive<br/>20 × 3 s]
+  I -- pops false --> E[Close sheet + “Payment not completed”]
+  U -. no result handled .-> X[User backs out manually]
+  Q -- is_active true --> S
+  Q -- timeout --> T[“Activation is taking longer… refresh”]
+</pre>
+        <figcaption>The dashed USSD edge is the gap: the USSD screen never returns a result, so polling never starts from that path.</figcaption>
+      </figure>
+    </section>
+
+    <section id="inapp">
+      <span class="eyebrow">inapp_subscription_payment.dart</span>
+      <h2>Telebirr InApp</h2>
+      <figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  participant App as SubscriptionScreen
+  participant Pay as SubscriptionPaymentInApp
+  participant GW as pgw.shekla.app
+  participant SDK as Native Telebirr SDK
+  participant BE as ZMall backend
+  App->>Pay: push(amount, phone, traceNo)
+  Pay->>GW: POST /telebirrInapp/create_order<br/>{traceNo, phone, amount:"1", isInapp, is_test:true}
+  GW-->>Pay: createOrderResult.result = success<br/>appId, shortCode, receiveCode
+  Pay->>SDK: MethodChannel telebirrInAppSdkChannel.placeOrder
+  SDK-->>Pay: {code, status, errMsg}
+  alt Android and code == 0
+    Pay->>GW: POST /telebirrInapp/in_app_call_back_for_subscription<br/>{code, status, traceNo, message}
+    GW-->>Pay: success
+    Pay-->>App: pop(true)
+  else iOS
+    Note over Pay: no confirm callback
+    Pay-->>App: pop(code == 0)
+  else failure
+    Pay-->>App: pop(false)
+  end
+  App->>BE: poll get_subscription_detail until is_active
+</pre>
+        <figcaption>On success the sheet closes and <code>_buyProduct()</code> starts polling. The backend is expected to flip <code>is_active</code> once the gateway callback lands.</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><p><b>Create order.</b> <code>initState</code> strips non-alphanumerics from <code>traceNo</code> (falls back to <code>ZM&lt;epoch ms&gt;</code>) and posts to <code>create_order</code> with a 15 s timeout.</p></li>
+        <li><p><b>Pick platform.</b> If <code>createOrderResult.result</code> is “success”, Android calls <code>placeOrder()</code>, iOS calls <code>placeOrderIOS()</code>, both with <code>appId</code>, <code>shortCode</code> and <code>receiveCode</code>.</p></li>
+        <li><p><b>Native SDK.</b> The Telebirr app opens. It returns a map with <code>code</code>; a <code>PlatformException</code> is read from <code>e.details["code"]</code>.</p></li>
+        <li><p><b>Confirm (Android only).</b> On <code>code == 0</code> it posts to <code>in_app_call_back_for_subscription</code>. Only if that returns <code>success</code> does it pop <code>true</code>; otherwise <code>false</code>. A non-zero SDK code is shown as −99 “Payment is not confirmed”.</p></li>
+        <li><p><b>Message and pop.</b> A toast is shown via <code>_handlePaymentResponse</code>, then the screen pops after 2 s.</p></li>
+      </ol>
+    </section>
+
+    <section id="ussd">
+      <span class="eyebrow">ussd_subscription_payment.dart</span>
+      <h2>Telebirr USSD</h2>
+      <ol class="steps">
+        <li><p>Sheet pushes <code>SubscriptionPaymentUssd</code> with <code>url = http://196.189.44.60:8069/telebirr/ussd/send_sms</code>.</p></li>
+        <li><p><code>initTelebirr()</code> posts <code>{traceNo, amount: 1, phone: "251"+phone, payerId: "22", appId: "4321", apiKey, zmall: true}</code> with a 10 s timeout.</p></li>
+        <li><p>If <code>result.success</code>, it shows “&lt;message&gt;. Waiting for payment to be completed” and an hourglass spinner. The user approves on the USSD prompt on their phone.</p></li>
+        <li><p>That’s where it stops. <code>_verifyPayment()</code> is commented out, the screen never pops a value, and the caller has no <code>.then()</code>. The user has to go back, and the status only updates when they reopen the screen.</p></li>
+      </ol>
+    </section>
+
+    <section id="api">
+      <span class="eyebrow">Network calls</span>
+      <h2>Endpoints</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Call</th><th>URL</th><th>Body</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td>Get detail</td><td><code>{baseUrl}/api/user/get_subscription_detail</code></td><td><code>user_id, server_token</code></td><td>Initial load and post-payment polling. Returns <code>success, is_subscription_enabled, subscription_price, subscription_duration_days, is_active, subscription_expiry, subscription_amount</code>.</td></tr>
+          <tr><td>Create order</td><td><code>https://pgw.shekla.app/telebirrInapp/create_order</code></td><td><code>traceNo, phone, amount, description, isInapp, is_test</code></td><td>Gets <code>receiveCode</code>, <code>appId</code>, <code>shortCode</code> for the SDK.</td></tr>
+          <tr><td>Confirm</td><td><code>https://pgw.shekla.app/telebirrInapp/in_app_call_back_for_subscription</code></td><td><code>code, status, traceNo, message</code></td><td>Android only, after SDK success.</td></tr>
+          <tr><td>USSD push</td><td><code>http://196.189.44.60:8069/telebirr/ussd/send_sms</code></td><td><code>traceNo, amount, phone, payerId, appId, apiKey, zmall</code></td><td>Sends the USSD prompt to the phone.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="codes">
+      <span class="eyebrow">_handlePaymentResponse</span>
+      <h2>InApp result codes</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Code</th><th>Meaning shown to user</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill p-ok">0</span></td><td>Payment successful</td></tr>
+          <tr><td><span class="pill p-bad">−1</span></td><td>Unknown error / unexpected SDK response</td></tr>
+          <tr><td><span class="pill p-bad">−2</span></td><td>Invalid parameters</td></tr>
+          <tr><td><span class="pill p-warn">−3</span></td><td>Cancelled by user</td></tr>
+          <tr><td><span class="pill p-warn">−10</span></td><td>Telebirr app not installed</td></tr>
+          <tr><td><span class="pill p-warn">−11</span></td><td>Telebirr app too old</td></tr>
+          <tr><td><span class="pill p-bad">−99</span></td><td>Payment is not confirmed (app-defined)</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="test">
+      <span class="eyebrow">Uncommitted changes on for_test</span>
+      <h2>Test overrides to revert before release</h2>
+      <p>The working tree has been set up to charge 1 birr against the test gateway. These must go before shipping.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Where</th><th>Now</th><th>Should be</th></tr></thead>
+        <tbody>
+          <tr><td><code>subscription.dart:73, 183, 216</code></td><td><code>_subscriptionPrice = 1</code></td><td><code>data['subscription_price']</code> / legacy <code>amount</code></td></tr>
+          <tr><td><code>subscription.dart:175</code></td><td><code>enabled = true</code></td><td><code>data['is_subscription_enabled'] == true</code></td></tr>
+          <tr><td><code>inapp_subscription_payment.dart</code></td><td><code>amount: "1"</code> twice, <code>is_test: true</code></td><td><code>widget.amount</code>, <code>is_test: false</code></td></tr>
+          <tr><td><code>ussd_subscription_payment.dart</code></td><td><code>"amount": 1</code></td><td><code>widget.amount</code></td></tr>
+          <tr><td><code>subscription.dart:1345</code></td><td>Plan button always enabled</td><td>Previously <code>isCurrentPlan ? null : …</code>; was removed, so active users can pay again</td></tr>
+          <tr><td><code>subscription.dart:13</code></td><td>Local <code>GoogleFonts</code> shim class replacing the <code>google_fonts</code> import</td><td>Fine if intentional; it just returns a plain <code>TextStyle</code> with no Inter font</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="issues">
+      <span class="eyebrow">What I’d look at next</span>
+      <h2>Gaps &amp; risks</h2>
+      <div class="issues">
+        <div class="issue bad"><div><h3>USSD payments never activate in-app <span class="pill p-bad">bug</span></h3><p>No <code>.then()</code> on the USSD push and verification is commented out, so the sheet stays open and polling never starts. Pop a value after a verify loop, or call <code>_pollUntilActive()</code> on return.</p><span class="where">subscription.dart:1966 · ussd_subscription_payment.dart:46</span></div></div>
+        <div class="issue bad"><div><h3>iOS skips the confirm callback <span class="pill p-bad">bug</span></h3><p><code>placeOrderIOS</code> pops <code>code == 0</code> without calling <code>in_app_call_back_for_subscription</code>. If the backend relies on that callback, iOS users pay and then hit the 60 s timeout.</p><span class="where">inapp_subscription_payment.dart:33</span></div></div>
+        <div class="issue bad"><div><h3>Credentials and raw-IP HTTP in the client <span class="pill p-bad">security</span></h3><p>USSD <code>apiKey</code>, <code>appId</code> and <code>payerId</code> ship in the app and go over plain HTTP to an IP address. Move the USSD call behind the ZMall backend.</p><span class="where">ussd_subscription_payment.dart:121</span></div></div>
+        <div class="issue warn"><div><h3>Possible crash on SDK errors <span class="pill p-warn">robustness</span></h3><p><code>e.details["code"]</code> is passed to an <code>int</code> parameter. If <code>details</code> is null or the code is a string, the catch block throws.</p><span class="where">inapp_subscription_payment.dart:66, 121</span></div></div>
+        <div class="issue warn"><div><h3>Two sources of truth <span class="pill p-warn">consistency</span></h3><p>The plan view title still reads the cached legacy <code>subscritption_data</code>, while everything else uses the new endpoint. A user can see “Renew” based on stale cache.</p><span class="where">subscription.dart:895</span></div></div>
+        <div class="issue warn"><div><h3>Payment gateway URLs hard-coded <span class="pill p-warn">config</span></h3><p><code>pgw.shekla.app</code> and the USSD IP don’t follow <code>ZMetaData.baseUrl</code>, so they can’t be switched per environment.</p><span class="where">inapp_subscription_payment.dart:251, 285</span></div></div>
+        <div class="issue info"><div><h3>Dead code <span class="pill p-acc">cleanup</span></h3><p>About 2,560 commented lines at the bottom of <code>subscription.dart</code>, an unused provider file, a fully commented backup, and a language picker named <code>subscribe.dart</code>.</p><span class="where">subscription.dart:~2160–4728 · subscription_provider.dart · backups/</span></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default"});</script>
+</body>
+</html>
