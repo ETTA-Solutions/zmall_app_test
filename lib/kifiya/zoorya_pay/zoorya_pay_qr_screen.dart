@@ -9,12 +9,7 @@ import 'package:zmall/utils/size_config.dart';
 /// ZOORYA-PAY QR code screen.
 /// Used for: ethswitch_qr, telebirr_qr, and other QR methods
 ///
-/// Flow:
-///   1. On init → calls ZooryaPayService.pay(...)
-///   2. On success → extracts qr_value from response → shows QR code
-///   3. Polls /admin/check_paid_order every 2 seconds
-///   4. On paid → Navigator.pop(context)  (parent .then() calls _boaVerify)
-///   5. On error → shows error message
+/// Features authentic ZOORYA-PAY theme with #06182A background and #45B5E4 accents.
 class ZooryaPayQrScreen extends StatefulWidget {
   const ZooryaPayQrScreen({
     Key? key,
@@ -54,11 +49,12 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
   String? _qrValue;
   int _pollAttempt = 0;
 
+  // Zoorya Pay Brand Colors
+  static const Color _zooryaDarkBg = Color(0xFF06182A);
+  static const Color _zooryaCyan = Color(0xFF45B5E4);
+  static const Color _cardSurface = Color(0xFF0B2238);
+
   // Primary brand colour per method:
-  // - ethswitch: Orange
-  // - zemen: Red
-  // - nib: Brown
-  // - telebirr: Green
   Color get _methodColor {
     switch (widget.method) {
       case 'ethswitch':
@@ -73,7 +69,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
       case 'telebirr':
       case 'telebirr_qr':
       default:
-        return const Color(0xFF00A651); // Telebirr green
+        return _zooryaCyan; // #45B5E4
     }
   }
 
@@ -269,7 +265,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
     final isTelebirr = widget.method == 'telebirr_qr' || widget.method == 'telebirr';
 
     return Scaffold(
-      backgroundColor: isTelebirr ? const Color(0xFFF4F9F5) : null,
+      backgroundColor: _zooryaDarkBg,
       appBar: AppBar(
         title: isTelebirr
             ? Row(
@@ -306,22 +302,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-        backgroundColor: isTelebirr ? const Color(0xFF00A651) : _methodColor,
-        flexibleSpace: isTelebirr
-            ? Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF006837), // Deep Telebirr green
-                      Color(0xFF00A651), // Official telebirr green
-                      Color(0xFF2BB673), // Bright telebirr green
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              )
-            : null,
+        backgroundColor: _zooryaDarkBg,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
@@ -335,14 +316,14 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SpinKitWave(color: _methodColor, size: 40),
+            SpinKitWave(color: _zooryaCyan, size: 40),
             const SizedBox(height: 20),
             Text(
               'Generating QR code...',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: _methodColor,
+                color: _zooryaCyan,
               ),
             ),
           ],
@@ -369,32 +350,35 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _cardSurface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: widget.method == 'zemen' || widget.method == 'zemen_qr'
-                    ? const Color(0xFF1A1A1A).withValues(alpha: 0.2)
-                    : widget.method == 'nib' || widget.method == 'nib_qr'
-                        ? const Color(0xFFFEB914).withValues(alpha: 0.5)
-                        : _methodColor.withValues(alpha: 0.2),
+                color: _zooryaCyan.withValues(alpha: 0.3),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _methodColor.withValues(alpha: 0.08),
+                  color: _zooryaCyan.withValues(alpha: 0.08),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Image.asset(
-              _methodLogo,
-              height: 48,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
-                Icons.qr_code_rounded,
-                size: 36,
-                color: _methodColor,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Image.asset(
+                _methodLogo,
+                height: 38,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.qr_code_rounded,
+                  size: 36,
+                  color: _zooryaCyan,
+                ),
               ),
             ),
           ),
@@ -406,13 +390,13 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: _methodColor,
+              color: _zooryaCyan,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             _scanInstruction,
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
+            style: const TextStyle(fontSize: 14, color: Colors.white70),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -423,22 +407,18 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: _methodColor.withValues(alpha: 0.18),
+                    color: _zooryaCyan.withValues(alpha: 0.25),
                     blurRadius: 24,
                     spreadRadius: 2,
                     offset: const Offset(0, 6),
                   ),
                 ],
                 border: Border.all(
-                  color: widget.method == 'zemen' || widget.method == 'zemen_qr'
-                      ? const Color(0xFF1A1A1A).withValues(alpha: 0.3)
-                      : widget.method == 'nib' || widget.method == 'nib_qr'
-                          ? const Color(0xFFFEB914).withValues(alpha: 0.6)
-                          : _methodColor.withValues(alpha: 0.30),
-                  width: 2,
+                  color: _zooryaCyan,
+                  width: 2.5,
                 ),
               ),
               child: QrImageView(
@@ -465,23 +445,23 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: _methodColor,
+                  color: _zooryaCyan,
                 ),
               ),
               const SizedBox(width: 10),
               const Text(
                 'Waiting for payment confirmation...',
-                style: TextStyle(fontSize: 13, color: Colors.black54),
+                style: TextStyle(fontSize: 13, color: Colors.white70),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           const Text(
             'Do NOT close this screen until payment is confirmed.',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.black38,
+              color: Colors.white38,
               fontStyle: FontStyle.italic,
             ),
             textAlign: TextAlign.center,
@@ -493,37 +473,19 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
   }
 
   Widget _buildAmountChip() {
-    Color chipBg = _methodColor.withValues(alpha: 0.08);
-    Color chipBorder = _methodColor.withValues(alpha: 0.3);
-    Color chipText = _methodColor;
-
-    if (widget.method == 'zemen' || widget.method == 'zemen_qr') {
-      chipBg = const Color(0xFFD3214B).withValues(alpha: 0.08);
-      chipBorder = const Color(0xFF1A1A1A).withValues(alpha: 0.4);
-      chipText = const Color(0xFFD3214B);
-    } else if (widget.method == 'nib' || widget.method == 'nib_qr') {
-      chipBg = const Color(0xFFFEB914).withValues(alpha: 0.20);
-      chipBorder = const Color(0xFF8A4D21).withValues(alpha: 0.5);
-      chipText = const Color(0xFF8A4D21);
-    } else if (widget.method == 'ethswitch' || widget.method == 'ethswitch_qr') {
-      chipBg = const Color(0xFFF37423).withValues(alpha: 0.08);
-      chipBorder = const Color(0xFFF37423).withValues(alpha: 0.4);
-      chipText = const Color(0xFFF37423);
-    }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
       decoration: BoxDecoration(
-        color: chipBg,
+        color: _cardSurface,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: chipBorder, width: 1.5),
+        border: Border.all(color: _zooryaCyan, width: 1.5),
       ),
       child: Text(
         'ETB ${widget.amount.toStringAsFixed(2)}',
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w800,
-          color: chipText,
+          color: _zooryaCyan,
         ),
       ),
     );
@@ -543,7 +505,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: Colors.red,
+              color: Colors.redAccent,
             ),
           ),
           const SizedBox(height: 12),
@@ -551,7 +513,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
             _errorMessage,
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.black54,
+              color: Colors.white70,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -561,7 +523,8 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryColor,
+                backgroundColor: _zooryaCyan,
+                foregroundColor: _zooryaDarkBg,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -570,7 +533,11 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text(
                 'Go Back',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(
+                  color: _zooryaDarkBg,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

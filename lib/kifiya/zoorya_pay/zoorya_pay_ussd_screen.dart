@@ -8,8 +8,7 @@ import 'package:zmall/utils/size_config.dart';
 /// ZOORYA-PAY USSD waiting screen.
 /// Used for: telebirr, mpesa, nib, zemen, ethswitch
 ///
-/// Features authentic native telebirr brand UI when method == 'telebirr',
-/// and tailored brand styling for M-PESA, NIB, Zemen, and EthSwitch.
+/// Features authentic ZOORYA-PAY theme with #06182A background and #45B5E4 accents.
 class ZooryaPayUssdScreen extends StatefulWidget {
   const ZooryaPayUssdScreen({
     Key? key,
@@ -52,12 +51,13 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   String _errorMessage = '';
   int _pollAttempt = 0;
 
+  // Zoorya Pay Brand Colors
+  static const Color _zooryaDarkBg = Color(0xFF06182A);
+  static const Color _zooryaCyan = Color(0xFF45B5E4);
+  static const Color _cardSurface = Color(0xFF0B2238);
+  static const Color _cardSurfaceLight = Color(0xFF0D2A45);
+
   // Primary brand colour per method:
-  // - ethswitch: Orange
-  // - zemen: Red
-  // - nib: Brown
-  // - mpesa: Safaricom Green
-  // - telebirr: Telebirr Blue
   Color get _methodColor {
     switch (widget.method) {
       case 'ethswitch':
@@ -70,11 +70,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'nib_qr':
         return const Color(0xFF8A4D21); // Nib Brown
       case 'mpesa':
-        return const Color(0xFF008542); // Safaricom Green
       case 'telebirr':
       case 'telebirr_qr':
       default:
-        return const Color(0xFF00A651); // Official Telebirr Green
+        return _zooryaCyan; // #45B5E4
     }
   }
 
@@ -90,12 +89,11 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'ethswitch':
       case 'ethswitch_qr':
         return const Color(0xFF142548); // EthSwitch Navy
+      case 'mpesa':
       case 'telebirr':
       case 'telebirr_qr':
-        return const Color(0xFFFFC30E); // Telebirr Yellow / Gold
-      case 'mpesa':
       default:
-        return const Color(0xFF004D25); // Safaricom Dark Green
+        return _zooryaDarkBg; // #06182A
     }
   }
 
@@ -136,7 +134,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'telebirr_qr':
         return 'Powered by Ethio telecom';
       case 'mpesa':
-        return 'Powered by Safaricom Ethiopia';
+        return 'M-PESA';
       default:
         return 'Digital Payment';
     }
@@ -239,7 +237,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     final isTelebirr = widget.method == 'telebirr';
 
     return Scaffold(
-      backgroundColor: isTelebirr ? const Color(0xFFF4F9F5) : null,
+      backgroundColor: _zooryaDarkBg,
       appBar: AppBar(
         title: isTelebirr
             ? Row(
@@ -276,22 +274,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-        backgroundColor: isTelebirr ? const Color(0xFF00A651) : _methodColor,
-        flexibleSpace: isTelebirr
-            ? Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF006837), // Deep Telebirr green
-                      Color(0xFF00A651), // Official telebirr green
-                      Color(0xFF2BB673), // Bright telebirr green
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              )
-            : null,
+        backgroundColor: _zooryaDarkBg,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
@@ -306,7 +289,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // AUTHENTIC TELEBIRR UI WAITING BODY
+  // TELEBIRR UI WAITING BODY (#06182A with #45B5E4)
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildTelebirrWaitingBody() {
     final formattedPhone = widget.phoneNumber.isNotEmpty
@@ -320,103 +303,23 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Top Curved Gradient Header ──
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal: getProportionateScreenWidth(20),
-              vertical: getProportionateScreenHeight(16),
-            ),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF006837),
-                  Color(0xFF00A651),
-                  Color(0xFF2BB673),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF00A651).withValues(alpha: 0.25),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // telebirr White Logo Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.10),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'images/payment/new_payment/telebirr.png',
-                    height: getProportionateScreenHeight(48),
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                SizedBox(height: getProportionateScreenHeight(10)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFC30E), // telebirr Yellow
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Powered by Ethio telecom',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: getProportionateScreenHeight(4)),
-              ],
-            ),
-          ),
-
           // ── Payment Summary Card ──
           Container(
             margin: EdgeInsets.symmetric(
               horizontal: getProportionateScreenWidth(16),
-              vertical: getProportionateScreenHeight(14),
+              vertical: getProportionateScreenHeight(16),
             ),
             padding: EdgeInsets.all(getProportionateScreenWidth(20)),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _cardSurface,
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
-                color: const Color(0xFF00A651).withValues(alpha: 0.18),
+                color: _zooryaCyan.withValues(alpha: 0.35),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00A651).withValues(alpha: 0.08),
+                  color: _zooryaCyan.withValues(alpha: 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 6),
                 ),
@@ -431,13 +334,13 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE8F5E9),
+                      decoration: BoxDecoration(
+                        color: _zooryaCyan.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.store_mall_directory_rounded,
-                        color: Color(0xFF00A651),
+                        color: _zooryaCyan,
                         size: 16,
                       ),
                     ),
@@ -447,7 +350,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D233A),
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -460,7 +363,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black45,
+                    color: Colors.white70,
                   ),
                 ),
                 SizedBox(height: getProportionateScreenHeight(4)),
@@ -474,7 +377,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF00A651),
+                        color: _zooryaCyan,
                       ),
                     ),
                     Text(
@@ -482,7 +385,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       style: const TextStyle(
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF00A651),
+                        color: _zooryaCyan,
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -490,7 +393,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                 ),
                 SizedBox(height: getProportionateScreenHeight(16)),
 
-                Divider(color: Colors.grey.shade200, height: 1),
+                Divider(color: _zooryaCyan.withValues(alpha: 0.20), height: 1),
                 SizedBox(height: getProportionateScreenHeight(12)),
 
                 // Account & Method Rows
@@ -501,7 +404,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       'telebirr Phone',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.black54,
+                        color: Colors.white70,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -510,7 +413,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                         const Icon(
                           Icons.phone_android_rounded,
                           size: 15,
-                          color: Color(0xFF00A651),
+                          color: _zooryaCyan,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -518,7 +421,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF0D233A),
+                            color: Colors.white,
                           ),
                         ),
                       ],
@@ -533,7 +436,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       'Payment Method',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.black54,
+                        color: Colors.white70,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -542,7 +445,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D233A),
+                        color: _zooryaCyan,
                       ),
                     ),
                   ],
@@ -558,10 +461,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             ),
             padding: EdgeInsets.all(getProportionateScreenWidth(16)),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: _cardSurfaceLight,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: const Color(0xFF00A651).withValues(alpha: 0.40),
+                color: _zooryaCyan.withValues(alpha: 0.45),
                 width: 1.5,
               ),
             ),
@@ -573,12 +476,12 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: const BoxDecoration(
-                        color: Color(0xFF00A651),
+                        color: _zooryaCyan,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.pin_outlined,
-                        color: Colors.white,
+                        color: _zooryaDarkBg,
                         size: 18,
                       ),
                     ),
@@ -592,14 +495,14 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF006837),
+                              color: _zooryaCyan,
                             ),
                           ),
                           Text(
                             'Complete authorization on your phone',
                             style: TextStyle(
                               fontSize: 11.5,
-                              color: Colors.black54,
+                              color: Colors.white70,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -607,9 +510,9 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFC30E),
+                        color: _zooryaCyan,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
@@ -617,7 +520,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF4A3400),
+                          color: _zooryaDarkBg,
                         ),
                       ),
                     ),
@@ -650,7 +553,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SpinKitWave(
-                color: const Color(0xFF00A651),
+                color: _zooryaCyan,
                 size: 28,
               ),
               const SizedBox(width: 14),
@@ -661,7 +564,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                 style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF00A651),
+                  color: _zooryaCyan,
                 ),
               ),
             ],
@@ -676,10 +579,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFC30E).withValues(alpha: 0.15),
+                color: _zooryaCyan.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFFFFC30E).withValues(alpha: 0.6),
+                  color: _zooryaCyan.withValues(alpha: 0.40),
                 ),
               ),
               child: Row(
@@ -688,7 +591,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                   Icon(
                     Icons.info_outline_rounded,
                     size: 16,
-                    color: Color(0xFF8A5A00),
+                    color: _zooryaCyan,
                   ),
                   SizedBox(width: 8),
                   Expanded(
@@ -696,7 +599,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       'Please keep this screen open until the transaction completes.',
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: Color(0xFF5A3B00),
+                        color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -712,7 +615,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             children: const [
               Icon(
                 Icons.security_rounded,
-                color: Color(0xFF00A651),
+                color: _zooryaCyan,
                 size: 14,
               ),
               SizedBox(width: 6),
@@ -720,7 +623,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                 'Secured by Ethio telecom telebirr payment gateway',
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.black45,
+                  color: Colors.white60,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -740,14 +643,14 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
           width: 22,
           height: 22,
           decoration: const BoxDecoration(
-            color: Color(0xFF00A651),
+            color: _zooryaCyan,
             shape: BoxShape.circle,
           ),
           child: Center(
             child: Text(
               number,
               style: const TextStyle(
-                color: Colors.white,
+                color: _zooryaDarkBg,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -760,7 +663,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             text,
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFF0D233A),
+              color: Colors.white,
               height: 1.35,
               fontWeight: FontWeight.w600,
             ),
@@ -803,14 +706,14 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
               horizontal: getProportionateScreenWidth(20),
             ),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _cardSurface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: widget.method == 'zemen'
-                    ? const Color(0xFF1A1A1A).withValues(alpha: 0.25)
+                    ? const Color(0xFFD3214B).withValues(alpha: 0.5)
                     : widget.method == 'nib'
                         ? const Color(0xFFFEB914).withValues(alpha: 0.6)
-                        : _methodColor.withValues(alpha: 0.20),
+                        : _methodColor.withValues(alpha: 0.40),
                 width: 1.8,
               ),
               boxShadow: [
@@ -823,14 +726,21 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             ),
             child: Column(
               children: [
-                Image.asset(
-                  _methodLogo,
-                  height: getProportionateScreenHeight(65),
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.account_balance_wallet_rounded,
-                    size: 54,
-                    color: _methodColor,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Image.asset(
+                    _methodLogo,
+                    height: getProportionateScreenHeight(50),
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.account_balance_wallet_rounded,
+                      size: 40,
+                      color: _methodColor,
+                    ),
                   ),
                 ),
                 SizedBox(height: getProportionateScreenHeight(12)),
@@ -842,7 +752,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
 
           // Animated spinner
           SpinKitWave(
-            color: _payInitiated ? _methodColor : kSecondaryColor,
+            color: _payInitiated ? _zooryaCyan : _methodColor,
             size: 38,
           ),
           SizedBox(height: getProportionateScreenHeight(24)),
@@ -855,7 +765,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: _methodColor,
+              color: _zooryaCyan,
             ),
             textAlign: TextAlign.center,
           ),
@@ -868,7 +778,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                 : 'Please wait while we initiate your payment...',
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.black87,
+              color: Colors.white70,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -883,22 +793,22 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.12),
+                color: _zooryaCyan.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: Colors.amber.withValues(alpha: 0.3),
+                  color: _zooryaCyan.withValues(alpha: 0.35),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: const [
-                  Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                  Icon(Icons.info_outline, size: 16, color: _zooryaCyan),
                   SizedBox(width: 8),
                   Text(
                     'Do NOT close this screen until payment is confirmed.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.black87,
+                      color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -913,13 +823,11 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   /// Builds a customized subtitle badge per brand
   Widget _buildSubtitleBadge() {
     if (widget.method == 'zemen' || widget.method == 'zemen_qr') {
-      // Zemen Bank: Red badge with Black border and text
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: _methodSecondaryColor, // Black
+          color: const Color(0xFFD3214B),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _methodColor, width: 1.2),
         ),
         child: const Text(
           'Zemen Bank',
@@ -934,20 +842,19 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     }
 
     if (widget.method == 'nib' || widget.method == 'nib_qr') {
-      // Nib Bank: Yellow badge with Brown text
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: _methodSecondaryColor, // Yellow
+          color: const Color(0xFFFEB914),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _methodColor, width: 1.2),
+          border: Border.all(color: const Color(0xFF8A4D21), width: 1.2),
         ),
-        child: Text(
+        child: const Text(
           'Nib International Bank',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: _methodColor, // Brown
+            color: Color(0xFF8A4D21),
             letterSpacing: 0.3,
           ),
         ),
@@ -955,11 +862,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     }
 
     if (widget.method == 'ethswitch' || widget.method == 'ethswitch_qr') {
-      // EthSwitch: Orange badge with Navy accent
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFF37423).withValues(alpha: 0.12),
+          color: const Color(0xFFF37423).withValues(alpha: 0.20),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFF37423), width: 1.2),
         ),
@@ -979,15 +885,15 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: _methodColor.withValues(alpha: 0.08),
+        color: _zooryaCyan.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         _methodSubtitle,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: _methodColor,
+          color: _zooryaCyan,
           letterSpacing: 0.3,
         ),
       ),
@@ -996,31 +902,13 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
 
   /// Builds customized amount chip per brand
   Widget _buildAmountChip() {
-    Color chipBg = _methodColor.withValues(alpha: 0.08);
-    Color chipBorder = _methodColor.withValues(alpha: 0.25);
-    Color chipText = _methodColor;
-
-    if (widget.method == 'zemen' || widget.method == 'zemen_qr') {
-      chipBg = const Color(0xFFD3214B).withValues(alpha: 0.08);
-      chipBorder = const Color(0xFF1A1A1A).withValues(alpha: 0.4);
-      chipText = const Color(0xFFD3214B);
-    } else if (widget.method == 'nib' || widget.method == 'nib_qr') {
-      chipBg = const Color(0xFFFEB914).withValues(alpha: 0.20);
-      chipBorder = const Color(0xFF8A4D21).withValues(alpha: 0.5);
-      chipText = const Color(0xFF8A4D21);
-    } else if (widget.method == 'ethswitch' || widget.method == 'ethswitch_qr') {
-      chipBg = const Color(0xFFF37423).withValues(alpha: 0.08);
-      chipBorder = const Color(0xFFF37423).withValues(alpha: 0.4);
-      chipText = const Color(0xFFF37423);
-    }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
       decoration: BoxDecoration(
-        color: chipBg,
+        color: _cardSurface,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: chipBorder,
+          color: _zooryaCyan,
           width: 1.5,
         ),
       ),
@@ -1032,15 +920,15 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
-              color: Colors.black54,
+              color: Colors.white70,
             ),
           ),
           Text(
             'ETB ${widget.amount.toStringAsFixed(2)}',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
-              color: chipText,
+              color: _zooryaCyan,
             ),
           ),
         ],
@@ -1096,7 +984,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: Colors.red,
+              color: Colors.redAccent,
             ),
           ),
           const SizedBox(height: 12),
@@ -1104,7 +992,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             _errorMessage,
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.black54,
+              color: Colors.white70,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -1114,7 +1002,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryColor,
+                backgroundColor: _zooryaCyan,
+                foregroundColor: _zooryaDarkBg,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1123,7 +1012,11 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text(
                 'Go Back',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(
+                  color: _zooryaDarkBg,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
