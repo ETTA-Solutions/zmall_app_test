@@ -25,6 +25,8 @@ import 'package:zmall/kifiya/components/telebirr_inapp.dart';
 import 'package:zmall/kifiya/components/telebirr_ussd.dart';
 import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_ussd_screen.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_qr_screen.dart';
 import 'package:zmall/kifiya/kifiya_verification.dart';
 import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/models/cart.dart';
@@ -802,9 +804,17 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         _loading = true;
         _placeOrder = true;
       });
+      // ZOORYA-PAY: pass the ZOORYA gateway _id (not a method index).
+      // Old: paymentResponse['payment_gateway'][kifiyaMethod]['_id']
+      final dynamic _zooryaGw = (paymentResponse['payment_gateway'] as List<dynamic>)
+          .firstWhere(
+            (g) => g['name'].toString().toUpperCase() == 'ZOORYA-PAY',
+            orElse: () => null,
+          );
+      final String _zooryaGatewayId = _zooryaGw != null ? _zooryaGw['_id'].toString() : '';
       var data = await payOrderPayment(
         otp,
-        paymentResponse['payment_gateway'][kifiyaMethod]['_id'],
+        _zooryaGatewayId,
       );
       if (!mounted) return;
       if (data != null && data['success']) {
@@ -848,11 +858,18 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
   Future<bool> _boaVerify() async {
     if (!mounted) return false;
+    debugPrint('╔══════════════════════════════════════════════════════════════════╗');
+    debugPrint('║ 🔍 [_boaVerify] STARTING PAYMENT VERIFICATION CHECK            ║');
+    debugPrint('╠══════════════════════════════════════════════════════════════════╣');
+    debugPrint('║ orderPaymentId:       ${widget.orderPaymentId}');
+    debugPrint('║ orderPaymentUniqueId: ${widget.orderPaymentUniqueId}');
+    debugPrint('╚══════════════════════════════════════════════════════════════════╝');
     setState(() {
       _loading = true;
       _placeOrder = true;
     });
     var data = await boaVerify();
+    debugPrint('[_boaVerify] → Received response from boaVerify: $data');
 
     if (!mounted) return false;
     if (data != null && data['success']) {
@@ -913,6 +930,248 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       await Future.delayed(Duration(seconds: 3));
       return false;
     }
+  }
+
+  void _showMpesaSafaricomReminderDialog({required VoidCallback onContinue}) {
+    const safaricomGreen = Color(0xFF008542);
+    const safaricomDarkGreen = Color(0xFF004D25);
+    const safaricomLightGreen = Color(0xFFE8F8F0);
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: getProportionateScreenWidth(20),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(getProportionateScreenWidth(22)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top M-PESA Brand Icon Container
+                Container(
+                  width: getProportionateScreenWidth(72),
+                  height: getProportionateScreenWidth(72),
+                  padding: EdgeInsets.all(getProportionateScreenWidth(12)),
+                  decoration: BoxDecoration(
+                    color: safaricomLightGreen,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: safaricomGreen.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Image.asset(
+                    'images/payment/new_payment/mpesa.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.phone_android,
+                      color: safaricomGreen,
+                      size: 36,
+                    ),
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(14)),
+
+                // Safaricom Badge
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: getProportionateScreenWidth(12),
+                    vertical: getProportionateScreenHeight(4),
+                  ),
+                  decoration: BoxDecoration(
+                    color: safaricomGreen,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Safaricom M-PESA",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: getProportionateScreenWidth(12),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(12)),
+
+                // Title
+                Text(
+                  "Safaricom Number Reminder",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(18),
+                    fontWeight: FontWeight.w800,
+                    color: safaricomDarkGreen,
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(8)),
+
+                // Body description
+                Text(
+                  "M-PESA in Ethiopia is provided by Safaricom. Please make sure your payment uses a Safaricom number starting with 7:",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: getProportionateScreenWidth(13),
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(16)),
+
+                // 7XXXXXXXX Highlight Box
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                    vertical: getProportionateScreenHeight(12),
+                    horizontal: getProportionateScreenWidth(14),
+                  ),
+                  decoration: BoxDecoration(
+                    color: safaricomLightGreen,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: safaricomGreen.withValues(alpha: 0.4),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.sim_card_outlined,
+                            color: safaricomGreen,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          RichText(
+                            text: TextSpan(
+                              style: TextStyle(
+                                fontSize: getProportionateScreenWidth(20),
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.0,
+                                color: safaricomDarkGreen,
+                              ),
+                              children: const [
+                                TextSpan(
+                                  text: "7",
+                                  style: TextStyle(
+                                    color: safaricomGreen,
+                                    fontSize: 24,
+                                  ),
+                                ),
+                                TextSpan(text: "XXXXXXXX"),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Format: 07XXXXXXXX or +251 7XXXXXXXX",
+                        style: TextStyle(
+                          fontSize: getProportionateScreenWidth(11.5),
+                          color: safaricomDarkGreen.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(12)),
+
+                // 09 warning card
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: getProportionateScreenHeight(8),
+                    horizontal: getProportionateScreenWidth(12),
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        color: Colors.amber,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Numbers starting with 09... (Ethio Telecom) will not work with M-PESA.",
+                          style: TextStyle(
+                            fontSize: getProportionateScreenWidth(11.5),
+                            color: Colors.black87,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: getProportionateScreenHeight(20)),
+
+                // Confirm / Close Button
+                SizedBox(
+                  width: double.infinity,
+                  height: getProportionateScreenHeight(48),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: safaricomGreen,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      onContinue();
+                    },
+                    child: Text(
+                      "I Understand / Continue",
+                      style: TextStyle(
+                        fontSize: getProportionateScreenWidth(15),
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _ethSwitchVerify(String traceNo) async {
@@ -1308,30 +1567,37 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                               Expanded(
                                 child: Builder(
                                   builder: (context) {
-                                    // For combo orders (Phase 1), only Cash and
-                                    // Wallet are supported. Filter the list so
-                                    // unsupported gateways are hidden entirely
-                                    // instead of shown with a "Soon" badge.
+                                    // ZOORYA-PAY: expand methods from the gateway.
+                                    // Old flat gateway list (commented out for ZOORYA-PAY test):
+                                    // final List<dynamic> allGateways =
+                                    //     paymentResponse['payment_gateway'] as List<dynamic>;
+                                    // final List<dynamic> visibleGateways = widget.isCombo
+                                    //     ? allGateways.where((g) => ['cash', 'wallet']
+                                    //         .contains(g['name'].toString().toLowerCase())).toList()
+                                    //     : allGateways;
+
+                                    // Find ZOORYA-PAY gateway and show its methods instead.
                                     final List<dynamic> allGateways =
                                         paymentResponse['payment_gateway'] as List<dynamic>;
-                                    final List<dynamic> visibleGateways =
-                                        widget.isCombo
-                                            ? allGateways
-                                                .where((g) => ['cash', 'wallet'].contains(
-                                                    g['name'].toString().toLowerCase()))
-                                                .toList()
-                                            : allGateways;
+                                    final dynamic zooryaGateway = allGateways.firstWhere(
+                                      (g) => g['name'].toString().toUpperCase() == 'ZOORYA-PAY',
+                                      orElse: () => null,
+                                    );
+                                    final List<dynamic> zooryaMethods = zooryaGateway != null
+                                        ? (zooryaGateway['methods'] as List<dynamic>)
+                                            .where((m) => m['is_visible'] == true)
+                                            .toList()
+                                        : <dynamic>[];
 
                                     debugPrint(
-                                      '[PAYMENT GATEWAY] 🏗  building grid — '
-                                      'isCombo=${widget.isCombo}  '
-                                      'total=${allGateways.length}  '
-                                      'visible=${visibleGateways.length}  '
-                                      'names=${visibleGateways.map((g) => g['name']).toList()}',
+                                      '[ZOORYA-PAY] building grid '
+                                      'found=${zooryaGateway != null}  '
+                                      'methods=${zooryaMethods.length}  '
+                                      'keys=${zooryaMethods.map((m) => m["key"]).toList()}',
                                     );
                                     return GridView.builder(
                                   shrinkWrap: true,
-                                  itemCount: visibleGateways.length,
+                                  itemCount: zooryaMethods.length,
                                   padding: EdgeInsets.symmetric(
                                     vertical: getProportionateScreenHeight(
                                       kDefaultPadding / 2,
@@ -1350,80 +1616,118 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             ),
                                       ),
                                   itemBuilder: (BuildContext ctx, index) {
-                                    final gateway = visibleGateways[index];
-                                    String paymentName =
-                                        gateway['name']
-                                            .toString()
-                                            .toLowerCase();
-                                    // Use position in the FULL list so
-                                    // payOrderPayment picks the correct gateway _id.
-                                    final int originalIndex =
-                                        allGateways.indexWhere(
-                                            (g) => g['_id'] == gateway['_id']);
+                                    // ZOORYA-PAY: iterate over methods, not gateways.
+                                    final method = zooryaMethods[index];
+                                    // paymentName uses the method KEY for routing logic
+                                    final String paymentName =
+                                        method['key'].toString().toLowerCase();
+                                    // displayName uses the method NAME for the card title
+                                    final String displayName =
+                                        method['name'].toString();
 
                                     debugPrint(
-                                      '[PAYMENT GATEWAY] 🟦 rendering card '
-                                      '[$index] name="$paymentName"  '
-                                      'originalIndex=$originalIndex  '
-                                      '_id=${gateway['_id']}',
+                                      '[ZOORYA-PAY] rendering method card '
+                                      '[$index] key="$paymentName" name="$displayName"',
                                     );
 
-                                    return KifiyaMethodContainer(
-                                      selected: kifiyaMethod == originalIndex,
-                                      isSoon: false,
-                                      title: paymentName,
-                                      // .toUpperCase(),
-                                      kifiyaMethod: kifiyaMethod,
-                                      imagePath: paymentName == "wallet"
-                                          ? 'images/payment/wallet.png'
-                                          : paymentName == "cash"
-                                          ? 'images/payment/cod.png'
-                                          : paymentName == "dashen mastercard"
-                                          ? 'images/payment/dashenmpgs.png'
-                                          : paymentName == "addis pay"
-                                          ? 'images/payment/addispay.png'
-                                          : paymentName == "santimpay"
-                                          ? 'images/payment/santimpay.png'
-                                          : paymentName == "etta card"
-                                          ? 'images/payment/dashen.png'
-                                          : paymentName == "cbe birr"
-                                          ? 'images/payment/cbebirr.png'
-                                          : paymentName == "ethswitch"
-                                          ? 'images/payment/ethswitch.png'
-                                          : paymentName == "chapa"
-                                          ? 'images/payment/chapa.png'
-                                          : paymentName == "amole"
-                                          ? 'images/payment/amole.png'
-                                          : paymentName == "boa"
-                                          ? 'images/payment/boa.png'
-                                          : paymentName == "zemen"
-                                          ? 'images/payment/zemen.png'
-                                          : paymentName.contains("wegagen")
-                                          ? 'images/payment/wegagen_real.png'
-                                          : paymentName == "awash"
-                                          ? 'images/payment/awash.png'
-                                          : paymentName == "etta card"
-                                          ? 'images/payment/zmall.jpg'
-                                          : paymentName == "dashen"
-                                          ? 'images/payment/dashen.png'
-                                          : paymentName == "yagoutpay"
-                                          ? 'images/payment/yagoutpay.png'
-                                          : paymentName == "starpay"
-                                          ? 'images/payment/starpay.png'
-                                          : paymentName.contains("telebirr") ||
-                                                paymentName.contains(
-                                                  "tele birr",
-                                                )
-                                          ? 'images/payment/telebirr.png'
-                                          : '',
+                                    // ZOORYA-PAY image map (from new_payment folder)
+                                    final String zooryaImagePath =
+                                        (paymentName == 'telebirr' ||
+                                            paymentName == 'telebirr_qr')
+                                          ? 'images/payment/new_payment/telebirr.png'
+                                          : paymentName == 'mpesa'
+                                          ? 'images/payment/new_payment/mpesa.png'
+                                          : paymentName == 'nib'
+                                          ? 'images/payment/new_payment/nib_bank.png'
+                                          : paymentName == 'zemen'
+                                          ? 'images/payment/new_payment/zemen.png'
+                                          : paymentName == 'ethswitch_qr'
+                                          ? 'images/payment/new_payment/ethswitch.png'
+                                          : 'images/payment/default_payment.png';
 
-                                      // 'images/payment/telebirr.png',
+                                    return KifiyaMethodContainer(
+                                      selected: kifiyaMethod == index,
+                                      isSoon: false,
+                                      title: displayName,
+                                      kifiyaMethod: kifiyaMethod,
+                                      imagePath: zooryaImagePath,
+                                      // Old image map (commented out - replaced by ZOORYA new_payment folder):
+                                      // paymentName == "wallet" ? 'images/payment/wallet.png'
+                                      // : paymentName == "cash" ? 'images/payment/cod.png'
+                                      // : paymentName.contains("telebirr") ? 'images/payment/telebirr.png'
+                                      // : ...
                                       press: () async {
-                                        // For combo, only Cash & Wallet are
-                                        // in the visible list — no guard needed.
+                                        // Select this method card
                                         setState(() {
-                                          kifiyaMethod = originalIndex;
+                                          kifiyaMethod = index;
                                         });
+
+                                        // Safaricom M-PESA reminder popup (7XXXXXXXX notice)
+                                        if (paymentName == "mpesa") {
+                                          _showMpesaSafaricomReminderDialog(
+                                            onContinue: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => ZooryaPayUssdScreen(
+                                                    method: 'mpesa',
+                                                    displayName: displayName,
+                                                    amount: widget.price!,
+                                                    userId: userData['user']['_id'],
+                                                    serverToken: userData['user']['server_token'],
+                                                    uniqueId: widget.orderPaymentUniqueId!,
+                                                    orderPaymentId: widget.orderPaymentId!,
+                                                    phoneNumber: userData['user']['phone'] ?? '',
+                                                  ),
+                                                ),
+                                              ).then((_) => _boaVerify());
+                                            },
+                                          );
+                                          return;
+                                        }
+
+                                        // -- ZOORYA-PAY: USSD methods --
+                                        if (paymentName == 'telebirr' ||
+                                            paymentName == 'nib' ||
+                                            paymentName == 'zemen') {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ZooryaPayUssdScreen(
+                                                method: paymentName,
+                                                displayName: displayName,
+                                                amount: widget.price!,
+                                                userId: userData['user']['_id'],
+                                                serverToken: userData['user']['server_token'],
+                                                uniqueId: widget.orderPaymentUniqueId!,
+                                                orderPaymentId: widget.orderPaymentId!,
+                                                phoneNumber: userData['user']['phone'] ?? '',
+                                              ),
+                                            ),
+                                          ).then((_) => _boaVerify());
+                                          return;
+                                        }
+
+                                        // -- ZOORYA-PAY: QR methods --
+                                        if (paymentName == 'telebirr_qr' ||
+                                            paymentName == 'ethswitch_qr') {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ZooryaPayQrScreen(
+                                                method: paymentName,
+                                                displayName: displayName,
+                                                amount: widget.price!,
+                                                userId: userData['user']['_id'],
+                                                serverToken: userData['user']['server_token'],
+                                                uniqueId: widget.orderPaymentUniqueId!,
+                                                orderPaymentId: widget.orderPaymentId!,
+                                              ),
+                                            ),
+                                          ).then((_) => _boaVerify());
+                                          return;
+                                        }
+
                                         if (paymentName == "cash") {
                                           if (widget.onlyCashless!) {
                                             Service.showMessage(
@@ -1610,8 +1914,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                               if (value != null) {
                                                 _payOrderPayment(
                                                   otp: value,
-                                                  paymentId:
-                                                      gateway['_id'],
+                                                  // ZOORYA-PAY: gateway _id resolved in _payOrderPayment
+                                                  paymentId: '',
                                                 );
                                               }
                                             });
@@ -3358,16 +3662,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             "order_payment_id": widget.orderPaymentId,
             "payment_id": paymentId,
             "order_type": 7,
-            "is_payment_mode_cash":
-                kifiyaMethod != -1 &&
-                (paymentResponse['payment_gateway'][kifiyaMethod]['name']
-                            .toString()
-                            .toLowerCase() ==
-                        "wallet" ||
-                    paymentResponse['payment_gateway'][kifiyaMethod]['name']
-                            .toString()
-                            .toLowerCase() ==
-                        "cash"),
+            // ZOORYA-PAY: all methods are digital (not cash/wallet).
+            // Old: paymentResponse['payment_gateway'][kifiyaMethod]['name'] == "cash"
+            "is_payment_mode_cash": false,
             "server_token": userData['user']['server_token'],
             "store_delivery_id": services['deliveries'][0]['_id'],
           }
@@ -3376,16 +3673,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             "otp": otp,
             "order_payment_id": widget.orderPaymentId,
             "payment_id": paymentId,
-            "is_payment_mode_cash":
-                kifiyaMethod != -1 &&
-                (paymentResponse['payment_gateway'][kifiyaMethod]['name']
-                            .toString()
-                            .toLowerCase() ==
-                        "wallet" ||
-                    paymentResponse['payment_gateway'][kifiyaMethod]['name']
-                            .toString()
-                            .toLowerCase() ==
-                        "cash"),
+            // ZOORYA-PAY: all methods are digital (not cash/wallet).
+            // Old: paymentResponse['payment_gateway'][kifiyaMethod]['name'] == "cash"
+            "is_payment_mode_cash": false,
             "server_token": userData['user']['server_token'],
           };
 
@@ -3453,6 +3743,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     };
 
     var body = json.encode(data);
+    debugPrint('[boaVerify] 🚀 Calling POST /admin/check_paid_order: $url');
+    debugPrint('[boaVerify] 🚀 Request payload: $body');
     try {
       http.Response response = await http
           .post(
@@ -3474,6 +3766,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             },
           );
 
+      debugPrint('[boaVerify] 📥 Response status: ${response.statusCode}');
+      debugPrint('[boaVerify] 📥 Response body:   ${response.body}');
       if (mounted)
         setState(() {
           this._loading = false;

@@ -40,7 +40,7 @@ void main() async {
   runApp(MyApp());
 }
 
-// Static analytics instances - accessible app-wide
+// Static analytics instances - accessible app- wide
 class MyApp extends StatefulWidget {
   static FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   static FirebaseInAppMessaging messaging = FirebaseInAppMessaging.instance;

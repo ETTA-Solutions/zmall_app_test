@@ -43,6 +43,7 @@ dependencies:
   dio: ^5.9.2
 
   # ── Images & media ──
+  qr_flutter: ^4.1.0
   cached_network_image: ^3.4.1
   image_picker: ^1.2.2
   just_audio: ^0.10.5             # yearly recap audio
@@ -118,6 +119,7 @@ flutter:
     - images/
     - assets/
     - images/payment/
+    - images/payment/new_payment/
     - images/pl_logos/
     - images/pl_logos/nation/ # Added: national team logos for World Cup (e.g. GER.png, BRA.png)
     - images/store_tags/

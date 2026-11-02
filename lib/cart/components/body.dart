@@ -902,8 +902,10 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                           zmallClose.minute,
                                         );
 
-                                        if (now.isAfter(zmallOpen) &&
-                                            now.isBefore(zmallClose)) {
+                                        // BYPASS store closed-time check: always allow checkout regardless of open/close time
+                                        // if (now.isAfter(zmallOpen) &&
+                                        //     now.isBefore(zmallClose)) {
+                                        if (true) {
                                           // ── Min-order check ─────────────────
                                           final minErr = _checkMinOrderPrice();
                                           if (minErr != null) {
