@@ -4,6 +4,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
@@ -11,7 +12,8 @@ import 'package:zmall/utils/size_config.dart';
 
 class TelebirrUssd extends StatefulWidget {
   const TelebirrUssd({
-    required this.url,
+    Key? key,
+    this.url = "",
     required this.hisab,
     required this.phone,
     required this.traceNo,
@@ -20,7 +22,10 @@ class TelebirrUssd extends StatefulWidget {
     this.isAbroad = false,
     required this.serverToken,
     required this.userId,
-  });
+    this.isZooryaPay = false,
+    this.uniqueId,
+  }) : super(key: key);
+
   final String url;
   final String title;
   final double hisab;
@@ -30,6 +35,8 @@ class TelebirrUssd extends StatefulWidget {
   final bool isAbroad;
   final String userId;
   final String serverToken;
+  final bool isZooryaPay;
+  final String? uniqueId;
 
   @override
   _TelebirrUssdState createState() => _TelebirrUssdState();
@@ -46,6 +53,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
     super.initState();
     debugPrint('==================== [TelebirrUssd] INIT ====================');
     debugPrint('[TelebirrUssd] Widget Params:');
+    debugPrint('[TelebirrUssd]   isZooryaPay: ${widget.isZooryaPay}');
     debugPrint('[TelebirrUssd]   url: ${widget.url}');
     debugPrint('[TelebirrUssd]   phone: ${widget.phone}');
     debugPrint('[TelebirrUssd]   traceNo: ${widget.traceNo}');
@@ -59,6 +67,36 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
   }
 
   void _initTelebirr() async {
+    if (widget.isZooryaPay) {
+      debugPrint('[TelebirrUssd] 🚀 Initiating ZooryaPay Telebirr USSD...');
+      final result = await ZooryaPayService.pay(
+        context: context,
+        userId: widget.userId,
+        serverToken: widget.serverToken,
+        method: 'telebirr',
+        uniqueId: widget.uniqueId ?? widget.traceNo,
+        amount: widget.hisab,
+        phoneNumber: widget.phone,
+      );
+      if (!mounted) return;
+
+      if (result != null && result['success'] == true) {
+        debugPrint('[TelebirrUssd] ✅ ZooryaPay Telebirr USSD initiated! Starting verify polling...');
+        _verifyPayment();
+      } else {
+        final msg = result?['message']?.toString() ??
+            "Telebirr payment initiation failed. Please try again.";
+        debugPrint('[TelebirrUssd] ❌ ZooryaPay Telebirr init failed: $msg');
+        Service.showMessage(
+          context: context,
+          title: msg,
+          error: true,
+          duration: 5,
+        );
+      }
+      return;
+    }
+
     debugPrint('[TelebirrUssd] Calling initTelebirr()...');
     var data = await initTelebirr();
     debugPrint('[TelebirrUssd] initTelebirr returned: $data');
@@ -101,6 +139,41 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
     debugPrint(
       '[TelebirrUssd] 🔄 Verify payment polling attempt #$_verifyAttempt...',
     );
+
+    if (widget.isZooryaPay) {
+      final result = await ZooryaPayService.checkPaidOrder(
+        context: context,
+        userId: widget.userId,
+        serverToken: widget.serverToken,
+        orderPaymentId: widget.orderPaymentId,
+      );
+      if (!mounted) return;
+
+      bool isPaid = false;
+      if (result != null) {
+        if (result['success'] == true || result['success'] == 'true') isPaid = true;
+        if (result['is_paid'] == true || result['is_paid'] == 'true') isPaid = true;
+        if (result['paid'] == true || result['paid'] == 'true') isPaid = true;
+        if (result['data'] is Map) {
+          final data = result['data'] as Map;
+          if (data['is_paid'] == true || data['is_paid'] == 'true') isPaid = true;
+          if (data['paid'] == true || data['paid'] == 'true') isPaid = true;
+          if (data['status'] == 'PAID' || data['status'] == 'COMPLETED') isPaid = true;
+        }
+      }
+
+      if (isPaid) {
+        debugPrint('[TelebirrUssd] ✅ ZooryaPay Telebirr payment verified!');
+        Navigator.pop(context, true);
+      } else {
+        if (_verifyAttempt < 60) {
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted) _verifyPayment();
+        }
+      }
+      return;
+    }
+
     var data = await verifyPayment();
     debugPrint(
       '[TelebirrUssd] Verify attempt #$_verifyAttempt response: $data',
@@ -111,7 +184,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       debugPrint(
         '[TelebirrUssd] ✅ Payment verified successfully! Closing screen.',
       );
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } else {
       debugPrint(
         '[TelebirrUssd] ⏳ Payment not yet completed. Re-checking in 2 seconds...',
@@ -128,51 +201,80 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.title, style: TextStyle(color: kBlackColor)),
-        elevation: 1.0,
-        // leading: TextButton(
-        //   child: Text("Done"),
-        //   onPressed: () => Navigator.of(context).pop(),
-        // ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context, false),
+        ),
+        title: Text(
+          widget.title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: false,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pay Using telebirr',
-                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Pay Using telebirr',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
-                  Text(
-                    'Powered by Ethiotelecom',
-                    style: TextStyle(fontSize: 21, color: Colors.black45),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Powered by Ethiotelecom',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Color(0xFF8E8E93),
+                    fontWeight: FontWeight.normal,
                   ),
-                ],
-              ),
-              Image.asset(
-                "images/payment/telebirr.png",
-                height: getProportionateScreenHeight(kDefaultPadding * 10),
-                width: getProportionateScreenWidth(kDefaultPadding * 10),
-              ),
-              SizedBox(
-                height: getProportionateScreenHeight(kDefaultPadding / 2),
-              ),
-              SpinKitPouringHourGlassRefined(color: kBlackColor),
-              SizedBox(
-                height: getProportionateScreenHeight(kDefaultPadding / 2),
-              ),
-              Text(
-                "Please complete payment through the USSD prompt. \nWaiting for payment to be completed....",
-                textAlign: TextAlign.center,
-              ),
-            ],
+                ),
+                SizedBox(
+                  height: getProportionateScreenHeight(kDefaultPadding * 2),
+                ),
+                Image.asset(
+                  "images/payment/telebirr.png",
+                  height: 65,
+                  fit: BoxFit.contain,
+                ),
+                SizedBox(
+                  height: getProportionateScreenHeight(kDefaultPadding * 2),
+                ),
+                const SpinKitPouringHourGlassRefined(
+                  color: Colors.black,
+                  size: 40,
+                ),
+                SizedBox(
+                  height: getProportionateScreenHeight(kDefaultPadding),
+                ),
+                const Text(
+                  "Please complete payment through the USSD prompt.\nWaiting for payment to be completed....",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.45,
+                    color: Color(0xFF2C2C2E),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -25,7 +25,6 @@ import 'package:zmall/kifiya/components/telebirr_inapp.dart';
 import 'package:zmall/kifiya/components/telebirr_ussd.dart';
 import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
-import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_ussd_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_qr_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
 import 'package:zmall/kifiya/kifiya_verification.dart';
@@ -839,14 +838,64 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         if (kifiyaMethod >= 0 && kifiyaMethod < zMethods.length) {
           final selMethod = zMethods[kifiyaMethod];
           final String selKey = selMethod['key'].toString().toLowerCase();
-          if (selKey == 'telebirr' ||
-              selKey == 'mpesa' ||
+          final String selDisplayName = selMethod['name'].toString();
+          if (selKey == 'telebirr') {
+            _showProceedToPayDialog(
+              displayName: selDisplayName,
+              onProceed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TelebirrUssd(
+                      userId: userData['user']['_id'],
+                      serverToken: userData['user']['server_token'],
+                      hisab: widget.price!,
+                      traceNo: widget.orderPaymentUniqueId!,
+                      uniqueId: widget.orderPaymentUniqueId!,
+                      phone: userData['user']['phone'] ?? '',
+                      orderPaymentId: widget.orderPaymentId!,
+                      isZooryaPay: true,
+                    ),
+                  ),
+                ).then((value) {
+                  _boaVerify();
+                });
+              },
+            );
+            return;
+          } else if (selKey == 'mpesa' ||
               selKey == 'nib' ||
               selKey == 'zemen' ||
               selKey == 'ethswitch') {
-            _startDirectZooryaPayUssd(
-              method: selKey,
-              displayName: selMethod['name'].toString(),
+            _showProceedToPayDialog(
+              displayName: selDisplayName,
+              onProceed: () {
+                _startDirectZooryaPayUssd(
+                  method: selKey,
+                  displayName: selDisplayName,
+                );
+              },
+            );
+            return;
+          } else if (selKey == 'telebirr_qr' || selKey == 'ethswitch_qr') {
+            _showProceedToPayDialog(
+              displayName: selDisplayName,
+              onProceed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ZooryaPayQrScreen(
+                      method: selKey,
+                      displayName: selDisplayName,
+                      amount: widget.price!,
+                      userId: userData['user']['_id'],
+                      serverToken: userData['user']['server_token'],
+                      uniqueId: widget.orderPaymentUniqueId!,
+                      orderPaymentId: widget.orderPaymentId!,
+                    ),
+                  ),
+                ).then((_) => _boaVerify());
+              },
             );
             return;
           }
@@ -977,6 +1026,53 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       await Future.delayed(Duration(seconds: 3));
       return false;
     }
+  }
+
+  void _showProceedToPayDialog({
+    required String displayName,
+    required VoidCallback onProceed,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: kPrimaryColor,
+          title: Text("Pay Using $displayName"),
+          content: Text(
+            "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using $displayName?",
+          ),
+          actions: [
+            TextButton(
+              child: Text(
+                Provider.of<ZLanguage>(context).cancel,
+                style: TextStyle(
+                  color: kSecondaryColor,
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  kifiyaMethod = -1;
+                });
+              },
+            ),
+            TextButton(
+              child: Text(
+                Provider.of<ZLanguage>(context).cont,
+                style: TextStyle(
+                  color: kBlackColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                onProceed();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   int _zooryaPollAttempt = 0;
@@ -1622,40 +1718,76 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                               kifiyaMethod = index;
                                             });
 
-                                            // -- ZOORYA-PAY: USSD methods (Direct to USSD, no intermediate UI) --
-                                            if (paymentName == 'telebirr' ||
-                                                paymentName == 'mpesa' ||
-                                                paymentName == 'nib' ||
-                                                paymentName == 'zemen' ||
-                                                paymentName == 'ethswitch') {
-                                              _startDirectZooryaPayUssd(
-                                                method: paymentName,
+                                            // -- ZOORYA-PAY: Telebirr USSD (Shows Telebirr USSD Screen matching design, then calls USSD) --
+                                            if (paymentName == 'telebirr') {
+                                              _showProceedToPayDialog(
                                                 displayName: displayName,
+                                                onProceed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => TelebirrUssd(
+                                                        userId: userData['user']['_id'],
+                                                        serverToken: userData['user']['server_token'],
+                                                        hisab: widget.price!,
+                                                        traceNo: widget.orderPaymentUniqueId!,
+                                                        uniqueId: widget.orderPaymentUniqueId!,
+                                                        phone: userData['user']['phone'] ?? '',
+                                                        orderPaymentId: widget.orderPaymentId!,
+                                                        isZooryaPay: true,
+                                                      ),
+                                                    ),
+                                                  ).then((value) {
+                                                    _boaVerify();
+                                                  });
+                                                },
                                               );
                                               return;
                                             }
 
-                                            // -- ZOORYA-PAY: QR methods --
-                                            if (paymentName == 'telebirr_qr' ||
-                                                paymentName == 'ethswitch_qr') {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => ZooryaPayQrScreen(
+                                            // -- ZOORYA-PAY: Other USSD methods (Direct to USSD, preceded by confirmation popup) --
+                                            if (paymentName == 'mpesa' ||
+                                                paymentName == 'nib' ||
+                                                paymentName == 'zemen' ||
+                                                paymentName == 'ethswitch') {
+                                              _showProceedToPayDialog(
+                                                displayName: displayName,
+                                                onProceed: () {
+                                                  _startDirectZooryaPayUssd(
                                                     method: paymentName,
                                                     displayName: displayName,
-                                                    amount: widget.price!,
-                                                    userId:
-                                                        userData['user']['_id'],
-                                                    serverToken:
-                                                        userData['user']['server_token'],
-                                                    uniqueId: widget
-                                                        .orderPaymentUniqueId!,
-                                                    orderPaymentId:
-                                                        widget.orderPaymentId!,
-                                                  ),
-                                                ),
-                                              ).then((_) => _boaVerify());
+                                                  );
+                                                },
+                                              );
+                                              return;
+                                            }
+
+                                            // -- ZOORYA-PAY: QR methods (Preceded by confirmation popup) --
+                                            if (paymentName == 'telebirr_qr' ||
+                                                paymentName == 'ethswitch_qr') {
+                                              _showProceedToPayDialog(
+                                                displayName: displayName,
+                                                onProceed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => ZooryaPayQrScreen(
+                                                        method: paymentName,
+                                                        displayName: displayName,
+                                                        amount: widget.price!,
+                                                        userId:
+                                                            userData['user']['_id'],
+                                                        serverToken:
+                                                            userData['user']['server_token'],
+                                                        uniqueId: widget
+                                                            .orderPaymentUniqueId!,
+                                                        orderPaymentId:
+                                                            widget.orderPaymentId!,
+                                                      ),
+                                                    ),
+                                                  ).then((_) => _boaVerify());
+                                                },
+                                              );
                                               return;
                                             }
 

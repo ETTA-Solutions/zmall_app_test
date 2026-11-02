@@ -422,11 +422,11 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
                 ),
               ),
               child: QrImageView(
-                data: _qrValue!,
+                data: _qrValue ?? '',
                 version: QrVersions.auto,
                 size: 240,
                 backgroundColor: Colors.white,
-                errorCorrectionLevel: QrErrorCorrectLevel.H,
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
               ),
             ),
           ),
