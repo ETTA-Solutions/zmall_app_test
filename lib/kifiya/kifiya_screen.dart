@@ -27,6 +27,7 @@ import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_ussd_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_qr_screen.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
 import 'package:zmall/kifiya/kifiya_verification.dart';
 import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/models/cart.dart';
@@ -831,6 +832,26 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             (g) => g['name'].toString().toUpperCase() == 'ZOORYA-PAY',
             orElse: () => null,
           );
+      if (_zooryaGw != null && _zooryaGw['methods'] is List) {
+        final List<dynamic> zMethods = (_zooryaGw['methods'] as List)
+            .where((m) => m is Map && m['status'] == true)
+            .toList();
+        if (kifiyaMethod >= 0 && kifiyaMethod < zMethods.length) {
+          final selMethod = zMethods[kifiyaMethod];
+          final String selKey = selMethod['key'].toString().toLowerCase();
+          if (selKey == 'telebirr' ||
+              selKey == 'mpesa' ||
+              selKey == 'nib' ||
+              selKey == 'zemen' ||
+              selKey == 'ethswitch') {
+            _startDirectZooryaPayUssd(
+              method: selKey,
+              displayName: selMethod['name'].toString(),
+            );
+            return;
+          }
+        }
+      }
       final String _zooryaGatewayId = _zooryaGw != null
           ? _zooryaGw['_id'].toString()
           : '';
@@ -958,6 +979,149 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
   }
 
+  int _zooryaPollAttempt = 0;
+
+  Future<void> _startDirectZooryaPayUssd({
+    required String method,
+    required String displayName,
+  }) async {
+    // SECURITY FIX: Validate images before processing payment
+    bool imagesValid = await _validateCourierImagesBeforePayment();
+    if (!mounted) return;
+    if (!imagesValid) {
+      setState(() {
+        _loading = false;
+        _placeOrder = false;
+      });
+      return;
+    }
+
+    // For M-PESA: self-dismissing notification so user does not need to click anything
+    if (method == 'mpesa') {
+      Service.showMessage(
+        context: context,
+        title: "M-PESA: Please approve the prompt sent to your Safaricom number (07...).",
+        error: false,
+        duration: 4,
+      );
+    }
+
+    setState(() {
+      _loading = true;
+      _placeOrder = true;
+      _zooryaPollAttempt = 0;
+    });
+
+    debugPrint('╔══════════════════════════════════════════════════════════════════╗');
+    debugPrint('║ 🚀 [ZOORYA-PAY] DIRECT USSD INITIATION: $method');
+    debugPrint('╚══════════════════════════════════════════════════════════════════╝');
+
+    final result = await ZooryaPayService.pay(
+      context: context,
+      userId: userData['user']['_id'],
+      serverToken: userData['user']['server_token'],
+      method: method,
+      uniqueId: widget.orderPaymentUniqueId!,
+      amount: widget.price!,
+      phoneNumber: userData['user']['phone'] ?? '',
+    );
+
+    if (!mounted) return;
+
+    if (result == null || result['success'] != true) {
+      final msg = result?['message']?.toString() ??
+          'Payment initiation failed. Please try again.';
+      debugPrint('[ZOORYA-PAY] ❌ Direct USSD Initiation Failed: $msg');
+      setState(() {
+        _loading = false;
+        _placeOrder = false;
+        kifiyaMethod = -1;
+      });
+      Service.showMessage(
+        context: context,
+        title: msg,
+        error: true,
+        duration: 5,
+      );
+      return;
+    }
+
+    debugPrint('[ZOORYA-PAY] ✅ Direct USSD initiated successfully! Prompt sent to user device.');
+    if (method != 'mpesa') {
+      Service.showMessage(
+        context: context,
+        title: "Payment request sent. Please enter your PIN on your phone.",
+        error: false,
+        duration: 5,
+      );
+    }
+
+    _pollDirectZooryaPayment(
+      orderPaymentId: widget.orderPaymentId!,
+      method: method,
+    );
+  }
+
+  void _pollDirectZooryaPayment({
+    required String orderPaymentId,
+    required String method,
+  }) async {
+    if (!mounted) return;
+    _zooryaPollAttempt++;
+    debugPrint('[ZOORYA-PAY] 🔄 Poll attempt #$_zooryaPollAttempt for orderPaymentId=$orderPaymentId');
+
+    final result = await ZooryaPayService.checkPaidOrder(
+      context: context,
+      userId: userData['user']['_id'],
+      serverToken: userData['user']['server_token'],
+      orderPaymentId: orderPaymentId,
+    );
+
+    if (!mounted) return;
+
+    bool isPaid = false;
+    if (result != null) {
+      if (result['success'] == true || result['success'] == 'true') isPaid = true;
+      if (result['is_paid'] == true || result['is_paid'] == 'true') isPaid = true;
+      if (result['paid'] == true || result['paid'] == 'true') isPaid = true;
+      if (result['data'] is Map) {
+        final data = result['data'] as Map;
+        if (data['is_paid'] == true || data['is_paid'] == 'true') isPaid = true;
+        if (data['paid'] == true || data['paid'] == 'true') isPaid = true;
+        if (data['status'] == 'PAID' || data['status'] == 'COMPLETED') isPaid = true;
+      }
+    }
+
+    if (isPaid) {
+      debugPrint('╔══════════════════════════════════════════════════════════════════╗');
+      debugPrint('║ ✅ [ZOORYA-PAY] DIRECT PAYMENT CONFIRMED! VERIFYING ORDER        ║');
+      debugPrint('╚══════════════════════════════════════════════════════════════════╝');
+      _boaVerify();
+    } else {
+      if (_zooryaPollAttempt < 60) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          _pollDirectZooryaPayment(
+            orderPaymentId: orderPaymentId,
+            method: method,
+          );
+        }
+      } else {
+        debugPrint('[ZOORYA-PAY] ⏱️ Polling timed out after 60 attempts.');
+        setState(() {
+          _loading = false;
+          _placeOrder = false;
+        });
+        Service.showMessage(
+          context: context,
+          title: "Payment timeout. If you completed payment, please check your order status.",
+          error: true,
+          duration: 6,
+        );
+      }
+    }
+  }
+
   void _ethSwitchVerify(String traceNo) async {
     if (!mounted) return;
     setState(() {
@@ -1078,6 +1242,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                 ),
                               ),
                               // Text(
+
                               //   "${Provider.of<ZLanguage>(context).howWouldYouPay} ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)}?",
                               //   style: TextStyle(
                               //       fontSize: 20, fontWeight: FontWeight.w600),
@@ -1457,32 +1622,16 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                               kifiyaMethod = index;
                                             });
 
-                                            // -- ZOORYA-PAY: USSD methods --
+                                            // -- ZOORYA-PAY: USSD methods (Direct to USSD, no intermediate UI) --
                                             if (paymentName == 'telebirr' ||
                                                 paymentName == 'mpesa' ||
                                                 paymentName == 'nib' ||
-                                                paymentName == 'zemen') {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => ZooryaPayUssdScreen(
-                                                    method: paymentName,
-                                                    displayName: displayName,
-                                                    amount: widget.price!,
-                                                    userId:
-                                                        userData['user']['_id'],
-                                                    serverToken:
-                                                        userData['user']['server_token'],
-                                                    uniqueId: widget
-                                                        .orderPaymentUniqueId!,
-                                                    orderPaymentId:
-                                                        widget.orderPaymentId!,
-                                                    phoneNumber:
-                                                        userData['user']['phone'] ??
-                                                        '',
-                                                  ),
-                                                ),
-                                              ).then((_) => _boaVerify());
+                                                paymentName == 'zemen' ||
+                                                paymentName == 'ethswitch') {
+                                              _startDirectZooryaPayUssd(
+                                                method: paymentName,
+                                                displayName: displayName,
+                                              );
                                               return;
                                             }
 
