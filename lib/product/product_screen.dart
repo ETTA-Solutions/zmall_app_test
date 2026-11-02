@@ -20,6 +20,7 @@ import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/services/zmall_availability_service.dart';
 import 'package:zmall/utils/pagination_controller.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/widgets/custom_search_bar.dart';
@@ -171,6 +172,8 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   void addToCart(item, destination, storeLocation, storeId) {
+    final String? cachedOdooUrl =
+        ZmallAvailabilityService.getStoreOrderUrl(storeId.toString());
     cart = Cart(
       userId: userData['user']['_id'],
       items: [item],
@@ -178,6 +181,7 @@ class _ProductScreenState extends State<ProductScreen> {
       destinationAddress: destination,
       storeId: storeId,
       storeLocation: storeLocation,
+      zmallOrderUrl: cachedOdooUrl,
     );
 
     Service.save('cart', cart!.toJson());
@@ -1088,6 +1092,16 @@ class _ProductScreenState extends State<ProductScreen> {
     if (!mounted) return;
 
     if (result != null && result['success'] == true) {
+      final String? odooUrl = ZmallAvailabilityService.extractOrderUrl(result);
+      if (odooUrl != null && odooUrl.isNotEmpty && widget.store['_id'] != null) {
+        final String sId = widget.store['_id'].toString();
+        ZmallAvailabilityService.setStoreOrderUrl(sId, odooUrl);
+        if (cart != null && cart!.storeId == sId) {
+          cart!.zmallOrderUrl = odooUrl;
+          Service.save('cart', cart!.toJson());
+        }
+      }
+
       final newProducts = result['products'] ?? [];
       final total = Service.calculateTotalPages(result);
 

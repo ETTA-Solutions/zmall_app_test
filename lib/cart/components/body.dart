@@ -252,6 +252,11 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     var data = await getStoreDetail();
     if (!mounted) return;
     if (data != null && data['success'] == true) {
+      final String? odooUrl = ZmallAvailabilityService.extractOrderUrl(data);
+      if (odooUrl != null && odooUrl.isNotEmpty && cart?.storeId != null) {
+        ZmallAvailabilityService.setStoreOrderUrl(cart!.storeId!, odooUrl);
+        cart!.zmallOrderUrl = odooUrl;
+      }
       setState(() {
         storeDetail = data;
         cart!.isLaundryService =
@@ -268,6 +273,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       });
       Service.save('cart', cart!.toJson());
       Service.save('aliexpressCart', aliexpressCart?.toJson());
+      _refreshAvailability();
     } else {
       final err = data != null ? errorCodes['${data['error_code']}'] : null;
       Service.showMessage(
@@ -473,13 +479,55 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     return "0.00";
   }
 
+  String? _resolveOdooOrderUrl() {
+    // 1. Check current storeDetail from user_get_store_product_item_list
+    String? url = ZmallAvailabilityService.extractOrderUrl(storeDetail);
+    if (url != null && url.isNotEmpty) return url;
+
+    // 2. Check cart.zmallOrderUrl
+    if (cart?.zmallOrderUrl != null && cart!.zmallOrderUrl!.isNotEmpty) {
+      return cart!.zmallOrderUrl;
+    }
+
+    // 3. Check in-memory store URL cache
+    if (cart?.storeId != null) {
+      url = ZmallAvailabilityService.getStoreOrderUrl(cart!.storeId!);
+      if (url != null && url.isNotEmpty) return url;
+    }
+
+    // 4. Fallback to hardcoded branch slug if known
+    final String? fallbackSlug = zmallBranchSlugForStore(cart?.storeId);
+    if (fallbackSlug != null && fallbackSlug.isNotEmpty) {
+      return "$kZmallOdooBaseUrl/zmall_order/$fallbackSlug";
+    }
+
+    return null;
+  }
+
   Future<bool> _checkAvailability() async {
     if (cart == null || cart!.items == null || cart!.items!.isEmpty) {
       return true;
     }
 
-    final String? branchSlug = zmallBranchSlugForStore(cart!.storeId);
-    if (branchSlug == null) {
+    String? orderUrl = _resolveOdooOrderUrl();
+    if (orderUrl == null && storeDetail == null) {
+      final data = await getStoreDetail();
+      if (data != null && data['success'] == true) {
+        if (mounted) {
+          setState(() {
+            storeDetail = data;
+          });
+        }
+        final String? odooUrl = ZmallAvailabilityService.extractOrderUrl(data);
+        if (odooUrl != null && odooUrl.isNotEmpty && cart?.storeId != null) {
+          ZmallAvailabilityService.setStoreOrderUrl(cart!.storeId!, odooUrl);
+          cart!.zmallOrderUrl = odooUrl;
+        }
+        orderUrl = _resolveOdooOrderUrl();
+      }
+    }
+
+    if (orderUrl == null) {
       // Non-POS store — Odoo availability does not apply.
       return true;
     }
@@ -502,7 +550,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     if (itemsMissingOdooId.isNotEmpty) {
       BackendLogger.error(
         method: 'POST',
-        url: '$kZmallOdooBaseUrl/zmall_order/$branchSlug',
+        url: orderUrl,
         error:
             'Missing odoo_product_id for: ${itemsMissingOdooId.map((i) => i.itemName ?? i.id).join(", ")}',
       );
@@ -521,7 +569,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     }
 
     final result = await ZmallAvailabilityService.check(
-      branchSlug: branchSlug,
+      orderUrl: orderUrl,
       products: products,
     );
 
@@ -591,8 +639,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       return _CartAvailability(true, null);
     }
 
-    final String? branchSlug = zmallBranchSlugForStore(cart!.storeId);
-    if (branchSlug == null) {
+    final String? orderUrl = _resolveOdooOrderUrl();
+    if (orderUrl == null) {
       // Non-POS store — Odoo availability does not apply.
       return _CartAvailability(true, null);
     }
@@ -621,7 +669,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     }
 
     final result = await ZmallAvailabilityService.check(
-      branchSlug: branchSlug,
+      orderUrl: orderUrl,
       products: products,
     );
 

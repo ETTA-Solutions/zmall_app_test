@@ -23,6 +23,7 @@ class Cart {
     this.phone = "",
     this.isLaundryService = false,
     this.isMcp = false,
+    this.zmallOrderUrl,
   });
 
   String? userId;
@@ -38,6 +39,7 @@ class Cart {
   String phone;
   bool isLaundryService;
   bool isMcp;
+  String? zmallOrderUrl;
 
   factory Cart.fromJson(Map<String, dynamic> json) => Cart(
     userId: json["user_id"],
@@ -57,6 +59,7 @@ class Cart {
     phone: json["phone"] ?? "",
     isLaundryService: json["is_laundry_service"] ?? false,
     isMcp: json["is_mcp"] ?? false,
+    zmallOrderUrl: json["zmll_order_url"] ?? json["zmall_order_url"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -73,6 +76,7 @@ class Cart {
     "username": userName,
     "phone": phone,
     "is_laundry_service": isLaundryService,
+    "zmll_order_url": zmallOrderUrl,
   };
 }
 
