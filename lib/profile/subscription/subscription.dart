@@ -2,9 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
+import 'package:zmall/models/metadata.dart';
 import 'package:zmall/utils/constants.dart';
+import 'package:zmall/kifiya/components/birrlink_screen.dart';
 import 'package:zmall/profile/subscription/subscription_kifiya/inapp_subscription_payment.dart';
 // import 'package:zmall/profile/subscription/subscription_kifiya/ussd_subscription_payment.dart';
 import 'package:zmall/widgets/custom_back_button.dart';
@@ -2262,6 +2265,64 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                               context: context,
                               traceNo: uniqueId,
                               phone: userData['user']['phone'],
+                            );
+                          },
+                        ),
+                      ).then((value) {
+                        Navigator.of(context).pop();
+                        if (value != null && value == true) {
+                          _buyProduct(_subscriptionPlans.indexOf(plan));
+                        } else {
+                          Future.delayed(Duration(milliseconds: 100), () {
+                            if (mounted) {
+                              Service.showMessage(
+                                title:
+                                    "Payment not completed. Please choose your payment method.",
+                                error: true,
+                                context: context,
+                              );
+                            }
+                          });
+                        }
+                      });
+                    },
+                  ),
+                  SizedBox(height: 10),
+                  _buildPaymentContainer(
+                    title: "BirrLink",
+                    subtitle: "Pay with Cards, Telebirr & Wallets",
+                    imageUrl: "images/payment/birrlink.png",
+                    onPressed: () {
+                      String baseUrl = "";
+                      try {
+                        baseUrl = Provider.of<ZMetaData>(
+                          context,
+                          listen: false,
+                        ).baseUrl;
+                      } catch (_) {}
+                      if (baseUrl.isEmpty) {
+                        baseUrl = BASE_URL;
+                      }
+                      int numericUniqueId =
+                          int.tryParse(uniqueId) ??
+                          (DateTime.now().millisecondsSinceEpoch % 1000000000);
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return BirrLinkScreen(
+                              title: "BirrLink Payment",
+                              generateUrl:
+                                  "$baseUrl/api/birrlink/generatepaymenturl",
+                              statusUrl:
+                                  "$baseUrl/api/birrlink/checktransactionstatus",
+                              uniqueId: numericUniqueId,
+                              amount: numericPrice,
+                              phone:
+                                  userData != null && userData['user'] != null
+                                      ? userData['user']['phone']
+                                      : null,
                             );
                           },
                         ),
