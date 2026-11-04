@@ -167,8 +167,11 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       }
 
       if (isPaid) {
-        debugPrint('[TelebirrUssd] ✅ ZooryaPay Telebirr payment verified!');
-        Navigator.pop(context, true);
+        debugPrint('[TelebirrUssd] ✅ ZooryaPay Telebirr payment verified! check_paid_order response: $result');
+        // Return the check_paid_order response itself — the backend creates
+        // the order inside check_paid_order, so the caller uses this response
+        // instead of calling /api/user/create_order.
+        Navigator.pop(context, result);
       } else {
         if (_verifyAttempt < 60) {
           await Future.delayed(const Duration(seconds: 2));

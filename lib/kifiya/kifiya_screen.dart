@@ -865,7 +865,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                     ),
                   ),
                 ).then((value) {
-                  _boaVerify();
+                  _onZooryaTelebirrResult(value);
                 });
               },
             );
@@ -1007,7 +1007,70 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
   }
 
-  Future<bool> _boaVerify() async {
+  // TEST: for ZOORYA-PAY Telebirr USSD the backend creates the order inside
+  // /admin/check_paid_order, so the order comes from that response and the
+  // app must NOT call /api/user/create_order. Set to false to restore the
+  // old app-side create.
+  static const bool _zooryaTelebirrBackendCreatesOrder = true;
+
+  /// Handles the value popped by the ZOORYA-PAY TelebirrUssd screen.
+  /// A Map is the check_paid_order response (paid → order created by backend).
+  /// Anything else (user closed the screen) → ask check_paid_order once.
+  void _onZooryaTelebirrResult(dynamic value) {
+    if (!_zooryaTelebirrBackendCreatesOrder) {
+      _boaVerify();
+      return;
+    }
+    if (value is Map) {
+      _finishBackendCreatedOrder(value);
+    } else {
+      _boaVerify(skipCreateOrder: true);
+    }
+  }
+
+  /// Uses the /admin/check_paid_order response (the backend already created
+  /// the order there): clear the cart and open the receipt.
+  Future<void> _finishBackendCreatedOrder(Map response) async {
+    debugPrint(
+      '[ZOORYA-PAY] ✅ Order created by /admin/check_paid_order — '
+      'NOT calling /api/user/create_order. Response: $response',
+    );
+    final dynamic d = response['data'] is Map ? response['data'] : null;
+    final dynamic o = response['order'] is Map
+        ? response['order']
+        : (d is Map && d['order'] is Map ? d['order'] : null);
+    final String uniqueId = (response['order_unique_id'] ??
+            d?['order_unique_id'] ??
+            o?['unique_id'] ??
+            widget.orderPaymentUniqueId ??
+            "")
+        .toString();
+
+    await Service.remove('cart');
+    await Service.remove('aliexpressCart');
+    if (widget.isCombo) await ComboCart.clear();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _placeOrder = false;
+    });
+    Service.showMessage(
+      context: context,
+      title: "Order successfully created",
+      error: false,
+    );
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReportScreen(
+          price: widget.price!,
+          orderPaymentUniqueId: uniqueId,
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _boaVerify({bool skipCreateOrder = false}) async {
     if (!mounted) return false;
     debugPrint(
       '╔══════════════════════════════════════════════════════════════════╗',
@@ -1031,6 +1094,14 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     debugPrint('[_boaVerify] → Received response from boaVerify: $data');
 
     if (!mounted) return false;
+    if (data != null && data['success'] && skipCreateOrder) {
+      setState(() {
+        _loading = false;
+        _placeOrder = false;
+      });
+      await _finishBackendCreatedOrder(data);
+      return true;
+    }
     if (data != null && data['success']) {
       // SECURITY FIX: Validate images before creating order after payment verification
       bool imagesValid = await _validateCourierImagesBeforePayment();
@@ -1820,7 +1891,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                       ),
                                                     ),
                                                   ).then((value) {
-                                                    _boaVerify();
+                                                    _onZooryaTelebirrResult(value);
                                                   });
                                                 },
                                               );
