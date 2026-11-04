@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:provider/provider.dart';
+import 'package:zmall/models/metadata.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/utils/size_config.dart';
 
 /// ZOORYA-PAY USSD waiting screen.
-/// Used for: telebirr, mpesa, nib, zemen, ethswitch
+/// Used for: telebirr, mpesa, nib, zemen, ethswitch, dashen
 ///
 /// Features authentic ZOORYA-PAY theme with #06182A background and #45B5E4 accents.
 class ZooryaPayUssdScreen extends StatefulWidget {
@@ -14,6 +16,8 @@ class ZooryaPayUssdScreen extends StatefulWidget {
     Key? key,
     required this.method,
     required this.displayName,
+    this.type = 'ussd',
+    this.imageUrl,
     required this.amount,
     required this.userId,
     required this.serverToken,
@@ -22,11 +26,17 @@ class ZooryaPayUssdScreen extends StatefulWidget {
     required this.phoneNumber,
   }) : super(key: key);
 
-  /// ZOORYA-PAY method key: 'telebirr', 'mpesa', 'nib', 'zemen', 'ethswitch'
+  /// ZOORYA-PAY method key: 'telebirr', 'mpesa', 'nib', 'zemen', 'ethswitch', 'dashen'
   final String method;
 
   /// Human-readable name shown in the AppBar title
   final String displayName;
+
+  /// Dynamic payment type from backend: e.g. 'ussd', 'qr', 'otp'
+  final String type;
+
+  /// Dynamic image URL from backend: e.g. 'web_images/dashen.png'
+  final String? imageUrl;
 
   final double amount;
   final String userId;
@@ -69,6 +79,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'nib':
       case 'nib_qr':
         return const Color(0xFF8A4D21); // Nib Brown
+      case 'dashen':
+        return const Color(0xFF002B49); // Dashen Navy
       case 'mpesa':
       case 'telebirr':
       case 'telebirr_qr':
@@ -86,6 +98,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'nib':
       case 'nib_qr':
         return const Color(0xFFFEB914); // Nib Yellow / Gold
+      case 'dashen':
+        return const Color(0xFFD4AF37); // Dashen Gold
       case 'ethswitch':
       case 'ethswitch_qr':
         return const Color(0xFF142548); // EthSwitch Navy
@@ -109,6 +123,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'nib':
       case 'nib_qr':
         return 'images/payment/new_payment/nib_bank.png';
+      case 'dashen':
+        return 'images/payment/dashen.png';
       case 'mpesa':
         return 'images/payment/new_payment/mpesa.png';
       case 'telebirr':
@@ -130,6 +146,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'nib':
       case 'nib_qr':
         return 'Nib International Bank';
+      case 'dashen':
+        return 'Dashen Bank';
       case 'telebirr':
       case 'telebirr_qr':
         return 'Powered by Ethio telecom';
@@ -146,8 +164,23 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     _initiatePay();
   }
 
+  String get _normalizedPhone {
+    String p = widget.phoneNumber.trim();
+    if (p.startsWith('+251')) {
+      p = '0${p.substring(4)}';
+    } else if (p.startsWith('251')) {
+      p = '0${p.substring(3)}';
+    } else if (!p.startsWith('0') && p.isNotEmpty) {
+      p = '0$p';
+    }
+    return p;
+  }
+
   Future<void> _initiatePay() async {
-    debugPrint('[ZooryaPayUssd] Initiating pay — method=${widget.method}');
+    final phone = _normalizedPhone;
+    debugPrint(
+      '[ZooryaPayUssd] Initiating pay — method=${widget.method}, phone=$phone',
+    );
     final result = await ZooryaPayService.pay(
       context: context,
       userId: widget.userId,
@@ -155,7 +188,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       method: widget.method,
       uniqueId: widget.uniqueId,
       amount: widget.amount,
-      phoneNumber: widget.phoneNumber,
+      phoneNumber: phone,
     );
 
     if (!mounted) return;
@@ -186,7 +219,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       }
       _pollPaymentStatus();
     } else {
-      final msg = result['message']?.toString() ??
+      final msg =
+          result['message']?.toString() ??
           'Payment initiation failed. Please try again.';
       debugPrint('[ZooryaPayUssd] Pay failed: $msg');
       setState(() {
@@ -220,9 +254,25 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
 
     if (!mounted) return;
 
-    if (result != null && result['success'] == true) {
+    bool isPaid = false;
+    if (result != null) {
+      if (result['success'] == true || result['success'] == 'true')
+        isPaid = true;
+      if (result['is_paid'] == true || result['is_paid'] == 'true')
+        isPaid = true;
+      if (result['paid'] == true || result['paid'] == 'true') isPaid = true;
+      if (result['data'] is Map) {
+        final data = result['data'] as Map;
+        if (data['is_paid'] == true || data['is_paid'] == 'true') isPaid = true;
+        if (data['paid'] == true || data['paid'] == 'true') isPaid = true;
+        if (data['status'] == 'PAID' || data['status'] == 'COMPLETED')
+          isPaid = true;
+      }
+    }
+
+    if (isPaid) {
       debugPrint('[ZooryaPayUssd] Payment confirmed! Closing screen.');
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } else {
       debugPrint('[ZooryaPayUssd] Not paid yet. Retrying in 2s...');
       await Future.delayed(const Duration(seconds: 2));
@@ -234,6 +284,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.method == 'dashen') {
+      return _buildDashenCleanWhiteScaffold();
+    }
+
     final isTelebirr = widget.method == 'telebirr';
 
     return Scaffold(
@@ -244,7 +298,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(6),
@@ -282,8 +339,238 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
         child: _payError
             ? _buildErrorBody()
             : isTelebirr
-                ? _buildTelebirrWaitingBody()
-                : _buildGenericWaitingBody(),
+            ? _buildTelebirrWaitingBody()
+            : _buildGenericWaitingBody(),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DASHEN CLEAN WHITE NEAT UI (MATCHING TELEBIRR)
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildDashenCleanWhiteScaffold() {
+    final title = widget.displayName.isNotEmpty
+        ? Service.capitalizeFirstLetters(widget.displayName)
+        : 'Dashen Bank';
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context, false),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(
+              getProportionateScreenWidth(kDefaultPadding),
+            ),
+            child: _payError
+                ? _buildDashenErrorBody()
+                : _buildDashenCleanWhiteBody(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashenCleanWhiteBody() {
+    final typeUpper =
+        widget.type.isNotEmpty ? widget.type.toUpperCase() : 'USSD';
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Pay Using $typeUpper',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Pay With ZooryaPay',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 18,
+            color: Color(0xFF8E8E93),
+            fontWeight: FontWeight.normal,
+          ),
+        ),
+        SizedBox(
+          height: getProportionateScreenHeight(kDefaultPadding * 2),
+        ),
+        _buildDashenLogo(),
+        SizedBox(
+          height: getProportionateScreenHeight(kDefaultPadding * 2),
+        ),
+        const SpinKitPouringHourGlassRefined(
+          color: Colors.black,
+          size: 40,
+        ),
+        SizedBox(
+          height: getProportionateScreenHeight(kDefaultPadding),
+        ),
+        Text(
+          'Please complete payment through the $typeUpper prompt.\nWaiting for payment to be completed....',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 15,
+            height: 1.45,
+            color: Color(0xFF2C2C2E),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDashenLogo() {
+    final img = widget.imageUrl ?? '';
+    if (img.startsWith('http://') || img.startsWith('https://')) {
+      return Image.network(
+        img,
+        height: 65,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _buildDashenFallbackLogo(),
+      );
+    }
+    if (img.startsWith('web_images/')) {
+      try {
+        final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+        return Image.network(
+          '$baseUrl/$img',
+          height: 65,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _buildDashenFallbackLogo(),
+        );
+      } catch (_) {
+        return _buildDashenFallbackLogo();
+      }
+    }
+    return _buildDashenFallbackLogo();
+  }
+
+  Widget _buildDashenFallbackLogo() {
+    return Image.asset(
+      'images/payment/dashen.png',
+      height: 65,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => const Icon(
+        Icons.account_balance,
+        color: Color(0xFF002B49),
+        size: 60,
+      ),
+    );
+  }
+
+  Widget _buildBrandLogo(BuildContext context) {
+    final img = widget.imageUrl ?? '';
+    if (img.startsWith('http://') || img.startsWith('https://')) {
+      return Image.network(
+        img,
+        height: getProportionateScreenHeight(50),
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _fallbackBrandLogo(),
+      );
+    }
+    if (img.startsWith('web_images/')) {
+      try {
+        final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+        return Image.network(
+          '$baseUrl/$img',
+          height: getProportionateScreenHeight(50),
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _fallbackBrandLogo(),
+        );
+      } catch (_) {
+        return _fallbackBrandLogo();
+      }
+    }
+    return _fallbackBrandLogo();
+  }
+
+  Widget _fallbackBrandLogo() {
+    return Image.asset(
+      _methodLogo,
+      height: getProportionateScreenHeight(50),
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => Icon(
+        Icons.account_balance_wallet_rounded,
+        size: 40,
+        color: _methodColor,
+      ),
+    );
+  }
+
+  Widget _buildDashenErrorBody() {
+    const dashenNavy = Color(0xFF002B49);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 36),
+          const SizedBox(height: 10),
+          Text(
+            _errorMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF991B1B),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                _payError = false;
+                _errorMessage = '';
+                _pollAttempt = 0;
+              });
+              _initiatePay();
+            },
+            icon: const Icon(Icons.refresh, size: 18, color: Colors.white),
+            label: const Text(
+              'Retry Payment',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: dashenNavy,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -294,9 +581,9 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   Widget _buildTelebirrWaitingBody() {
     final formattedPhone = widget.phoneNumber.isNotEmpty
         ? (widget.phoneNumber.startsWith('0') ||
-                widget.phoneNumber.startsWith('+')
-            ? widget.phoneNumber
-            : '0${widget.phoneNumber}')
+                  widget.phoneNumber.startsWith('+')
+              ? widget.phoneNumber
+              : '0${widget.phoneNumber}')
         : '';
 
     return SingleChildScrollView(
@@ -510,7 +797,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: _zooryaCyan,
                         borderRadius: BorderRadius.circular(8),
@@ -534,10 +824,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                   'Check your phone screen for the telebirr USSD pop-up',
                 ),
                 SizedBox(height: getProportionateScreenHeight(8)),
-                _buildTelebirrStep(
-                  '2',
-                  'Enter your 4-digit telebirr PIN',
-                ),
+                _buildTelebirrStep('2', 'Enter your 4-digit telebirr PIN'),
                 SizedBox(height: getProportionateScreenHeight(8)),
                 _buildTelebirrStep(
                   '3',
@@ -552,10 +839,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SpinKitWave(
-                color: _zooryaCyan,
-                size: 28,
-              ),
+              SpinKitWave(color: _zooryaCyan, size: 28),
               const SizedBox(width: 14),
               Text(
                 _payInitiated
@@ -581,9 +865,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
               decoration: BoxDecoration(
                 color: _zooryaCyan.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _zooryaCyan.withValues(alpha: 0.40),
-                ),
+                border: Border.all(color: _zooryaCyan.withValues(alpha: 0.40)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -613,11 +895,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: const [
-              Icon(
-                Icons.security_rounded,
-                color: _zooryaCyan,
-                size: 14,
-              ),
+              Icon(Icons.security_rounded, color: _zooryaCyan, size: 14),
               SizedBox(width: 6),
               Text(
                 'Secured by Ethio telecom telebirr payment gateway',
@@ -679,9 +957,9 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   Widget _buildGenericWaitingBody() {
     final formattedPhone = widget.phoneNumber.isNotEmpty
         ? (widget.phoneNumber.startsWith('0') ||
-                widget.phoneNumber.startsWith('+')
-            ? widget.phoneNumber
-            : '0${widget.phoneNumber}')
+                  widget.phoneNumber.startsWith('+')
+              ? widget.phoneNumber
+              : '0${widget.phoneNumber}')
         : '';
 
     return SingleChildScrollView(
@@ -712,8 +990,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                 color: widget.method == 'zemen'
                     ? const Color(0xFFD3214B).withValues(alpha: 0.5)
                     : widget.method == 'nib'
-                        ? const Color(0xFFFEB914).withValues(alpha: 0.6)
-                        : _methodColor.withValues(alpha: 0.40),
+                    ? const Color(0xFFFEB914).withValues(alpha: 0.6)
+                    : _methodColor.withValues(alpha: 0.40),
                 width: 1.8,
               ),
               boxShadow: [
@@ -727,21 +1005,15 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             child: Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Image.asset(
-                    _methodLogo,
-                    height: getProportionateScreenHeight(50),
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.account_balance_wallet_rounded,
-                      size: 40,
-                      color: _methodColor,
-                    ),
-                  ),
+                  child: _buildBrandLogo(context),
                 ),
                 SizedBox(height: getProportionateScreenHeight(12)),
                 _buildSubtitleBadge(),
@@ -795,9 +1067,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
               decoration: BoxDecoration(
                 color: _zooryaCyan.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _zooryaCyan.withValues(alpha: 0.35),
-                ),
+                border: Border.all(color: _zooryaCyan.withValues(alpha: 0.35)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -861,6 +1131,26 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       );
     }
 
+    if (widget.method == 'dashen') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF002B49),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFD4AF37), width: 1.2),
+        ),
+        child: const Text(
+          'Dashen Bank',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFFD4AF37),
+            letterSpacing: 0.3,
+          ),
+        ),
+      );
+    }
+
     if (widget.method == 'ethswitch' || widget.method == 'ethswitch_qr') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
@@ -907,10 +1197,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       decoration: BoxDecoration(
         color: _cardSurface,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: _zooryaCyan,
-          width: 1.5,
-        ),
+        border: Border.all(color: _zooryaCyan, width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

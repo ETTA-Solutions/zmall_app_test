@@ -123,7 +123,6 @@ flutter:
     - images/pl_logos/
     - images/pl_logos/nation/ # Added: national team logos for World Cup (e.g. GER.png, BRA.png)
     - images/store_tags/
-    - images/meal/
     - assets/audio/
 #    - packages/timezone/data/2021a.tzf
 

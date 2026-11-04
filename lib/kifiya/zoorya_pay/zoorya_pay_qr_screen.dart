@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:provider/provider.dart';
+import 'package:zmall/models/metadata.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
 import 'package:zmall/services/service.dart';
@@ -15,6 +17,7 @@ class ZooryaPayQrScreen extends StatefulWidget {
     Key? key,
     required this.method,
     required this.displayName,
+    this.imageUrl,
     required this.amount,
     required this.userId,
     required this.serverToken,
@@ -27,6 +30,9 @@ class ZooryaPayQrScreen extends StatefulWidget {
 
   /// Human-readable name for AppBar title
   final String displayName;
+
+  /// Dynamic image URL from backend: e.g. 'web_images/telebirr.png'
+  final String? imageUrl;
 
   final double amount;
   final String userId;
@@ -370,16 +376,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Image.asset(
-                _methodLogo,
-                height: 38,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.qr_code_rounded,
-                  size: 36,
-                  color: _zooryaCyan,
-                ),
-              ),
+              child: _buildQrLogo(context),
             ),
           ),
           const SizedBox(height: 16),
@@ -542,6 +539,45 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQrLogo(BuildContext context) {
+    final img = widget.imageUrl ?? '';
+    if (img.startsWith('http://') || img.startsWith('https://')) {
+      return Image.network(
+        img,
+        height: 38,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _fallbackQrLogo(),
+      );
+    }
+    if (img.startsWith('web_images/')) {
+      try {
+        final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+        return Image.network(
+          '$baseUrl/$img',
+          height: 38,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _fallbackQrLogo(),
+        );
+      } catch (_) {
+        return _fallbackQrLogo();
+      }
+    }
+    return _fallbackQrLogo();
+  }
+
+  Widget _fallbackQrLogo() {
+    return Image.asset(
+      _methodLogo,
+      height: 38,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => const Icon(
+        Icons.qr_code_rounded,
+        size: 36,
+        color: _zooryaCyan,
       ),
     );
   }

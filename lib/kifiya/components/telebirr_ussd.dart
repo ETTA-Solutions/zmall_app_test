@@ -24,6 +24,8 @@ class TelebirrUssd extends StatefulWidget {
     required this.userId,
     this.isZooryaPay = false,
     this.uniqueId,
+    this.imageUrl,
+    this.type = 'ussd',
   }) : super(key: key);
 
   final String url;
@@ -37,6 +39,8 @@ class TelebirrUssd extends StatefulWidget {
   final String serverToken;
   final bool isZooryaPay;
   final String? uniqueId;
+  final String? imageUrl;
+  final String type;
 
   @override
   _TelebirrUssdState createState() => _TelebirrUssdState();
@@ -227,20 +231,24 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
-                  'Pay Using telebirr',
+                Text(
+                  widget.isZooryaPay
+                      ? 'Pay Using ${widget.type.toUpperCase()}'
+                      : 'Pay Using telebirr',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Powered by Ethiotelecom',
+                Text(
+                  widget.isZooryaPay
+                      ? 'Pay With ZooryaPay'
+                      : 'Powered by Ethiotelecom',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     color: Color(0xFF8E8E93),
                     fontWeight: FontWeight.normal,
@@ -249,11 +257,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
                 SizedBox(
                   height: getProportionateScreenHeight(kDefaultPadding * 2),
                 ),
-                Image.asset(
-                  "images/payment/telebirr.png",
-                  height: 65,
-                  fit: BoxFit.contain,
-                ),
+                _buildTelebirrLogo(context),
                 SizedBox(
                   height: getProportionateScreenHeight(kDefaultPadding * 2),
                 ),
@@ -277,6 +281,45 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTelebirrLogo(BuildContext context) {
+    final img = widget.imageUrl ?? '';
+    if (img.startsWith('http://') || img.startsWith('https://')) {
+      return Image.network(
+        img,
+        height: 65,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _fallbackLogo(),
+      );
+    }
+    if (img.startsWith('web_images/')) {
+      try {
+        final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+        return Image.network(
+          '$baseUrl/$img',
+          height: 65,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _fallbackLogo(),
+        );
+      } catch (_) {
+        return _fallbackLogo();
+      }
+    }
+    return _fallbackLogo();
+  }
+
+  Widget _fallbackLogo() {
+    return Image.asset(
+      "images/payment/telebirr.png",
+      height: 65,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => Image.asset(
+        "images/payment/new_payment/telebirr.png",
+        height: 65,
+        fit: BoxFit.contain,
       ),
     );
   }

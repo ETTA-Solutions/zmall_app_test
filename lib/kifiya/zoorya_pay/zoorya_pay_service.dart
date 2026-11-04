@@ -5,13 +5,85 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:zmall/models/metadata.dart';
 
-/// Service for calling the ZOORYA-PAY  POST /api/zooryapay/pay  endpoint.
-/// Supports methods: telebirr, mpesa, nib, telebirr_qr, ethswitch_qr
+/// Service for calling ZOORYA-PAY endpoints:
+///   - POST /api/zooryapay/send_otp (for OTP-based bank methods like Zemen)
+///   - POST /api/zooryapay/pay (USSD, QR, or OTP-authenticated payment)
+///   - POST /admin/check_paid_order (Polling payment status)
 class ZooryaPayService {
+  /// Calls POST [baseUrl]/api/zooryapay/send_otp to send a verification OTP
+  /// to the phone number linked with the bank account.
+  ///
+  /// Payload:
+  /// {
+  ///   "user_id": userId,
+  ///   "server_token": serverToken,
+  ///   "method": method,
+  ///   "account_number": accountNumber
+  /// }
+  static Future<dynamic> sendOtp({
+    required BuildContext context,
+    required String userId,
+    required String serverToken,
+    required String method,
+    required String accountNumber,
+  }) async {
+    final baseUrl =
+        Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    final url = '$baseUrl/api/zooryapay/send_otp';
+
+    final Map<String, dynamic> body = {
+      'user_id': userId,
+      'server_token': serverToken,
+      'method': method,
+      'account_number': accountNumber,
+    };
+
+    final encoded = json.encode(body);
+
+    debugPrint('════════════════════════════════════════════════════════════════');
+    debugPrint('[ZooryaPayService] 📩 SENDING ZOORYA-PAY OTP REQUEST');
+    debugPrint('[ZooryaPayService] Method:         $method');
+    debugPrint('[ZooryaPayService] Account Number: $accountNumber');
+    debugPrint('[ZooryaPayService] POST URL:       $url');
+    debugPrint('[ZooryaPayService] Payload:        $encoded');
+    debugPrint('════════════════════════════════════════════════════════════════');
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: const {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: encoded,
+          )
+          .timeout(
+            const Duration(seconds: 25),
+            onTimeout: () {
+              debugPrint('[ZooryaPayService] ⚠️ sendOtp timed out after 25s');
+              throw TimeoutException('send_otp request timed out');
+            },
+          );
+
+      debugPrint('════════════════════════════════════════════════════════════════');
+      debugPrint('[ZooryaPayService] 📥 ZOORYA-PAY OTP RESPONSE ($method)');
+      debugPrint('[ZooryaPayService] Status Code: ${response.statusCode}');
+      debugPrint('[ZooryaPayService] Raw Body:    ${response.body}');
+      debugPrint('════════════════════════════════════════════════════════════════');
+
+      return json.decode(response.body);
+    } catch (e, st) {
+      debugPrint('[ZooryaPayService] ❌ Error in sendOtp(): $e\n$st');
+      return null;
+    }
+  }
+
   /// Calls POST [baseUrl]/api/zooryapay/pay and returns the decoded JSON body.
   ///
-  /// [phoneNumber] is required for telebirr / mpesa / nib.
-  /// Leave it null for telebirr_qr / ethswitch_qr.
+  /// [phoneNumber] is required for telebirr / mpesa / nib / dashen.
+  /// [accountNumber] & [otp] are required for OTP-based bank payments (e.g. zemen).
+  /// Leave them null for telebirr_qr / ethswitch_qr.
   ///
   /// Returns:
   ///   success  → {"success":true,"data":{...}}
@@ -25,6 +97,8 @@ class ZooryaPayService {
     required String uniqueId,
     required double amount,
     String? phoneNumber,
+    String? accountNumber,
+    String? otp,
   }) async {
     final baseUrl =
         Provider.of<ZMetaData>(context, listen: false).baseUrl;
@@ -34,11 +108,17 @@ class ZooryaPayService {
       'user_id': userId,
       'server_token': serverToken,
       'method': method,
-      'unique_id': uniqueId,
+      'unique_id': int.tryParse(uniqueId) ?? uniqueId,
       'amount': amount,
     };
     if (phoneNumber != null && phoneNumber.isNotEmpty) {
       body['phone_number'] = phoneNumber;
+    }
+    if (accountNumber != null && accountNumber.isNotEmpty) {
+      body['account_number'] = accountNumber;
+    }
+    if (otp != null && otp.isNotEmpty) {
+      body['otp'] = otp;
     }
 
     final encoded = json.encode(body);

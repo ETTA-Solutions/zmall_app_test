@@ -25,8 +25,10 @@ import 'package:zmall/kifiya/components/telebirr_inapp.dart';
 import 'package:zmall/kifiya/components/telebirr_ussd.dart';
 import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_otp_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_qr_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_ussd_screen.dart';
 import 'package:zmall/kifiya/kifiya_verification.dart';
 import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/models/cart.dart';
@@ -833,15 +835,18 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           );
       if (_zooryaGw != null && _zooryaGw['methods'] is List) {
         final List<dynamic> zMethods = (_zooryaGw['methods'] as List)
-            .where((m) => m is Map && m['status'] == true)
+            .where((m) => m is Map && (m['is_visible'] == true || m['status'] == true))
             .toList();
         if (kifiyaMethod >= 0 && kifiyaMethod < zMethods.length) {
           final selMethod = zMethods[kifiyaMethod];
           final String selKey = selMethod['key'].toString().toLowerCase();
           final String selDisplayName = selMethod['name'].toString();
+          final String selType = (selMethod['type'] ?? 'ussd').toString();
+          final String? selImageUrl = selMethod['image_url']?.toString();
           if (selKey == 'telebirr') {
             _showProceedToPayDialog(
               displayName: selDisplayName,
+              type: selType,
               onProceed: () {
                 Navigator.push(
                   context,
@@ -855,6 +860,62 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                       phone: userData['user']['phone'] ?? '',
                       orderPaymentId: widget.orderPaymentId!,
                       isZooryaPay: true,
+                      imageUrl: selImageUrl,
+                      type: selType,
+                    ),
+                  ),
+                ).then((value) {
+                  _boaVerify();
+                });
+              },
+            );
+            return;
+          } else if (selKey == 'zemen') {
+            _showProceedToPayDialog(
+              displayName: selDisplayName,
+              type: selType,
+              onProceed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ZooryaPayOtpScreen(
+                      method: selKey,
+                      displayName: selDisplayName,
+                      imageUrl: selImageUrl,
+                      amount: widget.price!,
+                      userId: userData['user']['_id'],
+                      serverToken: userData['user']['server_token'],
+                      uniqueId: widget.orderPaymentUniqueId!,
+                      orderPaymentId: widget.orderPaymentId!,
+                    ),
+                  ),
+                ).then((value) {
+                  if (value == true) {
+                    _boaVerify();
+                  }
+                });
+              },
+            );
+            return;
+          } else if (selKey == 'dashen') {
+            _showProceedToPayDialog(
+              displayName: selDisplayName,
+              type: selType,
+              onProceed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ZooryaPayUssdScreen(
+                      method: selKey,
+                      displayName: selDisplayName,
+                      type: selType,
+                      imageUrl: selImageUrl,
+                      amount: widget.price!,
+                      userId: userData['user']['_id'],
+                      serverToken: userData['user']['server_token'],
+                      uniqueId: widget.orderPaymentUniqueId!,
+                      orderPaymentId: widget.orderPaymentId!,
+                      phoneNumber: userData['user']['phone'] ?? '',
                     ),
                   ),
                 ).then((value) {
@@ -865,10 +926,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             return;
           } else if (selKey == 'mpesa' ||
               selKey == 'nib' ||
-              selKey == 'zemen' ||
               selKey == 'ethswitch') {
             _showProceedToPayDialog(
               displayName: selDisplayName,
+              type: selType,
               onProceed: () {
                 _startDirectZooryaPayUssd(
                   method: selKey,
@@ -880,6 +941,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           } else if (selKey == 'telebirr_qr' || selKey == 'ethswitch_qr') {
             _showProceedToPayDialog(
               displayName: selDisplayName,
+              type: selType,
               onProceed: () {
                 Navigator.push(
                   context,
@@ -887,6 +949,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                     builder: (_) => ZooryaPayQrScreen(
                       method: selKey,
                       displayName: selDisplayName,
+                      imageUrl: selImageUrl,
                       amount: widget.price!,
                       userId: userData['user']['_id'],
                       serverToken: userData['user']['server_token'],
@@ -1030,16 +1093,20 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
   void _showProceedToPayDialog({
     required String displayName,
+    String? type,
     required VoidCallback onProceed,
   }) {
+    final formattedName = Service.capitalizeFirstLetters(displayName);
+    final String typeSuffix =
+        (type != null && type.isNotEmpty) ? " (${type.toUpperCase()})" : "";
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: kPrimaryColor,
-          title: Text("Pay Using $displayName"),
+          title: Text("Pay Using $formattedName$typeSuffix"),
           content: Text(
-            "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using $displayName?",
+            "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using $formattedName$typeSuffix?",
           ),
           actions: [
             TextButton(
@@ -1639,7 +1706,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                         ? (zooryaGateway['methods']
                                                   as List<dynamic>)
                                               .where(
-                                                (m) => m['is_visible'] == true,
+                                                (m) =>
+                                                    m is Map &&
+                                                    (m['is_visible'] == true ||
+                                                        m['status'] == true),
                                               )
                                               .toList()
                                         : <dynamic>[];
@@ -1680,15 +1750,22 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                         // displayName uses the method NAME for the card title
                                         final String displayName =
                                             method['name'].toString();
+                                        final String methodType =
+                                            (method['type'] ?? 'ussd').toString();
+                                        final String? methodImageUrl =
+                                            method['image_url']?.toString();
 
                                         debugPrint(
                                           '[ZOORYA-PAY] rendering method card '
-                                          '[$index] key="$paymentName" name="$displayName"',
+                                          '[$index] key="$paymentName" name="$displayName" type="$methodType"',
                                         );
 
-                                        // ZOORYA-PAY image map (from new_payment folder)
+                                        // ZOORYA-PAY image map (from backend image_url or fallback to local assets)
                                         final String zooryaImagePath =
-                                            (paymentName == 'telebirr' ||
+                                            (methodImageUrl != null &&
+                                                    methodImageUrl.isNotEmpty)
+                                            ? methodImageUrl
+                                            : (paymentName == 'telebirr' ||
                                                 paymentName == 'telebirr_qr')
                                             ? 'images/payment/new_payment/telebirr.png'
                                             : paymentName == 'mpesa'
@@ -1699,6 +1776,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             ? 'images/payment/new_payment/zemen.png'
                                             : paymentName == 'ethswitch_qr'
                                             ? 'images/payment/new_payment/ethswitch.png'
+                                            : paymentName == 'dashen'
+                                            ? 'images/payment/dashen.png'
                                             : 'images/payment/default_payment.png';
 
                                         return KifiyaMethodContainer(
@@ -1722,6 +1801,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             if (paymentName == 'telebirr') {
                                               _showProceedToPayDialog(
                                                 displayName: displayName,
+                                                type: methodType,
                                                 onProceed: () {
                                                   Navigator.push(
                                                     context,
@@ -1735,6 +1815,68 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                         phone: userData['user']['phone'] ?? '',
                                                         orderPaymentId: widget.orderPaymentId!,
                                                         isZooryaPay: true,
+                                                        imageUrl: methodImageUrl,
+                                                        type: methodType,
+                                                      ),
+                                                    ),
+                                                  ).then((value) {
+                                                    _boaVerify();
+                                                  });
+                                                },
+                                              );
+                                              return;
+                                            }
+
+                                            // -- ZOORYA-PAY: OTP Bank methods (e.g. Zemen Bank) --
+                                            if (paymentName == 'zemen') {
+                                              _showProceedToPayDialog(
+                                                displayName: displayName,
+                                                type: methodType,
+                                                onProceed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => ZooryaPayOtpScreen(
+                                                        method: paymentName,
+                                                        displayName: displayName,
+                                                        imageUrl: methodImageUrl,
+                                                        amount: widget.price!,
+                                                        userId: userData['user']['_id'],
+                                                        serverToken: userData['user']['server_token'],
+                                                        uniqueId: widget.orderPaymentUniqueId!,
+                                                        orderPaymentId: widget.orderPaymentId!,
+                                                      ),
+                                                    ),
+                                                  ).then((value) {
+                                                    if (value == true) {
+                                                      _boaVerify();
+                                                    }
+                                                  });
+                                                },
+                                              );
+                                              return;
+                                            }
+
+                                            // -- ZOORYA-PAY: Dashen USSD (Clean White UI Screen, then polls) --
+                                            if (paymentName == 'dashen') {
+                                              _showProceedToPayDialog(
+                                                displayName: displayName,
+                                                type: methodType,
+                                                onProceed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => ZooryaPayUssdScreen(
+                                                        method: paymentName,
+                                                        displayName: displayName,
+                                                        type: methodType,
+                                                        imageUrl: methodImageUrl,
+                                                        amount: widget.price!,
+                                                        userId: userData['user']['_id'],
+                                                        serverToken: userData['user']['server_token'],
+                                                        uniqueId: widget.orderPaymentUniqueId!,
+                                                        orderPaymentId: widget.orderPaymentId!,
+                                                        phoneNumber: userData['user']['phone'] ?? '',
                                                       ),
                                                     ),
                                                   ).then((value) {
@@ -1748,10 +1890,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             // -- ZOORYA-PAY: Other USSD methods (Direct to USSD, preceded by confirmation popup) --
                                             if (paymentName == 'mpesa' ||
                                                 paymentName == 'nib' ||
-                                                paymentName == 'zemen' ||
                                                 paymentName == 'ethswitch') {
                                               _showProceedToPayDialog(
                                                 displayName: displayName,
+                                                type: methodType,
                                                 onProceed: () {
                                                   _startDirectZooryaPayUssd(
                                                     method: paymentName,
@@ -1767,6 +1909,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                 paymentName == 'ethswitch_qr') {
                                               _showProceedToPayDialog(
                                                 displayName: displayName,
+                                                type: methodType,
                                                 onProceed: () {
                                                   Navigator.push(
                                                     context,
@@ -1774,6 +1917,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                       builder: (_) => ZooryaPayQrScreen(
                                                         method: paymentName,
                                                         displayName: displayName,
+                                                        imageUrl: methodImageUrl,
                                                         amount: widget.price!,
                                                         userId:
                                                             userData['user']['_id'],
