@@ -346,97 +346,437 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // DASHEN CLEAN WHITE NEAT UI (MATCHING TELEBIRR)
+  // DASHEN — CLEAN LIGHT UI
   // ═══════════════════════════════════════════════════════════════════════════
+  static const Color _dNavy = Color(0xFF002B49);
+  static const Color _dNavyDark = Color(0xFF001A2E);
+  static const Color _dGold = Color(0xFFD4AF37);
+  static const Color _dBg = Color(0xFFF5F6FA);
+  static const Color _dInk = Color(0xFF111827);
+  static const Color _dMuted = Color(0xFF6B7280);
+
+  String _dFormatAmount(double value) {
+    final parts = value.toStringAsFixed(2).split('.');
+    final whole = parts[0].replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+$)'),
+      (m) => '${m[1]},',
+    );
+    return '$whole.${parts[1]}';
+  }
+
+  /// 0912345678 → 0912 345 678
+  String get _dDisplayPhone {
+    final p = _normalizedPhone;
+    if (p.length != 10) return p;
+    return '${p.substring(0, 4)} ${p.substring(4, 7)} ${p.substring(7)}';
+  }
+
   Widget _buildDashenCleanWhiteScaffold() {
-    final title = widget.displayName.isNotEmpty
-        ? Service.capitalizeFirstLetters(widget.displayName)
-        : 'Dashen Bank';
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _dBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: _dBg,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context, false),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => Navigator.pop(context, false),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.arrow_back_rounded, color: _dInk, size: 20),
+                ),
+              ),
+            ),
           ),
         ),
-        centerTitle: false,
+        centerTitle: true,
+        title: const Text(
+          'Secure Checkout',
+          style: TextStyle(
+            color: _dInk,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+          ),
+        ),
       ),
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(
-              getProportionateScreenWidth(kDefaultPadding),
-            ),
-            child: _payError
-                ? _buildDashenErrorBody()
-                : _buildDashenCleanWhiteBody(),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            getProportionateScreenWidth(kDefaultPadding),
+            8,
+            getProportionateScreenWidth(kDefaultPadding),
+            24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildDashenHeroCard(),
+              const SizedBox(height: 18),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _payError
+                    ? KeyedSubtree(
+                        key: const ValueKey('err'),
+                        child: _buildDashenErrorBody(),
+                      )
+                    : KeyedSubtree(
+                        key: const ValueKey('wait'),
+                        child: _buildDashenCleanWhiteBody(),
+                      ),
+              ),
+              const SizedBox(height: 22),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 14,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                  SizedBox(width: 5),
+                  Text(
+                    'Secured by ',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
+                  ),
+                  Text(
+                    'ZOORYA-PAY',
+                    style: TextStyle(
+                      color: _dMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDashenCleanWhiteBody() {
-    final typeUpper =
-        widget.type.isNotEmpty ? widget.type.toUpperCase() : 'USSD';
+  /// Navy gradient card: logo, bank name and animated amount.
+  Widget _buildDashenHeroCard() {
+    final name = widget.displayName.isNotEmpty
+        ? Service.capitalizeFirstLetters(widget.displayName)
+        : 'Dashen Bank';
 
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_dNavy, _dNavyDark],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _dNavy.withValues(alpha: 0.30),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(right: -40, top: -50, child: _dRing(170, 0.08)),
+          Positioned(right: 50, bottom: -70, child: _dRing(140, 0.06)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _buildDashenLogo(),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Paying with',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (widget.type.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _dGold.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          widget.type.toUpperCase(),
+                          style: const TextStyle(
+                            color: _dGold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 26),
+                Text(
+                  'Total amount',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: widget.amount),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, value, __) => Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        'ETB ',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _dFormatAmount(value),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dRing(double size, double alpha) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: alpha),
+          width: 22,
+        ),
+      ),
+    );
+  }
+
+  /// White card: pulsing phone, short title, phone chip, 3 icon steps, status.
+  Widget _buildDashenCleanWhiteBody() {
+    final sent = _payInitiated;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 26, 18, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const _PulsingIcon(icon: Icons.phone_iphone_rounded, color: _dNavy),
+          const SizedBox(height: 18),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: Text(
+              sent ? 'Check your phone' : 'Sending request…',
+              key: ValueKey(sent),
+              style: const TextStyle(
+                color: _dInk,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Enter your PIN to approve',
+            style: TextStyle(color: _dMuted, fontSize: 14),
+          ),
+          if (_normalizedPhone.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: _dBg,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.call_rounded, size: 16, color: _dNavy),
+                  const SizedBox(width: 8),
+                  Text(
+                    _dDisplayPhone,
+                    style: const TextStyle(
+                      color: _dInk,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+
+          // 3 tiny steps — icons first, one word each
+          Row(
+            children: [
+              _dStep(Icons.notifications_active_outlined, 'Open prompt', true),
+              _dStepLine(sent),
+              _dStep(Icons.pin_outlined, 'Enter PIN', sent),
+              _dStepLine(false),
+              _dStep(Icons.check_circle_outline_rounded, 'Done', false),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Live status pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: _dNavy.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: _dNavy,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Waiting for payment',
+                  style: TextStyle(
+                    color: _dNavy,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dStep(IconData icon, String label, bool active) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Pay Using $typeUpper',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active ? _dNavy : _dBg,
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: active ? Colors.white : const Color(0xFFB0B5BE),
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Pay With ZooryaPay',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 18,
-            color: Color(0xFF8E8E93),
-            fontWeight: FontWeight.normal,
-          ),
-        ),
-        SizedBox(
-          height: getProportionateScreenHeight(kDefaultPadding * 2),
-        ),
-        _buildDashenLogo(),
-        SizedBox(
-          height: getProportionateScreenHeight(kDefaultPadding * 2),
-        ),
-        const SpinKitPouringHourGlassRefined(
-          color: Colors.black,
-          size: 40,
-        ),
-        SizedBox(
-          height: getProportionateScreenHeight(kDefaultPadding),
-        ),
         Text(
-          'Please complete payment through the $typeUpper prompt.\nWaiting for payment to be completed....',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 15,
-            height: 1.45,
-            color: Color(0xFF2C2C2E),
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active ? _dInk : _dMuted,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _dStepLine(bool active) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 22),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 2,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          color: active ? _dNavy : const Color(0xFFE5E7EB),
+        ),
+      ),
     );
   }
 
@@ -445,7 +785,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     if (img.startsWith('http://') || img.startsWith('https://')) {
       return Image.network(
         img,
-        height: 65,
+        height: 34,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => _buildDashenFallbackLogo(),
       );
@@ -455,7 +795,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
         final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
         return Image.network(
           '$baseUrl/$img',
-          height: 65,
+          height: 34,
           fit: BoxFit.contain,
           errorBuilder: (_, __, ___) => _buildDashenFallbackLogo(),
         );
@@ -469,13 +809,10 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   Widget _buildDashenFallbackLogo() {
     return Image.asset(
       'images/payment/dashen.png',
-      height: 65,
+      height: 34,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => const Icon(
-        Icons.account_balance,
-        color: Color(0xFF002B49),
-        size: 60,
-      ),
+      errorBuilder: (_, __, ___) =>
+          const Icon(Icons.account_balance, color: _dNavy, size: 28),
     );
   }
 
@@ -519,55 +856,81 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   }
 
   Widget _buildDashenErrorBody() {
-    const dashenNavy = Color(0xFF002B49);
-
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 26, 18, 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFCA5A5)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 36),
-          const SizedBox(height: 10),
-          Text(
-            _errorMessage,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF991B1B),
-              height: 1.4,
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFFFEF2F2),
+            ),
+            child: const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFDC2626),
+              size: 32,
             ),
           ),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                _payError = false;
-                _errorMessage = '';
-                _pollAttempt = 0;
-              });
-              _initiatePay();
-            },
-            icon: const Icon(Icons.refresh, size: 18, color: Colors.white),
-            label: const Text(
-              'Retry Payment',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+          const Text(
+            'Payment not started',
+            style: TextStyle(
+              color: _dInk,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: dashenNavy,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _errorMessage,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: _dMuted, fontSize: 14, height: 1.4),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _payError = false;
+                  _payInitiated = false;
+                  _errorMessage = '';
+                  _pollAttempt = 0;
+                });
+                _initiatePay();
+              },
+              icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+              label: const Text(
+                'Try again',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              elevation: 0,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _dNavy,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
             ),
           ),
         ],
@@ -1308,6 +1671,82 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Soft pulsing rings behind an icon — used on the Dashen waiting card.
+class _PulsingIcon extends StatefulWidget {
+  const _PulsingIcon({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  State<_PulsingIcon> createState() => _PulsingIconState();
+}
+
+class _PulsingIconState extends State<_PulsingIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 110,
+      height: 110,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (_, __) {
+          Widget ring(double t) {
+            final v = (_c.value + t) % 1.0;
+            return Opacity(
+              opacity: (1 - v) * 0.35,
+              child: Container(
+                width: 56 + 54 * v,
+                height: 56 + 54 * v,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withValues(alpha: 0.25),
+                ),
+              ),
+            );
+          }
+
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              ring(0),
+              ring(0.5),
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color,
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.color.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(widget.icon, color: Colors.white, size: 28),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

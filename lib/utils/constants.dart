@@ -70,6 +70,10 @@ const BASE_URL = BASE_URL_TEST;
 /// This endpoint lives on the Odoo server, NOT the regular Zmall backend.
 const String kZmallOdooBaseUrl = "http://196.191.117.85:9070";
 
+/// Odoo database name, sent as the `X-Odoo-Database` header. Without it the
+/// Odoo server can't pick a database and returns 404 for /zmall_order/<slug>.
+const String kZmallOdooDatabase = "zmall_odoo";
+
 /// Maps Zmall store_id -> Odoo pos.config.zmall_branch_slug.
 /// Fill these in with the real store ids and their branch slugs.
 const Map<String, String> kZmallBranchSlugs = {

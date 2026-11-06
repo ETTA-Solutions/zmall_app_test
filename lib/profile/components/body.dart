@@ -655,14 +655,8 @@ class _BodyState extends State<Body> {
                           NewProfileListTile(
                             borderColor: kWhiteColor,
                             icon: Icon(HeroiconsOutline.sparkles),
-                            title: "Subscription",
-                            subtitle: Text(
-                              "Free delivery on all orders",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                              ),
-                            ),
+                            title: "Zmall Pro",
+
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1885,74 +1879,74 @@ class _BodyState extends State<Body> {
   }
 }
 // if (enable) {
-    //   // Enable biometric
-    //   if (userData == null) {
-    //     Service.showMessage(
-    //       context: context,
-    //       title: "Please login first to enable $_biometricType",
-    //       error: true,
-    //     );
-    //     return;
-    //   }
+//   // Enable biometric
+//   if (userData == null) {
+//     Service.showMessage(
+//       context: context,
+//       title: "Please login first to enable $_biometricType",
+//       error: true,
+//     );
+//     return;
+//   }
 
-    //   final result = await BiometricService.authenticate(
-    //     localizedReason: 'Authenticate to enable $_biometricType login',
-    //   );
+//   final result = await BiometricService.authenticate(
+//     localizedReason: 'Authenticate to enable $_biometricType login',
+//   );
 
-    //   if (result.success) {
-    //     final phone = userData['user']['phone'];
-    //     final userName = userData['user']['name'];
+//   if (result.success) {
+//     final phone = userData['user']['phone'];
+//     final userName = userData['user']['name'];
 
-    //     await BiometricCredentialsManager.updateBiometricStatus(phone, true);
-    //     await BiometricCredentialsManager.updateUserName(phone, userName);
-    //     await BiometricCredentialsManager.updateLastUsed(phone);
-    //     // final account = await BiometricCredentialsManager.getAccount(phone);
+//     await BiometricCredentialsManager.updateBiometricStatus(phone, true);
+//     await BiometricCredentialsManager.updateUserName(phone, userName);
+//     await BiometricCredentialsManager.updateLastUsed(phone);
+//     // final account = await BiometricCredentialsManager.getAccount(phone);
 
-    //     if (mounted) {
-    //       // setState(() => _isBiometricEnabled = true);
-    //       setState(() {
-    //         _isBiometricEnabled = true;
-    //         // _isBiometricEnabled = account?.biometricEnabled ?? true;
-    //       });
+//     if (mounted) {
+//       // setState(() => _isBiometricEnabled = true);
+//       setState(() {
+//         _isBiometricEnabled = true;
+//         // _isBiometricEnabled = account?.biometricEnabled ?? true;
+//       });
 
-    //       Service.showMessage(
-    //         context: context,
-    //         title: "$_biometricType login enabled successfully!",
-    //         error: false,
-    //       );
-    //     }
-    //   } else if (result.errorMessage != null) {
-    //     if (mounted) {
-    //       Service.showMessage(
-    //         context: context,
-    //         title: result.errorMessage!,
-    //         error: true,
-    //       );
-    //     }
-    //   }
-    // } else {
-    //   // Disable biometric
-    //   final phone = userData['user']['phone'];
-    //   final result = await BiometricService.authenticate(
-    //     localizedReason: 'Authenticate to disable $_biometricType login',
-    //   );
+//       Service.showMessage(
+//         context: context,
+//         title: "$_biometricType login enabled successfully!",
+//         error: false,
+//       );
+//     }
+//   } else if (result.errorMessage != null) {
+//     if (mounted) {
+//       Service.showMessage(
+//         context: context,
+//         title: result.errorMessage!,
+//         error: true,
+//       );
+//     }
+//   }
+// } else {
+//   // Disable biometric
+//   final phone = userData['user']['phone'];
+//   final result = await BiometricService.authenticate(
+//     localizedReason: 'Authenticate to disable $_biometricType login',
+//   );
 
-    //   if (result.success) {
-    //     await BiometricCredentialsManager.updateBiometricStatus(phone, false);
-    //     final account = await BiometricCredentialsManager.getAccount(phone);
+//   if (result.success) {
+//     await BiometricCredentialsManager.updateBiometricStatus(phone, false);
+//     final account = await BiometricCredentialsManager.getAccount(phone);
 
-    //     if (mounted) {
-    //       setState(() {
-    //         _isBiometricEnabled = account?.biometricEnabled ?? false;
-    //       });
+//     if (mounted) {
+//       setState(() {
+//         _isBiometricEnabled = account?.biometricEnabled ?? false;
+//       });
 
-    //       if (!_isBiometricEnabled) {
-    //         Service.showMessage(
-    //           context: context,
-    //           title: "$_biometricType login disabled",
-    //           error: false,
-    //         );
-    //       }
-    //     }
-    //   }
-    // }
+//       if (!_isBiometricEnabled) {
+//         Service.showMessage(
+//           context: context,
+//           title: "$_biometricType login disabled",
+//           error: false,
+//         );
+//       }
+//     }
+//   }
+// }

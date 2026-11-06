@@ -112,13 +112,6 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       debugPrint(
         '[TelebirrUssd] ✅ Init successful: ${data['result']['message']}',
       );
-      Service.showMessage(
-        context: context,
-        title:
-            "${data['result']['message']}. Waiting for payment to be completed",
-        error: false,
-        duration: 6,
-      );
       _verifyPayment();
     } else {
       debugPrint('[TelebirrUssd] ❌ Init failed or unapproved: $data');

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:zmall/help/support_chat/service/chat_basket.dart';
+import 'package:zmall/help/support_chat/service/chat_spec_pricing.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/location/components/place_service.dart';
 import 'package:zmall/models/cart.dart';
@@ -268,7 +269,8 @@ class ChatCheckoutService {
       "🛒 [CHAT CHECKOUT] Step 6: Calculating distance & estimated delivery time...",
     );
     final route = await _routeDistance(cart);
-    final distance = route?.distance ??
+    final distance =
+        route?.distance ??
         AddressValidationService.calculateDistanceInMeters(
           cart.storeLocation!.lat!,
           cart.storeLocation!.long!,
@@ -467,6 +469,10 @@ class ChatCheckoutService {
     );
   }
 
+  /// Public access to [_fetchItemInfo] for chat pricing.
+  static Future<Map?> fetchItemInfo(String baseUrl, String itemId) =>
+      _fetchItemInfo(baseUrl, itemId);
+
   /// Loads the full item record (`get_item_information`), or null if it
   /// can't be fetched.
   static Future<Map?> _fetchItemInfo(String baseUrl, String itemId) async {
@@ -490,6 +496,9 @@ class ChatCheckoutService {
   /// product's own price is used with no specifications.
   static Item _cartItem(ChatBasketLine line, Map? info) {
     final product = line.product;
+    if (product.priceFromSpecs && info != null) {
+      return _specPricedCartItem(line, info);
+    }
     if (info == null) {
       return Item(
         id: product.id,
@@ -539,6 +548,30 @@ class ChatCheckoutService {
       quantity: line.quantity,
       specification: specs,
       price: unitPrice * line.quantity,
+      itemName: product.name,
+      imageURL: product.imageUrl,
+    );
+  }
+
+  /// Cart item for a product priced from its specifications: the same
+  /// options [ChatSpecPricing] used for the price shown in chat.
+  static Item _specPricedCartItem(ChatBasketLine line, Map info) {
+    final product = line.product;
+    final selection = ChatSpecSelection.fromItemInfo(info);
+    if (selection == null) {
+      throw ChatCheckoutException(
+        "I couldn't find a price for ${product.name}. "
+        'Please open the store and order it from there.',
+      );
+    }
+    debugPrint(
+      "🛒 [CHAT CHECKOUT] ${product.name}: priced from specs ${selection.unitPrice} ETB (${selection.note}) × ${line.quantity} (chat showed ${product.price})",
+    );
+    return Item(
+      id: product.id,
+      quantity: line.quantity,
+      specification: selection.specs,
+      price: selection.unitPrice * line.quantity,
       itemName: product.name,
       imageURL: product.imageUrl,
     );

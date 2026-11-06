@@ -14,6 +14,7 @@ class KifiyaMethodContainer extends StatelessWidget {
     required this.imagePath,
     required this.press,
     this.isSoon = false,
+    this.fillImage = false,
   });
 
   final bool selected;
@@ -22,6 +23,16 @@ class KifiyaMethodContainer extends StatelessWidget {
   final String imagePath;
   final GestureTapCallback press;
   final bool isSoon;
+
+  /// When true the logo fills the whole badge instead of a 40x40 box.
+  /// Used for wide logos (e.g. CyberSource "VISA / Mastercard") that
+  /// otherwise shrink to an unreadable size with BoxFit.contain.
+  final bool fillImage;
+
+  double get _imgWidth =>
+      getProportionateScreenWidth(fillImage ? 66 : 40);
+  double get _imgHeight =>
+      getProportionateScreenWidth(fillImage ? 56 : 40);
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +72,12 @@ class KifiyaMethodContainer extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: _buildMethodIcon(context),
+                  child: fillImage
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: _buildMethodIcon(context),
+                        )
+                      : _buildMethodIcon(context),
                 ),
               ),
               Text(
@@ -126,8 +142,8 @@ class KifiyaMethodContainer extends StatelessWidget {
       return Image.network(
         imagePath,
         fit: BoxFit.contain,
-        width: getProportionateScreenWidth(40),
-        height: getProportionateScreenWidth(40),
+        width: _imgWidth,
+        height: _imgHeight,
         errorBuilder: (_, __, ___) => _buildFallbackAsset(),
       );
     }
@@ -137,8 +153,8 @@ class KifiyaMethodContainer extends StatelessWidget {
         return Image.network(
           '$baseUrl/$imagePath',
           fit: BoxFit.contain,
-          width: getProportionateScreenWidth(40),
-          height: getProportionateScreenWidth(40),
+          width: _imgWidth,
+          height: _imgHeight,
           errorBuilder: (_, __, ___) => _buildFallbackAsset(),
         );
       } catch (_) {

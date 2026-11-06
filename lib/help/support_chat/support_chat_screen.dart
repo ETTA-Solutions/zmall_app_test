@@ -11,6 +11,7 @@ import 'package:zmall/models/metadata.dart';
 import 'package:zmall/profile/components/profile_list_tile.dart';
 import 'package:zmall/help/support_chat/service/chat_checkout_service.dart';
 import 'package:zmall/help/support_chat/service/chat_service.dart';
+import 'package:zmall/help/support_chat/service/chat_spec_pricing.dart';
 import 'package:zmall/help/support_chat/service/mock_data.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/cart/cart_screen.dart';
@@ -756,7 +757,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           }
 
           // Otherwise check if browse_results contains items/products
-          final parsedProducts = parseBackendBrowseResults(typedBrowseResults);
+          final parsedProducts = await _priceSpecProducts(
+            parseBackendBrowseResults(typedBrowseResults),
+          );
+          if (!mounted) return;
           debugPrint(
             "🍔 [CHAT SCREEN] Parsed ${parsedProducts.length} products from browse_results",
           );
@@ -821,7 +825,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             "🍔 [CHAT SCREEN] Found simple products/items/menu array: length=${backendProducts is List ? backendProducts.length : 0}",
           );
           if (backendProducts is List && backendProducts.isNotEmpty) {
-            final parsedProducts = parseSimpleBackendProducts(backendProducts);
+            final parsedProducts = await _priceSpecProducts(
+              parseSimpleBackendProducts(backendProducts),
+            );
+            if (!mounted) return;
             debugPrint(
               "🍔 [CHAT SCREEN] Parsed ${parsedProducts.length} simple products",
             );
@@ -893,6 +900,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         });
       }
     }
+  }
+
+  /// Prices products the backend sent with price 0 from their
+  /// specifications; products with a normal price pass through unchanged.
+  Future<List<MockProduct>> _priceSpecProducts(
+    List<MockProduct> products,
+  ) {
+    final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+    return ChatSpecPricing.resolve(baseUrl, products);
   }
 
   Future<void> _handleAddProductToCart(MockProduct product) async {
@@ -1066,27 +1082,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                     color: kBlackColor,
                   ),
                 ),
-                Row(
-                  children: [
-                    Container(
-                      width: getProportionateScreenWidth(7),
-                      height: getProportionateScreenWidth(7),
-                      decoration: const BoxDecoration(
-                        color: kGreenColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: getProportionateScreenWidth(5)),
-                    Text(
-                      'Online · replies instantly',
-                      style: TextStyle(
-                        fontSize: getProportionateScreenWidth(11),
-                        color: kGreyColor,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ],
@@ -1226,13 +1221,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                           );
                         },
                       ),
-              ),
-              // Basket follows the user through the chat
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: getProportionateScreenWidth(12),
-                ),
-                child: ChatBasketBar(basket: _basket, onAction: _reviewBasket),
               ),
               if (_showQuickReplies && _messages.length > 1)
                 QuickReplies(onReplyTap: _handleQuickReply),

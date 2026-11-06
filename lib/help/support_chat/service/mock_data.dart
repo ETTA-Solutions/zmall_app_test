@@ -21,6 +21,12 @@ class MockProduct {
   /// Local Flutter asset path to the meal image shown in the chat food card
   final String localImageAsset;
 
+  /// True when the backend sent price 0 because the real price lives in the
+  /// item's specifications (e.g. Size: Small / Large). Such items are priced
+  /// from their options by [ChatSpecPricing] before they are shown, and
+  /// checked out with the same options. Items with a normal price keep false.
+  final bool priceFromSpecs;
+
   const MockProduct({
     required this.id,
     required this.storeId,
@@ -33,7 +39,31 @@ class MockProduct {
     this.description = '',
     this.imageUrl = '',
     this.localImageAsset = '',
+    this.priceFromSpecs = false,
   });
+
+  /// Copy of this product priced from its specification options.
+  MockProduct withSpecPrice({required double price, String? optionsNote}) {
+    final note = optionsNote?.trim() ?? '';
+    return MockProduct(
+      id: id,
+      storeId: storeId,
+      name: name,
+      price: price,
+      category: category,
+      originalPrice: originalPrice,
+      unit: unit,
+      currencySymbol: currencySymbol,
+      description: note.isEmpty
+          ? description
+          : description.trim().isEmpty
+          ? note
+          : '$note\n$description',
+      imageUrl: imageUrl,
+      localImageAsset: localImageAsset,
+      priceFromSpecs: true,
+    );
+  }
 
   /// Factory constructor for creating MockProduct from backend data
   /// when only basic fields (name, amount, price) are available
@@ -43,6 +73,7 @@ class MockProduct {
     String? amount,
     String? id,
     String? storeId,
+    bool priceFromSpecs = false,
   }) {
     final productId = id ?? 'backend_${name.hashCode}';
     final productStoreId = storeId ?? 'backend';
@@ -91,6 +122,7 @@ class MockProduct {
       description: '',
       imageUrl: '',
       localImageAsset: imageAsset,
+      priceFromSpecs: priceFromSpecs,
     );
   }
 
@@ -150,7 +182,6 @@ class MockStore {
     this.imageUrl = '',
   });
 }
-
 
 /// Returns the comprehensive system prompt instructing Gemini to act as ZMall's AI assistant
 /// with ZMall policies and the structured response format.
@@ -430,7 +461,10 @@ List<MockProduct> parseSimpleBackendProducts(List<dynamic> backendItems) {
           item['storeId']?.toString() ??
           item['store_name']?.toString();
 
-      if (name.isEmpty || price <= 0) continue;
+      // Price 0 with a real item id: the price is in the specifications —
+      // keep it, ChatSpecPricing prices it from its options.
+      final priceFromSpecs = price <= 0 && isChatObjectId(id);
+      if (name.isEmpty || (price <= 0 && !priceFromSpecs)) continue;
 
       results.add(
         MockProduct.fromBackendData(
@@ -439,6 +473,7 @@ List<MockProduct> parseSimpleBackendProducts(List<dynamic> backendItems) {
           amount: amount,
           id: id,
           storeId: storeId,
+          priceFromSpecs: priceFromSpecs,
         ),
       );
     } catch (_) {
@@ -472,7 +507,10 @@ List<MockProduct> parseBackendBrowseResults(
           browseResults['store_name']?.toString() ??
           'backend';
 
-      if (name.isEmpty || price <= 0) continue;
+      // Price 0 with a real item id: the price is in the specifications —
+      // keep it, ChatSpecPricing prices it from its options.
+      final priceFromSpecs = price <= 0 && isChatObjectId(id);
+      if (name.isEmpty || (price <= 0 && !priceFromSpecs)) continue;
 
       // Optional fields — drive the menu's category chips, descriptions and
       // thumbnails when the backend sends them.
@@ -500,6 +538,7 @@ List<MockProduct> parseBackendBrowseResults(
           description: description,
           imageUrl: imageUrl,
           localImageAsset: kMenuChatFallbackImage, // Use the fallback image
+          priceFromSpecs: priceFromSpecs,
         ),
       );
     } catch (_) {
@@ -567,3 +606,8 @@ List<MockStore> parseBackendStoreResults(dynamic storesData) {
 
   return results;
 }
+
+/// True for a MongoDB ObjectId (24 hex chars) — i.e. a real ZMall item id,
+/// not a chat placeholder like `backend_123`.
+bool isChatObjectId(String? id) =>
+    id != null && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(id);

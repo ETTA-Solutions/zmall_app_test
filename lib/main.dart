@@ -379,7 +379,8 @@ class _MyAppState extends State<MyApp> {
 //   runApp(MyApp());
 // }
 
-// class MyApp extends StatefulWidget {
+// class MyApp extends StatefulWidget
+
 //   static FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 //   static FirebaseInAppMessaging messaging = FirebaseInAppMessaging.instance;
 //   static final facebookAppEvents = FacebookAppEvents();

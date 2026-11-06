@@ -17,6 +17,8 @@ import 'package:zmall/kifiya/components/amole_screen.dart';
 import 'package:zmall/kifiya/components/cbe_ussd.dart';
 import 'package:zmall/kifiya/components/chapa_screen.dart';
 import 'package:zmall/kifiya/components/cyber_source.dart';
+import 'package:zmall/kifiya/cybersource/cybersource_webview.dart';
+import 'package:zmall/kifiya/cybersource/cybersource_service.dart';
 import 'package:zmall/kifiya/components/dashen_master_card.dart';
 import 'package:zmall/kifiya/components/ethswitch_screen.dart';
 import 'package:zmall/kifiya/components/etta_card_screen.dart';
@@ -25,6 +27,7 @@ import 'package:zmall/kifiya/components/telebirr_inapp.dart';
 import 'package:zmall/kifiya/components/telebirr_ussd.dart';
 import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
+import 'package:zmall/kifiya/zoorya_pay/mpesa_phone_sheet.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_otp_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_qr_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
@@ -833,16 +836,25 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             (g) => g['name'].toString().toUpperCase() == 'ZOORYA-PAY',
             orElse: () => null,
           );
-      if (_zooryaGw != null && _zooryaGw['methods'] is List) {
-        final List<dynamic> zMethods = (_zooryaGw['methods'] as List)
-            .where((m) => m is Map && (m['is_visible'] == true || m['status'] == true))
-            .toList();
+      {
+        final List<dynamic> zMethods = _visiblePaymentMethods(_zooryaGw);
         if (kifiyaMethod >= 0 && kifiyaMethod < zMethods.length) {
           final selMethod = zMethods[kifiyaMethod];
           final String selKey = selMethod['key'].toString().toLowerCase();
           final String selDisplayName = selMethod['name'].toString();
           final String selType = (selMethod['type'] ?? 'ussd').toString();
           final String? selImageUrl = selMethod['image_url']?.toString();
+          if (selKey == _cyberSourceKey) {
+            setState(() {
+              _loading = false;
+              _placeOrder = false;
+            });
+            _showProceedToPayDialog(
+              displayName: selDisplayName,
+              onProceed: () => _startCyberSource(displayName: selDisplayName),
+            );
+            return;
+          }
           if (selKey == 'telebirr') {
             _showProceedToPayDialog(
               displayName: selDisplayName,
@@ -1026,6 +1038,192 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     } else {
       _boaVerify(skipCreateOrder: true);
     }
+  }
+
+  // ───────────────────────── CyberSource card payment ─────────────────────────
+
+  static const String _cyberSourceKey = 'cybersource';
+
+  /// ZOORYA-PAY methods visible to the user, plus the CyberSource card tile
+  /// when the backend's `payment_gateway` list contains an enabled
+  /// CyberSource gateway (`is_payment_visible: true`). Nothing is hardcoded:
+  /// the tile's name and image come from that gateway.
+  List<dynamic> _visiblePaymentMethods(dynamic zooryaGateway) {
+    final List<dynamic> methods =
+        (zooryaGateway != null && zooryaGateway['methods'] is List)
+        ? (zooryaGateway['methods'] as List)
+              .where(
+                (m) =>
+                    m is Map &&
+                    (m['is_visible'] == true || m['status'] == true),
+              )
+              .toList()
+        : <dynamic>[];
+
+    // The backend creates a plain ZMall order on PAID; it does not place the
+    // AliExpress order, so card payment is hidden for AliExpress carts.
+    final bool isAliexpressCart =
+        aliexpressCart != null && aliexpressCart!.cart.storeId == cart.storeId;
+    final dynamic cyberSourceGateway = _cyberSourceGateway();
+    if (!isAliexpressCart && cyberSourceGateway != null) {
+      methods.add({
+        'key': _cyberSourceKey, // internal routing key only
+        'name': cyberSourceGateway['name'].toString(),
+        'image_url': cyberSourceGateway['image_url']?.toString(),
+        'type': '',
+        'is_visible': true,
+      });
+    }
+    return methods;
+  }
+
+  /// The CyberSource gateway from `payment_gateway`, or null when the backend
+  /// doesn't list it or has hidden it. Matched on the name containing "cyber"
+  /// so spelling variants (e.g. "CyberSoruce") still match.
+  dynamic _cyberSourceGateway() {
+    final gateways = paymentResponse?['payment_gateway'];
+    if (gateways is! List) return null;
+    for (final g in gateways) {
+      if (g is! Map) continue;
+      final name = g['name'].toString().toLowerCase().replaceAll(
+        RegExp(r'[^a-z]'),
+        '',
+      );
+      if (name.contains('cyber') && g['is_payment_visible'] == true) return g;
+    }
+    return null;
+  }
+
+  /// CyberSource card payment: /pay → WebView → /status.
+  /// The backend creates the order once the payment is PAID — create_order
+  /// must NOT be called here.
+  Future<void> _startCyberSource({required String displayName}) async {
+    final bool imagesValid = await _validateCourierImagesBeforePayment();
+    if (!mounted || !imagesValid) return;
+
+    final String userId = userData['user']['_id'];
+    final String serverToken = userData['user']['server_token'];
+
+    setState(() {
+      _loading = true;
+      _placeOrder = true;
+    });
+    final pay = await CyberSourceService.pay(
+      context: context,
+      userId: userId,
+      serverToken: serverToken,
+      uniqueId: widget.orderPaymentUniqueId!,
+    );
+    if (!mounted) return;
+
+    if (CyberSourceService.isInvalidToken(pay)) {
+      _stopLoading();
+      await _onCyberSourceResult(pay!);
+      return;
+    }
+    final String? checkoutId = pay?['checkout_id']?.toString();
+    final String? checkoutUrl = pay?['checkout_url']?.toString();
+    if (pay == null || pay['success'] != true || checkoutId == null) {
+      _stopLoading();
+      setState(() => kifiyaMethod = -1);
+      Service.showMessage(
+        context: context,
+        title: pay?['message']?.toString() ??
+            'Couldn\'t open card payment. Check your internet connection and try again.',
+        error: true,
+      );
+      return;
+    }
+
+    // Already paid on an earlier attempt (/pay is idempotent): skip the WebView.
+    if (pay['status']?.toString() != CyberSourceService.paid &&
+        checkoutUrl != null) {
+      _stopLoading();
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CyberSourceWebView(
+            title: displayName,
+            checkoutUrl: checkoutUrl,
+            checkoutId: checkoutId,
+          ),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _loading = true;
+        _placeOrder = true;
+      });
+    }
+
+    // Always confirm the real status, even if the user closed the WebView:
+    // the payment may have gone through.
+    final result = await CyberSourceService.waitForResult(
+      context: context,
+      userId: userId,
+      serverToken: serverToken,
+      checkoutId: checkoutId,
+    );
+    if (!mounted) return;
+    _stopLoading();
+    await _onCyberSourceResult(result);
+  }
+
+  void _stopLoading() {
+    setState(() {
+      _loading = false;
+      _placeOrder = false;
+    });
+  }
+
+  Future<void> _onCyberSourceResult(Map result) async {
+    if (CyberSourceService.isInvalidToken(result)) {
+      Service.showMessage(
+        context: context,
+        title: errorCodes['999'] ?? 'Your session has expired. Please log in again.',
+        error: true,
+      );
+      await Service.saveBool('logged', false);
+      await Service.remove('user');
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+      return;
+    }
+
+    final String status = result['status']?.toString() ?? '';
+    if (result['is_paid'] == true || status == CyberSourceService.paid) {
+      // Order already exists server-side; just show it.
+      await _finishBackendCreatedOrder(result);
+      return;
+    }
+
+    final String message;
+    switch (status) {
+      case CyberSourceService.review:
+        message =
+            'Your card payment is under review. We\'ll confirm your order shortly. '
+            'For help, call 8707 with reference ${widget.orderPaymentUniqueId}.';
+        break;
+      case CyberSourceService.expired:
+        message = 'The card payment session expired. Please try again.';
+        break;
+      case CyberSourceService.verifying:
+        message =
+            'We\'re still confirming your card payment. Check your orders in a moment. '
+            'For help, call 8707 with reference ${widget.orderPaymentUniqueId}.';
+        break;
+      default: // CREATED → declined, cancelled or not paid yet
+        message =
+            'Card payment was not completed. You can try again or choose another method.';
+    }
+    setState(() => kifiyaMethod = -1);
+    Service.showMessage(
+      context: context,
+      title: message,
+      error: status != CyberSourceService.review &&
+          status != CyberSourceService.verifying,
+      duration: 5,
+    );
   }
 
   /// Uses the /admin/check_paid_order response (the backend already created
@@ -1219,6 +1417,29 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     required String method,
     required String displayName,
   }) async {
+    // Phone that receives the USSD / STK prompt (defaults to the account phone).
+    String payPhone = userData['user']['phone']?.toString() ?? '';
+
+    // M-PESA only works with Safaricom numbers (07...). If the account phone
+    // isn't one, ask the user for an M-PESA number before continuing.
+    if (method == 'mpesa') {
+      if (isMpesaPhone(payPhone)) {
+        payPhone = normalizeEthPhone(payPhone);
+      } else {
+        final entered = await showMpesaPhoneSheet(context);
+        if (!mounted) return;
+        if (entered == null) {
+          setState(() {
+            _loading = false;
+            _placeOrder = false;
+            kifiyaMethod = -1;
+          });
+          return;
+        }
+        payPhone = entered;
+      }
+    }
+
     // SECURITY FIX: Validate images before processing payment
     bool imagesValid = await _validateCourierImagesBeforePayment();
     if (!mounted) return;
@@ -1234,7 +1455,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     if (method == 'mpesa') {
       Service.showMessage(
         context: context,
-        title: "M-PESA: Please approve the prompt sent to your Safaricom number (07...).",
+        title: "M-PESA: Approve the prompt sent to $payPhone.",
         error: false,
         duration: 4,
       );
@@ -1257,7 +1478,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       method: method,
       uniqueId: widget.orderPaymentUniqueId!,
       amount: widget.price!,
-      phoneNumber: userData['user']['phone'] ?? '',
+      phoneNumber: payPhone,
     );
 
     if (!mounted) return;
@@ -1773,17 +1994,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           orElse: () => null,
                                         );
                                     final List<dynamic> zooryaMethods =
-                                        zooryaGateway != null
-                                        ? (zooryaGateway['methods']
-                                                  as List<dynamic>)
-                                              .where(
-                                                (m) =>
-                                                    m is Map &&
-                                                    (m['is_visible'] == true ||
-                                                        m['status'] == true),
-                                              )
-                                              .toList()
-                                        : <dynamic>[];
+                                        _visiblePaymentMethods(zooryaGateway);
 
                                     debugPrint(
                                       '[ZOORYA-PAY] building grid '
@@ -1857,6 +2068,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           title: displayName,
                                           kifiyaMethod: kifiyaMethod,
                                           imagePath: zooryaImagePath,
+                                          // CyberSource logo is wide (Visa/Mastercard):
+                                          // let it fill the badge so it stays readable.
+                                          fillImage:
+                                              paymentName == _cyberSourceKey,
                                           // Old image map (commented out - replaced by ZOORYA new_payment folder):
                                           // paymentName == "wallet" ? 'images/payment/wallet.png'
                                           // : paymentName == "cash" ? 'images/payment/cod.png'
@@ -1867,6 +2082,17 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             setState(() {
                                               kifiyaMethod = index;
                                             });
+
+                                            // -- CyberSource card (Visa / Mastercard, 3-D Secure) via WebView --
+                                            if (paymentName == _cyberSourceKey) {
+                                              _showProceedToPayDialog(
+                                                displayName: displayName,
+                                                onProceed: () => _startCyberSource(
+                                                  displayName: displayName,
+                                                ),
+                                              );
+                                              return;
+                                            }
 
                                             // -- ZOORYA-PAY: Telebirr USSD (Shows Telebirr USSD Screen matching design, then calls USSD) --
                                             if (paymentName == 'telebirr') {

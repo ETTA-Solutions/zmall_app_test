@@ -152,23 +152,25 @@ class ZmallAvailabilityService {
     }
 
     final requestBody = jsonEncode({"products": products});
+    final Map<String, String> headers = <String, String>{
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "X-Odoo-Database": kZmallOdooDatabase,
+    };
     final stopwatch = Stopwatch()..start();
 
     try {
       BackendLogger.request(
         method: 'POST',
         url: url,
-        headers: {"Content-Type": "application/json"},
+        headers: headers,
         body: requestBody,
       );
 
       final http.Response response = await http
           .post(
             Uri.parse(url),
-            headers: <String, String>{
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-            },
+            headers: headers,
             body: requestBody,
           )
           .timeout(
