@@ -973,6 +973,65 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               },
             );
             return;
+          } else if (selKey == 'telebirr inapp' ||
+              selKey == 'telebirr in app' ||
+              selKey == 'telebirr in-app') {
+            setState(() {
+              _loading = false;
+              _placeOrder = false;
+            });
+            _startTelebirrInApp();
+            return;
+          } else if (selKey == 'cash') {
+            final List<dynamic> allGws = paymentResponse != null &&
+                    paymentResponse['payment_gateway'] is List
+                ? paymentResponse['payment_gateway'] as List<dynamic>
+                : [];
+            final dynamic cashGw = allGws.firstWhere(
+              (g) => g['name'].toString().toLowerCase().contains('cash'),
+              orElse: () => null,
+            );
+            final String cashGwId =
+                cashGw != null ? cashGw['_id'].toString() : '0';
+            var data = await payOrderPayment(
+              otp,
+              cashGwId,
+              isPaymentModeCash: true,
+            );
+            if (!mounted) return;
+            if (data != null && data['success']) {
+              widget.isCombo
+                  ? _createOrder()
+                  : widget.isCourier!
+                  ? _createCourierOrder()
+                  : (aliexpressCart != null &&
+                        aliexpressCart!.cart.storeId == cart.storeId)
+                  ? _createAliexpressOrder()
+                  : _createOrder();
+            } else {
+              setState(() {
+                _loading = false;
+                _placeOrder = false;
+              });
+              final errorText = widget.isCombo
+                  ? ComboService.errorText(
+                      data,
+                      fallback: 'Payment failed. Please try again.',
+                    )
+                  : "${errorCodes['${data?['error_code']}'] ?? 'Payment failed.'}!";
+              Service.showMessage(
+                context: context,
+                title: errorText,
+                error: true,
+              );
+              await Future.delayed(Duration(seconds: 2));
+              if (data != null && data['error_code'] == 999) {
+                await Service.saveBool('logged', false);
+                await Service.remove('user');
+                Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+              }
+            }
+            return;
           }
         }
       }
@@ -1074,6 +1133,86 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         'is_visible': true,
       });
     }
+
+    final gateways = paymentResponse?['payment_gateway'];
+    if (gateways is List) {
+      // 1. Telebirr InApp
+      bool foundTelebirrInApp = false;
+      for (final g in gateways) {
+        if (g is! Map) continue;
+        final name = g['name'].toString().toLowerCase();
+        if ((name.contains('telebirr inapp') ||
+                name.contains('telebirr in app') ||
+                name.contains('telebirr in-app')) &&
+            g['is_payment_visible'] != false) {
+          methods.add({
+            'key': 'telebirr inapp',
+            'name': g['name'].toString(),
+            'image_url': 'images/payment/telebirr.png',
+            'type': 'inapp',
+            'is_visible': true,
+          });
+          foundTelebirrInApp = true;
+          break;
+        }
+      }
+      if (!foundTelebirrInApp) {
+        methods.add({
+          'key': 'telebirr inapp',
+          'name': 'Telebirr InApp',
+          'image_url': 'images/payment/telebirr.png',
+          'type': 'inapp',
+          'is_visible': true,
+        });
+      }
+
+      // 2. Cash payment (if not cashless only)
+      if (widget.onlyCashless != true) {
+        bool foundCash = false;
+        for (final g in gateways) {
+          if (g is! Map) continue;
+          final name = g['name'].toString().toLowerCase();
+          if (name.contains('cash') && g['is_payment_visible'] != false) {
+            methods.add({
+              'key': 'cash',
+              'name': g['name'].toString(),
+              'image_url': 'images/payment/cod.png',
+              'type': 'cash',
+              'is_visible': true,
+            });
+            foundCash = true;
+            break;
+          }
+        }
+        if (!foundCash) {
+          methods.add({
+            'key': 'cash',
+            'name': 'Cash',
+            'image_url': 'images/payment/cod.png',
+            'type': 'cash',
+            'is_visible': true,
+          });
+        }
+      }
+    } else {
+      methods.add({
+        'key': 'telebirr inapp',
+        'name': 'Telebirr InApp',
+        'image_url': 'images/payment/telebirr.png',
+        'type': 'inapp',
+        'is_visible': true,
+      });
+      if (widget.onlyCashless != true) {
+        methods.add({
+          'key': 'cash',
+          'name': 'Cash',
+          'image_url': 'images/payment/cod.png',
+          'type': 'cash',
+          'is_visible': true,
+        });
+      }
+    }
+
     return methods;
   }
 
@@ -1224,6 +1363,105 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           status != CyberSourceService.verifying,
       duration: 5,
     );
+  }
+
+  void _startTelebirrInApp() async {
+    var data = await useBorsa();
+    if (!mounted) return;
+    if (data != null && data['success']) {
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: kPrimaryColor,
+            title: const Text("Pay using telebirr app"),
+            content: Text(
+              "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using telebirr in-app?",
+            ),
+            actions: [
+              TextButton(
+                child: Text(
+                  Provider.of<ZLanguage>(context).cancel,
+                  style: TextStyle(color: kSecondaryColor),
+                ),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+              ),
+              TextButton(
+                child: Text(
+                  Provider.of<ZLanguage>(context).cont,
+                  style: TextStyle(
+                    color: kBlackColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () {
+                  var uniqueId = RandomDigits.getString(6);
+                  String uniqueIdString = uniqueId;
+                  Navigator.of(dialogContext).pop();
+
+                  setState(() {
+                    inAppTraceNumber =
+                        "${kTelebirrInAppTraceKey}${widget.orderPaymentUniqueId!}TELE$uniqueIdString";
+                    _selectedPaymentMethod = "telebirr inapp";
+                  });
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) {
+                        return TelebirrInApp(
+                          context: context,
+                          amount: widget.price!,
+                          traceNo: inAppTraceNumber,
+                          phone: userData['user']['phone'],
+                        );
+                      },
+                    ),
+                  ).then((value) async {
+                    if (_orderPlaced) return;
+
+                    final isPaid = await pollTelebirrStatus(
+                      merchOrderId: inAppTraceNumber,
+                    );
+
+                    if (!mounted) return;
+                    if (_orderPlaced) return;
+
+                    if (isPaid) {
+                      _orderPlaced = true;
+                      Service.showMessage(
+                        context: context,
+                        error: false,
+                        title: "Telebirr payment confirmed.",
+                      );
+
+                      if (widget.isCourier!) {
+                        _createCourierOrder();
+                      } else if (aliexpressCart != null &&
+                          aliexpressCart!.cart.storeId == cart.storeId) {
+                        _createAliexpressOrder();
+                      } else {
+                        _createOrder();
+                      }
+                    } else {
+                      Service.showMessage(
+                        context: context,
+                        title:
+                            "Payment was not completed. You can try again or choose another method.",
+                        error: true,
+                        duration: 4,
+                      );
+                    }
+                  });
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   /// Uses the /admin/check_paid_order response (the backend already created
@@ -2047,8 +2285,13 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             (methodImageUrl != null &&
                                                     methodImageUrl.isNotEmpty)
                                             ? methodImageUrl
+                                            : paymentName == 'cash'
+                                            ? 'images/payment/cod.png'
                                             : (paymentName == 'telebirr' ||
-                                                paymentName == 'telebirr_qr')
+                                                paymentName == 'telebirr_qr' ||
+                                                paymentName == 'telebirr inapp' ||
+                                                paymentName == 'telebirr in app' ||
+                                                paymentName == 'telebirr in-app')
                                             ? 'images/payment/new_payment/telebirr.png'
                                             : paymentName == 'mpesa'
                                             ? 'images/payment/new_payment/mpesa.png'
@@ -2072,16 +2315,45 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           // let it fill the badge so it stays readable.
                                           fillImage:
                                               paymentName == _cyberSourceKey,
-                                          // Old image map (commented out - replaced by ZOORYA new_payment folder):
-                                          // paymentName == "wallet" ? 'images/payment/wallet.png'
-                                          // : paymentName == "cash" ? 'images/payment/cod.png'
-                                          // : paymentName.contains("telebirr") ? 'images/payment/telebirr.png'
-                                          // : ...
                                           press: () async {
                                             // Select this method card
                                             setState(() {
                                               kifiyaMethod = index;
                                             });
+
+                                            // -- Telebirr InApp --
+                                            if (paymentName == 'telebirr inapp' ||
+                                                paymentName == 'telebirr in app' ||
+                                                paymentName == 'telebirr in-app') {
+                                              setState(() {
+                                                _selectedPaymentMethod = paymentName;
+                                              });
+                                              _startTelebirrInApp();
+                                              return;
+                                            }
+
+                                            // -- Cash on Delivery --
+                                            if (paymentName == 'cash') {
+                                              if (widget.onlyCashless!) {
+                                                Service.showMessage(
+                                                  context: context,
+                                                  title: Provider.of<ZLanguage>(
+                                                    context,
+                                                    listen: false,
+                                                  ).onlyDigitalPayments,
+                                                  duration: 5,
+                                                );
+                                                setState(() {
+                                                  kifiyaMethod = -1;
+                                                });
+                                              } else {
+                                                setState(() {
+                                                  _selectedPaymentMethod = "cash";
+                                                });
+                                                await useBorsa();
+                                              }
+                                              return;
+                                            }
 
                                             // -- CyberSource card (Visa / Mastercard, 3-D Secure) via WebView --
                                             if (paymentName == _cyberSourceKey) {
@@ -4232,7 +4504,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
   }
 
-  Future<dynamic> payOrderPayment(otp, paymentId) async {
+  Future<dynamic> payOrderPayment(otp, paymentId, {bool isPaymentModeCash = false}) async {
     if (widget.isCombo) {
       debugPrint(
         '[COMBO-DEBUG] ▶ Step 3: combo_pay_order_payment\n'
@@ -4276,9 +4548,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             "order_payment_id": widget.orderPaymentId,
             "payment_id": paymentId,
             "order_type": 7,
-            // ZOORYA-PAY: all methods are digital (not cash/wallet).
-            // Old: paymentResponse['payment_gateway'][kifiyaMethod]['name'] == "cash"
-            "is_payment_mode_cash": false,
+            "is_payment_mode_cash": isPaymentModeCash,
             "server_token": userData['user']['server_token'],
             "store_delivery_id": services['deliveries'][0]['_id'],
           }
@@ -4287,9 +4557,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             "otp": otp,
             "order_payment_id": widget.orderPaymentId,
             "payment_id": paymentId,
-            // ZOORYA-PAY: all methods are digital (not cash/wallet).
-            // Old: paymentResponse['payment_gateway'][kifiyaMethod]['name'] == "cash"
-            "is_payment_mode_cash": false,
+            "is_payment_mode_cash": isPaymentModeCash,
             "server_token": userData['user']['server_token'],
           };
 
@@ -4347,12 +4615,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/change_user_wallet_status";
     Map data = {
       "user_id": userData['user']['_id'],
-      "is_use_wallet":
-          kifiyaMethod != -1 &&
-          paymentResponse['payment_gateway'][kifiyaMethod]['name']
-                  .toString()
-                  .toLowerCase() ==
-              "wallet",
+      "is_use_wallet": _selectedPaymentMethod == "wallet",
       "server_token": userData['user']['server_token'],
     };
 
