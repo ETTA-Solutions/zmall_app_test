@@ -161,6 +161,30 @@ class ZooryaPayService {
     }
   }
 
+  /// How long a payment screen keeps checking /admin/check_paid_order before it
+  /// stops and asks the user to resend the prompt or check again. The phone
+  /// prompt (USSD / PIN) expires in about this time anyway.
+  static const Duration pollWindow = Duration(minutes: 2);
+
+  /// Wait between two checks (the next check starts only after the previous
+  /// answer came back).
+  static const Duration pollInterval = Duration(seconds: 2);
+
+  /// True when a check_paid_order response says the payment is done.
+  static bool isPaid(dynamic result) {
+    bool yes(dynamic v) => v == true || v == 'true';
+    if (result is! Map) return false;
+    if (yes(result['success']) || yes(result['is_paid']) || yes(result['paid'])) {
+      return true;
+    }
+    final data = result['data'];
+    if (data is Map) {
+      if (yes(data['is_paid']) || yes(data['paid'])) return true;
+      if (data['status'] == 'PAID' || data['status'] == 'COMPLETED') return true;
+    }
+    return false;
+  }
+
   /// Polls POST [baseUrl]/admin/check_paid_order to see if payment is done.
   static Future<dynamic> checkPaidOrder({
     required BuildContext context,

@@ -191,6 +191,7 @@ class _MpesaPhoneSheetState extends State<_MpesaPhoneSheet> {
                         autofillHints: const [AutofillHints.telephoneNumber],
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
+                          _MpesaFullPhoneFormatter(),
                         ],
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _submit(),
@@ -310,6 +311,31 @@ class _MpesaPhoneSheetState extends State<_MpesaPhoneSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Normalizes pasted numbers (e.g. '+2517...', '2517...', '7...') into '07XXXXXXXX' (10 digits).
+class _MpesaFullPhoneFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (text.startsWith('25107') && text.length >= 13) {
+      text = '07${text.substring(5)}';
+    } else if (text.startsWith('2517') && text.length >= 12) {
+      text = '07${text.substring(4)}';
+    } else if (text.startsWith('7') && text.length == 9) {
+      text = '0$text';
+    }
+    if (text.length > 10) {
+      text = text.substring(0, 10);
+    }
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

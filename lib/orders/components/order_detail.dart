@@ -599,7 +599,9 @@ class _OrderDetailState extends State<OrderDetail> {
                           ),
                         ),
 
-                        orderStatus['order_status'] != 25 &&
+                        // Odoo/POS stores: no driver, so no driver timeline.
+                        !isOdooStoreByName(widget.order['store_name']) &&
+                                orderStatus['order_status'] != 25 &&
                                 orderStatus['delivery_status'] != null &&
                                 orderStatus['delivery_status'] < 100
                             ? Container(
@@ -759,7 +761,8 @@ class _OrderDetailState extends State<OrderDetail> {
                                   isLast: true,
                                 ),
                               ),
-                        orderStatus['order_status'] != 25 &&
+                        !isOdooStoreByName(widget.order['store_name']) &&
+                                orderStatus['order_status'] != 25 &&
                                 orderStatus['delivery_status'] != null &&
                                 orderStatus['delivery_status'] > 100
                             ? Container(

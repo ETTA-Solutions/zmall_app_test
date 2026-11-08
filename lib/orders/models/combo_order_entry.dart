@@ -205,7 +205,9 @@ ComboStatusInfo getComboStatus(List<Map<String, dynamic>> orders) {
     final o = orders.first;
     final oStatus = (o['order_status'] as num?)?.toInt() ?? 0;
     final dStatus = (o['delivery_status'] as num?)?.toInt();
-    if (oStatus == 7 && dStatus != null) {
+    // Odoo/POS stores: no driver, always order_status.
+    final isOdoo = isOdooStoreByName(o['store_name']?.toString());
+    if (!isOdoo && oStatus == 7 && dStatus != null) {
       return ComboStatusInfo(
         order_status['$dStatus'] ?? "Waiting to accept order",
         dStatus == 25 ? Colors.green : const Color(0xFFFF8A00),

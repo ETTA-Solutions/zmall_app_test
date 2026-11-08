@@ -60,6 +60,11 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   bool _payError = false;
   String _errorMessage = '';
   int _pollAttempt = 0;
+  // Checks stop after ZooryaPayService.pollWindow (2 min).
+  int _pollGen = 0;
+  DateTime? _pollStartedAt;
+  bool _pollTimedOut = false;
+  bool _manualChecking = false;
 
   // Zoorya Pay Brand Colors
   static const Color _zooryaDarkBg = Color(0xFF06182A);
@@ -217,7 +222,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
           duration: 6,
         );
       }
-      _pollPaymentStatus();
+      _startPolling();
     } else {
       final msg =
           result['message']?.toString() ??
@@ -238,48 +243,152 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     }
   }
 
-  void _pollPaymentStatus() async {
-    if (!mounted) return;
-    _pollAttempt++;
-    debugPrint(
-      '[ZooryaPayUssd] Poll attempt #$_pollAttempt for orderPaymentId=${widget.orderPaymentId}',
-    );
+  /// Starts (or restarts) checking with a fresh 2-minute window.
+  void _startPolling() {
+    _pollGen++;
+    _pollAttempt = 0;
+    _pollStartedAt = DateTime.now();
+    if (mounted) setState(() => _pollTimedOut = false);
+    _pollPaymentStatus(_pollGen);
+  }
 
+  /// Check → wait for the answer → wait 2s → check again, for up to 2 min.
+  void _pollPaymentStatus(int gen) async {
+    while (mounted && gen == _pollGen) {
+      if (DateTime.now().difference(_pollStartedAt!) >=
+          ZooryaPayService.pollWindow) {
+        debugPrint(
+          '[ZooryaPayUssd] ⏱️ Stopped checking after 2 min ($_pollAttempt checks).',
+        );
+        setState(() => _pollTimedOut = true);
+        return;
+      }
+      _pollAttempt++;
+      debugPrint(
+        '[ZooryaPayUssd] Poll attempt #$_pollAttempt for orderPaymentId=${widget.orderPaymentId}',
+      );
+      final result = await ZooryaPayService.checkPaidOrder(
+        context: context,
+        userId: widget.userId,
+        serverToken: widget.serverToken,
+        orderPaymentId: widget.orderPaymentId,
+      );
+      if (!mounted || gen != _pollGen) return;
+      if (ZooryaPayService.isPaid(result)) {
+        debugPrint('[ZooryaPayUssd] Payment confirmed! Closing screen.');
+        _pollGen++;
+        Navigator.pop(context, true);
+        return;
+      }
+      await Future.delayed(ZooryaPayService.pollInterval);
+    }
+  }
+
+  /// "I've paid, check again" — a single check after the 2 minutes.
+  Future<void> _manualCheck() async {
+    setState(() => _manualChecking = true);
     final result = await ZooryaPayService.checkPaidOrder(
       context: context,
       userId: widget.userId,
       serverToken: widget.serverToken,
       orderPaymentId: widget.orderPaymentId,
     );
-
     if (!mounted) return;
-
-    bool isPaid = false;
-    if (result != null) {
-      if (result['success'] == true || result['success'] == 'true')
-        isPaid = true;
-      if (result['is_paid'] == true || result['is_paid'] == 'true')
-        isPaid = true;
-      if (result['paid'] == true || result['paid'] == 'true') isPaid = true;
-      if (result['data'] is Map) {
-        final data = result['data'] as Map;
-        if (data['is_paid'] == true || data['is_paid'] == 'true') isPaid = true;
-        if (data['paid'] == true || data['paid'] == 'true') isPaid = true;
-        if (data['status'] == 'PAID' || data['status'] == 'COMPLETED')
-          isPaid = true;
-      }
-    }
-
-    if (isPaid) {
-      debugPrint('[ZooryaPayUssd] Payment confirmed! Closing screen.');
+    setState(() => _manualChecking = false);
+    if (ZooryaPayService.isPaid(result)) {
       Navigator.pop(context, true);
     } else {
-      debugPrint('[ZooryaPayUssd] Not paid yet. Retrying in 2s...');
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        _pollPaymentStatus();
-      }
+      Service.showMessage(
+        context: context,
+        title: 'Payment not received yet. Resend the prompt to try again.',
+        error: true,
+        duration: 4,
+      );
     }
+  }
+
+  /// "Resend prompt" — sends a new prompt and starts a new 2 minutes.
+  void _resendPrompt() {
+    setState(() {
+      _pollTimedOut = false;
+      _payInitiated = false;
+      _pollAttempt = 0;
+    });
+    _initiatePay();
+  }
+
+  /// Shown after 2 minutes without a confirmed payment.
+  Widget _buildTimedOutBody({required bool light}) {
+    final ink = light ? _dInk : Colors.white;
+    final muted = light ? _dMuted : Colors.white70;
+    final accent = light ? _dNavy : _zooryaCyan;
+    final onAccent = light ? Colors.white : _zooryaDarkBg;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 26, 18, 20),
+      margin: light
+          ? EdgeInsets.zero
+          : EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
+      decoration: BoxDecoration(
+        color: light ? Colors.white : _cardSurface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_off_outlined, size: 40, color: muted),
+          const SizedBox(height: 14),
+          Text(
+            "We couldn't confirm your payment",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: ink,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'The prompt may have expired. Resend it, or check again if you already paid.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: muted, fontSize: 14, height: 1.4),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _manualChecking ? null : _resendPrompt,
+              icon: Icon(Icons.refresh_rounded, color: onAccent),
+              label: Text(
+                'Resend prompt',
+                style: TextStyle(
+                  color: onAccent,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _manualChecking ? null : _manualCheck,
+            child: _manualChecking
+                ? SpinKitThreeBounce(color: accent, size: 16)
+                : Text(
+                    "I've paid, check again",
+                    style: TextStyle(color: accent, fontWeight: FontWeight.w700),
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -338,6 +447,12 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       body: SafeArea(
         child: _payError
             ? _buildErrorBody()
+            : _pollTimedOut
+            ? Center(
+                child: SingleChildScrollView(
+                  child: _buildTimedOutBody(light: false),
+                ),
+              )
             : isTelebirr
             ? _buildTelebirrWaitingBody()
             : _buildGenericWaitingBody(),
@@ -424,6 +539,11 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                     ? KeyedSubtree(
                         key: const ValueKey('err'),
                         child: _buildDashenErrorBody(),
+                      )
+                    : _pollTimedOut
+                    ? KeyedSubtree(
+                        key: const ValueKey('timeout'),
+                        child: _buildTimedOutBody(light: true),
                       )
                     : KeyedSubtree(
                         key: const ValueKey('wait'),

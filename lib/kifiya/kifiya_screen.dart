@@ -28,6 +28,7 @@ import 'package:zmall/kifiya/components/telebirr_ussd.dart';
 import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
 import 'package:zmall/kifiya/zoorya_pay/mpesa_phone_sheet.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_mpesa_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_otp_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_qr_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
@@ -936,8 +937,34 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               },
             );
             return;
-          } else if (selKey == 'mpesa' ||
-              selKey == 'nib' ||
+          } else if (selKey == 'mpesa') {
+            _showProceedToPayDialog(
+              displayName: selDisplayName,
+              type: selType,
+              onProceed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ZooryaPayMpesaScreen(
+                      displayName: selDisplayName,
+                      imageUrl: selImageUrl,
+                      amount: widget.price!,
+                      userId: userData['user']['_id'],
+                      serverToken: userData['user']['server_token'],
+                      uniqueId: widget.orderPaymentUniqueId!,
+                      orderPaymentId: widget.orderPaymentId!,
+                      initialPhoneNumber: userData['user']['phone']?.toString(),
+                    ),
+                  ),
+                ).then((value) {
+                  if (value == true) {
+                    _boaVerify();
+                  }
+                });
+              },
+            );
+            return;
+          } else if (selKey == 'nib' ||
               selKey == 'ethswitch') {
             _showProceedToPayDialog(
               displayName: selDisplayName,
@@ -1437,14 +1464,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                         title: "Telebirr payment confirmed.",
                       );
 
-                      if (widget.isCourier!) {
-                        _createCourierOrder();
-                      } else if (aliexpressCart != null &&
-                          aliexpressCart!.cart.storeId == cart.storeId) {
-                        _createAliexpressOrder();
-                      } else {
-                        _createOrder();
-                      }
+                      // FOR TESTING TELEBIRR INAPP: commented out create order endpoint
+                      // if (widget.isCourier!) {
+                      //   _createCourierOrder();
+                      // } else if (aliexpressCart != null &&
+                      //     aliexpressCart!.cart.storeId == cart.storeId) {
+                      //   _createAliexpressOrder();
+                      // } else {
+                      //   _createOrder();
+                      // }
                     } else {
                       Service.showMessage(
                         context: context,
@@ -1650,6 +1678,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   }
 
   int _zooryaPollAttempt = 0;
+  // Direct NIB / EthSwitch checks stop after ZooryaPayService.pollWindow (2 min).
+  DateTime? _zooryaPollStartedAt;
+  String _zooryaDirectDisplayName = '';
 
   Future<void> _startDirectZooryaPayUssd({
     required String method,
@@ -1703,6 +1734,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       _loading = true;
       _placeOrder = true;
       _zooryaPollAttempt = 0;
+      _zooryaPollStartedAt = DateTime.now();
+      _zooryaDirectDisplayName = displayName;
     });
 
     debugPrint('╔══════════════════════════════════════════════════════════════════╗');
@@ -1791,8 +1824,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       debugPrint('╚══════════════════════════════════════════════════════════════════╝');
       _boaVerify();
     } else {
-      if (_zooryaPollAttempt < 60) {
-        await Future.delayed(const Duration(seconds: 2));
+      final elapsed = DateTime.now().difference(
+        _zooryaPollStartedAt ?? DateTime.now(),
+      );
+      if (elapsed < ZooryaPayService.pollWindow) {
+        await Future.delayed(ZooryaPayService.pollInterval);
         if (mounted) {
           _pollDirectZooryaPayment(
             orderPaymentId: orderPaymentId,
@@ -1800,19 +1836,52 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           );
         }
       } else {
-        debugPrint('[ZOORYA-PAY] ⏱️ Polling timed out after 60 attempts.');
+        debugPrint(
+          '[ZOORYA-PAY] ⏱️ Stopped checking after 2 min ($_zooryaPollAttempt checks).',
+        );
         setState(() {
           _loading = false;
           _placeOrder = false;
         });
-        Service.showMessage(
-          context: context,
-          title: "Payment timeout. If you completed payment, please check your order status.",
-          error: true,
-          duration: 6,
-        );
+        _showZooryaTimeoutDialog(method: method);
       }
     }
+  }
+
+  /// Shown when a direct NIB / EthSwitch payment isn't confirmed within 2 min.
+  void _showZooryaTimeoutDialog({required String method}) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("We couldn't confirm your payment"),
+        content: const Text(
+          'The prompt may have expired. Resend it, or check again if you already paid.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _boaVerify(); // one single check
+            },
+            child: const Text("I've paid, check again"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _startDirectZooryaPayUssd(
+                method: method,
+                displayName: _zooryaDirectDisplayName,
+              );
+            },
+            child: const Text(
+              'Resend prompt',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _ethSwitchVerify(String traceNo) async {
@@ -2456,9 +2525,38 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                               return;
                                             }
 
+                                            // -- ZOORYA-PAY: M-PESA (Dedicated clean checkout screen like Zemen) --
+                                            if (paymentName == 'mpesa') {
+                                              _showProceedToPayDialog(
+                                                displayName: displayName,
+                                                type: methodType,
+                                                onProceed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => ZooryaPayMpesaScreen(
+                                                        displayName: displayName,
+                                                        imageUrl: methodImageUrl,
+                                                        amount: widget.price!,
+                                                        userId: userData['user']['_id'],
+                                                        serverToken: userData['user']['server_token'],
+                                                        uniqueId: widget.orderPaymentUniqueId!,
+                                                        orderPaymentId: widget.orderPaymentId!,
+                                                        initialPhoneNumber: userData['user']['phone']?.toString(),
+                                                      ),
+                                                    ),
+                                                  ).then((value) {
+                                                    if (value == true) {
+                                                      _boaVerify();
+                                                    }
+                                                  });
+                                                },
+                                              );
+                                              return;
+                                            }
+
                                             // -- ZOORYA-PAY: Other USSD methods (Direct to USSD, preceded by confirmation popup) --
-                                            if (paymentName == 'mpesa' ||
-                                                paymentName == 'nib' ||
+                                            if (paymentName == 'nib' ||
                                                 paymentName == 'ethswitch') {
                                               _showProceedToPayDialog(
                                                 displayName: displayName,
@@ -3680,19 +3778,20 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                                       "Telebirr payment confirmed.",
                                                                 );
 
-                                                                if (widget
-                                                                    .isCourier!) {
-                                                                  _createCourierOrder();
-                                                                } else if (aliexpressCart !=
-                                                                        null &&
-                                                                    aliexpressCart!
-                                                                            .cart
-                                                                            .storeId ==
-                                                                        cart.storeId) {
-                                                                  _createAliexpressOrder();
-                                                                } else {
-                                                                  _createOrder();
-                                                                }
+                                                                // FOR TESTING TELEBIRR INAPP: commented out create order endpoint
+                                                                // if (widget
+                                                                //     .isCourier!) {
+                                                                //   _createCourierOrder();
+                                                                // } else if (aliexpressCart !=
+                                                                //         null &&
+                                                                //     aliexpressCart!
+                                                                //             .cart
+                                                                //             .storeId ==
+                                                                //         cart.storeId) {
+                                                                //   _createAliexpressOrder();
+                                                                // } else {
+                                                                //   _createOrder();
+                                                                // }
                                                               } else {
                                                                 Service.showMessage(
                                                                   context:

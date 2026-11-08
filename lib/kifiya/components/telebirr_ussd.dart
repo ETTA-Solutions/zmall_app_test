@@ -51,6 +51,11 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
   String telebirrUrl = "";
   String uuid = "";
   int _verifyAttempt = 0;
+  // 2-minute check window (ZooryaPayService.pollWindow).
+  DateTime? _verifyStartedAt;
+  int _verifyGen = 0;
+  bool _timedOut = false;
+  bool _manualChecking = false;
 
   @override
   void initState() {
@@ -86,7 +91,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
 
       if (result != null && result['success'] == true) {
         debugPrint('[TelebirrUssd] ✅ ZooryaPay Telebirr USSD initiated! Starting verify polling...');
-        _verifyPayment();
+        _startVerify();
       } else {
         final msg = result?['message']?.toString() ??
             "Telebirr payment initiation failed. Please try again.";
@@ -112,7 +117,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       debugPrint(
         '[TelebirrUssd] ✅ Init successful: ${data['result']['message']}',
       );
-      _verifyPayment();
+      _startVerify();
     } else {
       debugPrint('[TelebirrUssd] ❌ Init failed or unapproved: $data');
       final errorMsg =
@@ -130,13 +135,18 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
     }
   }
 
-  void _verifyPayment() async {
-    if (!mounted) return;
-    _verifyAttempt++;
-    debugPrint(
-      '[TelebirrUssd] 🔄 Verify payment polling attempt #$_verifyAttempt...',
-    );
+  /// Starts (or restarts) the check loop with a fresh 2-minute window.
+  void _startVerify() {
+    _verifyGen++;
+    _verifyAttempt = 0;
+    _verifyStartedAt = DateTime.now();
+    if (mounted) setState(() => _timedOut = false);
+    _verifyPayment(_verifyGen);
+  }
 
+  /// One call to /admin/check_paid_order. Returns the response when paid,
+  /// otherwise null.
+  Future<dynamic> _checkOnce() async {
     if (widget.isZooryaPay) {
       final result = await ZooryaPayService.checkPaidOrder(
         context: context,
@@ -144,58 +154,127 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
         serverToken: widget.serverToken,
         orderPaymentId: widget.orderPaymentId,
       );
-      if (!mounted) return;
-
-      bool isPaid = false;
-      if (result != null) {
-        if (result['success'] == true || result['success'] == 'true') isPaid = true;
-        if (result['is_paid'] == true || result['is_paid'] == 'true') isPaid = true;
-        if (result['paid'] == true || result['paid'] == 'true') isPaid = true;
-        if (result['data'] is Map) {
-          final data = result['data'] as Map;
-          if (data['is_paid'] == true || data['is_paid'] == 'true') isPaid = true;
-          if (data['paid'] == true || data['paid'] == 'true') isPaid = true;
-          if (data['status'] == 'PAID' || data['status'] == 'COMPLETED') isPaid = true;
-        }
-      }
-
-      if (isPaid) {
-        debugPrint('[TelebirrUssd] ✅ ZooryaPay Telebirr payment verified! check_paid_order response: $result');
-        // Return the check_paid_order response itself — the backend creates
-        // the order inside check_paid_order, so the caller uses this response
-        // instead of calling /api/user/create_order.
-        Navigator.pop(context, result);
-      } else {
-        if (_verifyAttempt < 60) {
-          await Future.delayed(const Duration(seconds: 2));
-          if (mounted) _verifyPayment();
-        }
-      }
-      return;
+      return ZooryaPayService.isPaid(result) ? result : null;
     }
+    final data = await verifyPayment();
+    return (data != null && data['success'] == true) ? data : null;
+  }
 
-    var data = await verifyPayment();
-    debugPrint(
-      '[TelebirrUssd] Verify attempt #$_verifyAttempt response: $data',
-    );
-    if (!mounted) return;
-
-    if (data != null && data['success'] == true) {
-      debugPrint(
-        '[TelebirrUssd] ✅ Payment verified successfully! Closing screen.',
-      );
-      Navigator.pop(context, true);
+  void _onPaid(dynamic result) {
+    debugPrint('[TelebirrUssd] ✅ Payment verified! Response: $result');
+    _verifyGen++; // stop the loop
+    if (widget.isZooryaPay) {
+      // The backend creates the order inside check_paid_order, so return
+      // that response instead of calling /api/user/create_order.
+      Navigator.pop(context, result);
     } else {
-      debugPrint(
-        '[TelebirrUssd] ⏳ Payment not yet completed. Re-checking in 2 seconds...',
-      );
-      await Future.delayed(
-        Duration(seconds: 2),
-      );
-      if (mounted) {
-        _verifyPayment();
-      }
+      Navigator.pop(context, true);
     }
+  }
+
+  /// Check → wait for the answer → wait 2s → check again, for up to
+  /// 2 minutes. After that, stop and let the user resend or check again.
+  void _verifyPayment(int gen) async {
+    while (mounted && gen == _verifyGen) {
+      final elapsed = DateTime.now().difference(_verifyStartedAt!);
+      if (elapsed >= ZooryaPayService.pollWindow) {
+        debugPrint(
+          '[TelebirrUssd] ⏱️ Stopped checking after 2 min ($_verifyAttempt checks).',
+        );
+        setState(() => _timedOut = true);
+        return;
+      }
+      _verifyAttempt++;
+      debugPrint('[TelebirrUssd] 🔄 Check #$_verifyAttempt');
+      final paid = await _checkOnce();
+      if (!mounted || gen != _verifyGen) return;
+      if (paid != null) {
+        _onPaid(paid);
+        return;
+      }
+      await Future.delayed(ZooryaPayService.pollInterval);
+    }
+  }
+
+  /// "I've paid, check again" — a single check.
+  Future<void> _manualCheck() async {
+    setState(() => _manualChecking = true);
+    final paid = await _checkOnce();
+    if (!mounted) return;
+    setState(() => _manualChecking = false);
+    if (paid != null) {
+      _onPaid(paid);
+    } else {
+      Service.showMessage(
+        context: context,
+        title: "Payment not received yet. Resend the prompt to try again.",
+        error: true,
+        duration: 4,
+      );
+    }
+  }
+
+  /// "Resend prompt" — sends a new USSD prompt and starts a new 2 minutes.
+  void _resend() {
+    setState(() => _timedOut = false);
+    _initTelebirr();
+  }
+
+  Widget _buildTimedOut() {
+    return Column(
+      children: [
+        const Icon(Icons.timer_off_outlined, size: 40, color: Color(0xFF8E8E93)),
+        SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
+        const Text(
+          "We couldn't confirm your payment",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          "The prompt may have expired. Resend it, or check again if you already paid.",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, height: 1.4, color: Color(0xFF6B7280)),
+        ),
+        SizedBox(height: getProportionateScreenHeight(kDefaultPadding * 1.5)),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: (_loading || _manualChecking) ? null : _resend,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Resend prompt',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: OutlinedButton(
+            onPressed: (_loading || _manualChecking) ? null : _manualCheck,
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _manualChecking
+                ? const SpinKitThreeBounce(color: Colors.black, size: 18)
+                : const Text(
+                    "I've paid, check again",
+                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+                  ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -221,9 +300,10 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       ),
       body: SafeArea(
         child: Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -257,22 +337,26 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
                 SizedBox(
                   height: getProportionateScreenHeight(kDefaultPadding * 2),
                 ),
-                const SpinKitPouringHourGlassRefined(
-                  color: Colors.black,
-                  size: 40,
-                ),
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding),
-                ),
-                const Text(
-                  "Please complete payment through the USSD prompt.\nWaiting for payment to be completed....",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.45,
-                    color: Color(0xFF2C2C2E),
+                if (_timedOut)
+                  _buildTimedOut()
+                else ...[
+                  const SpinKitPouringHourGlassRefined(
+                    color: Colors.black,
+                    size: 40,
                   ),
-                ),
+                  SizedBox(
+                    height: getProportionateScreenHeight(kDefaultPadding),
+                  ),
+                  const Text(
+                    "Please complete payment through the USSD prompt.\nWaiting for payment to be completed....",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.45,
+                      color: Color(0xFF2C2C2E),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

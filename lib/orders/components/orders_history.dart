@@ -258,7 +258,9 @@ class _OrderHistoryState extends State<OrderHistory> {
                                           ?.copyWith(color: kGreyColor),
                                     ),
                                     Text(
-                                      order['order_status'] == 7
+                                      // Odoo/POS stores: no driver, always order_status.
+                                      !isOdooStoreByName(order['store_detail']?['name']) &&
+                                              order['order_status'] == 7
                                           ? "${order_status['${order['delivery_status']}']}"
                                           : "${order_status['${order['order_status']}']}",
                                       style: Theme.of(context).textTheme.bodySmall

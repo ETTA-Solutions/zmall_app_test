@@ -54,6 +54,11 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
   String _errorMessage = '';
   String? _qrValue;
   int _pollAttempt = 0;
+  // Checks stop after ZooryaPayService.pollWindow (2 min).
+  int _pollGen = 0;
+  DateTime? _pollStartedAt;
+  bool _pollTimedOut = false;
+  bool _manualChecking = false;
 
   // Zoorya Pay Brand Colors
   static const Color _zooryaDarkBg = Color(0xFF06182A);
@@ -188,7 +193,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
       });
 
       // Start polling for payment confirmation
-      _pollPaymentStatus();
+      _startPolling();
     } else {
       final msg = result['message']?.toString() ??
           'QR payment initiation failed. Please try again.';
@@ -223,47 +228,161 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
     return false;
   }
 
-  void _pollPaymentStatus() async {
-    if (!mounted) return;
-    _pollAttempt++;
+  /// Starts (or restarts) checking with a fresh 2-minute window.
+  void _startPolling() {
+    _pollGen++;
+    _pollAttempt = 0;
+    _pollStartedAt = DateTime.now();
+    if (mounted) setState(() => _pollTimedOut = false);
+    _pollPaymentStatus(_pollGen);
+  }
 
-    debugPrint('┌── [ZooryaPayQr] 🔄 Polling Attempt #$_pollAttempt ────────────────');
-    debugPrint('│ Order Payment ID: ${widget.orderPaymentId}');
-    debugPrint('│ Endpoint:         POST /admin/check_paid_order');
+  /// Check → wait for the answer → wait 2s → check again, for up to 2 min.
+  void _pollPaymentStatus(int gen) async {
+    while (mounted && gen == _pollGen) {
+      if (DateTime.now().difference(_pollStartedAt!) >=
+          ZooryaPayService.pollWindow) {
+        debugPrint(
+          '[ZooryaPayQr] ⏱️ Stopped checking after 2 min ($_pollAttempt checks).',
+        );
+        setState(() => _pollTimedOut = true);
+        return;
+      }
+      _pollAttempt++;
+      debugPrint('[ZooryaPayQr] 🔄 Polling Attempt #$_pollAttempt');
+      final result = await ZooryaPayService.checkPaidOrder(
+        context: context,
+        userId: widget.userId,
+        serverToken: widget.serverToken,
+        orderPaymentId: widget.orderPaymentId,
+      );
+      if (!mounted || gen != _pollGen) return;
+      if (_isPaymentConfirmed(result)) {
+        _pollGen++;
+        _onPaid();
+        return;
+      }
+      await Future.delayed(ZooryaPayService.pollInterval);
+    }
+  }
 
+  void _onPaid() {
+    debugPrint('[ZooryaPayQr] ✅ PAYMENT CONFIRMED! Closing QR screen');
+    Service.showMessage(
+      context: context,
+      title: 'Payment confirmed successfully!',
+      error: false,
+      duration: 3,
+    );
+    Navigator.pop(context, true);
+  }
+
+  /// "I've paid, check again" — a single check after the 2 minutes.
+  Future<void> _manualCheck() async {
+    setState(() => _manualChecking = true);
     final result = await ZooryaPayService.checkPaidOrder(
       context: context,
       userId: widget.userId,
       serverToken: widget.serverToken,
       orderPaymentId: widget.orderPaymentId,
     );
-
     if (!mounted) return;
-
-    final confirmed = _isPaymentConfirmed(result);
-    debugPrint('│ Response:         $result');
-    debugPrint('│ Confirmed Paid:   $confirmed');
-    debugPrint('└─────────────────────────────────────────────────────────────');
-
-    if (confirmed) {
-      debugPrint('╔══════════════════════════════════════════════════════════════╗');
-      debugPrint('║ ✅ [ZooryaPayQr] PAYMENT CONFIRMED! CLOSING QR SCREEN        ║');
-      debugPrint('╚══════════════════════════════════════════════════════════════╝');
-      if (mounted) {
-        Service.showMessage(
-          context: context,
-          title: 'Payment confirmed successfully!',
-          error: false,
-          duration: 3,
-        );
-        Navigator.pop(context, true);
-      }
+    setState(() => _manualChecking = false);
+    if (_isPaymentConfirmed(result)) {
+      _onPaid();
     } else {
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        _pollPaymentStatus();
-      }
+      Service.showMessage(
+        context: context,
+        title: 'Payment not received yet. Get a new QR code to try again.',
+        error: true,
+        duration: 4,
+      );
     }
+  }
+
+  /// "Get new QR code" — asks for a new QR and starts a new 2 minutes.
+  void _newQr() {
+    setState(() {
+      _pollTimedOut = false;
+      _loading = true;
+      _qrValue = null;
+    });
+    _initiatePay();
+  }
+
+  /// Shown after 2 minutes without a confirmed payment.
+  Widget _buildTimedOutBody() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 26, 18, 20),
+          decoration: BoxDecoration(
+            color: _cardSurface,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.timer_off_outlined, size: 40, color: Colors.white70),
+              const SizedBox(height: 14),
+              const Text(
+                "We couldn't confirm your payment",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'The QR code may have expired. Get a new one, or check again if you already paid.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _manualChecking ? null : _newQr,
+                  icon: const Icon(Icons.refresh_rounded, color: _zooryaDarkBg),
+                  label: const Text(
+                    'Get new QR code',
+                    style: TextStyle(
+                      color: _zooryaDarkBg,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _zooryaCyan,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _manualChecking ? null : _manualCheck,
+                child: _manualChecking
+                    ? const SpinKitThreeBounce(color: _zooryaCyan, size: 16)
+                    : const Text(
+                        "I've paid, check again",
+                        style: TextStyle(
+                          color: _zooryaCyan,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -339,6 +458,10 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
 
     if (_payError) {
       return _buildErrorBody();
+    }
+
+    if (_pollTimedOut) {
+      return _buildTimedOutBody();
     }
 
     return _buildQrBody();
