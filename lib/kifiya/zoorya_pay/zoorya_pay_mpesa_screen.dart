@@ -274,7 +274,9 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
         error: false,
         duration: 3,
       );
-      Navigator.pop(context, true);
+      // TEST: return the check_paid_order response (backend already created
+      // the order). Old behaviour: Navigator.pop(context, true);
+      Navigator.pop(context, res is Map ? res : true);
       return true;
     }
     return false;
@@ -610,7 +612,7 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
     final focused = _phoneFocus.hasFocus;
     final error = _phoneValidationError;
     final borderColor = error != null
-        ? Colors.redAccent
+        ? const Color(0xFFFFA000)
         : (focused ? _mpesaGreen : Colors.transparent);
 
     return Column(
@@ -727,22 +729,36 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
           duration: const Duration(milliseconds: 180),
           child: error == null && _errorMessage == null
               ? const SizedBox(width: double.infinity)
-              : Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 4),
+              : Container(
+                  // Warning alert (same style as the ZooryaPay USSD warning badge)
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFA000).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFFFA000).withValues(alpha: 0.40),
+                    ),
+                  ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Icon(
-                        Icons.error_outline_rounded,
-                        size: 14,
-                        color: Colors.redAccent,
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: Color(0xFFE65100),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           error ?? _errorMessage ?? '',
                           style: const TextStyle(
-                            color: Colors.redAccent,
+                            color: Color(0xFF8A4B00),
                             fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -945,33 +961,33 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
                   ),
           ),
         ] else
-        // Resend countdown
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Didn\'t receive the prompt?',
-              style: TextStyle(color: _muted, fontSize: 13),
-            ),
-            TextButton(
-              onPressed: (_loading || _resendCountdown > 0)
-                  ? null
-                  : _handleSendPrompt,
-              style: TextButton.styleFrom(foregroundColor: _mpesaGreen),
-              child: Text(
-                _resendCountdown > 0
-                    ? 'Resend in 0:${_resendCountdown.toString().padLeft(2, '0')}'
-                    : 'Resend prompt',
-                style: TextStyle(
-                  color: _resendCountdown > 0 ? _muted : _mpesaGreen,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+          // Resend countdown
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Didn\'t receive the prompt?',
+                style: TextStyle(color: _muted, fontSize: 13),
+              ),
+              TextButton(
+                onPressed: (_loading || _resendCountdown > 0)
+                    ? null
+                    : _handleSendPrompt,
+                style: TextButton.styleFrom(foregroundColor: _mpesaGreen),
+                child: Text(
+                  _resendCountdown > 0
+                      ? 'Resend in 0:${_resendCountdown.toString().padLeft(2, '0')}'
+                      : 'Resend prompt',
+                  style: TextStyle(
+                    color: _resendCountdown > 0 ? _muted : _mpesaGreen,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }

@@ -957,8 +957,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                     ),
                   ),
                 ).then((value) {
-                  if (value == true) {
-                    _boaVerify();
+                  // TEST: M-PESA order is created by the backend in /admin/check_paid_order,
+                  // so the app does NOT call create_order. Uncomment to restore:
+                  // if (value == true) {
+                  //   _boaVerify();
+                  // }
+                  if (value is Map) {
+                    _finishBackendCreatedOrder(value);
+                  } else if (value == true) {
+                    _boaVerify(skipCreateOrder: true);
                   }
                 });
               },
@@ -2546,8 +2553,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                       ),
                                                     ),
                                                   ).then((value) {
-                                                    if (value == true) {
-                                                      _boaVerify();
+                                                    // TEST: M-PESA order is created by the backend in /admin/check_paid_order,
+                                                    // so the app does NOT call create_order. Uncomment to restore:
+                                                    // if (value == true) {
+                                                    //   _boaVerify();
+                                                    // }
+                                                    if (value is Map) {
+                                                      _finishBackendCreatedOrder(value);
+                                                    } else if (value == true) {
+                                                      _boaVerify(skipCreateOrder: true);
                                                     }
                                                   });
                                                 },
