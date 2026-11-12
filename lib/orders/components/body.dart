@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
@@ -18,6 +17,7 @@ import 'package:zmall/widgets/linear_loading_indicator.dart';
 import 'package:zmall/widgets/shimmer_widget.dart';
 import 'package:zmall/orders/models/combo_order_entry.dart';
 import 'package:zmall/orders/components/combo_order_card.dart';
+import 'package:zmall/orders/components/combo_order_detail.dart';
 
 class Body extends StatefulWidget {
   @override
@@ -83,140 +83,25 @@ class _BodyState extends State<Body> {
   }
 
   void _showComboOrderPicker(BuildContext context, OrderEntry entry) {
-    if (entry.comboOrders.length == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OrderDetail(
+    // One order left in the combo: open the normal single-store page.
+    // Two or more: show every store's status together on one page.
+    final Widget screen = entry.comboOrders.length == 1
+        ? OrderDetail(
             order: entry.comboOrders[0],
             userId: userData['user']['_id'],
             userPhone: userData['user']['phone'],
             serverToken: userData['user']['server_token'],
-          ),
-        ),
-      ).then((_) => getUser());
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(kDefaultPadding)),
-      ),
-      backgroundColor: kPrimaryColor,
-      builder: (ctx) {
-        final meta = Provider.of<ZMetaData>(context, listen: false);
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.all(kDefaultPadding),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Order from 2 Stores",
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: kBlackColor,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  "Select a store to view individual order details and tracking:",
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: kGreyColor),
-                ),
-                SizedBox(height: kDefaultPadding),
-                ...entry.comboOrders.map((childOrder) {
-                  final name = childOrder['store_name'] ??
-                      childOrder['store_detail']?['name'] ??
-                      "Store";
-                  final uniqueId = childOrder['unique_id'] ?? "";
-                  final price = (childOrder['total_order_price'] ??
-                          childOrder['total'] ??
-                          0)
-                      .toDouble();
-                  final img = childOrder['store_image'] ??
-                      childOrder['store_detail']?['image_url'] ??
-                      "";
-                  return Card(
-                    color: kWhiteColor,
-                    margin: EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: img.toString().isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: img.toString().startsWith("http")
-                                      ? img.toString()
-                                      : "${meta.baseUrl}/$img",
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    color: kWhiteColor,
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(kGreyColor),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (context, url, error) => Container(
-                                    color: kWhiteColor,
-                                    child: Icon(HeroiconsOutline.buildingStorefront, color: kGreyColor),
-                                  ),
-                                )
-                              : Container(
-                                  color: kWhiteColor,
-                                  child: Icon(HeroiconsOutline.buildingStorefront, color: kGreyColor),
-                                ),
-                        ),
-                      ),
-                      title: Text(
-                        Service.capitalizeFirstLetters(name.toString()),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: kBlackColor,
-                        ),
-                      ),
-                      subtitle: Text("Order #$uniqueId"),
-                      trailing: Text(
-                        "${meta.currency} ${price.toStringAsFixed(2)}",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: kBlackColor,
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => OrderDetail(
-                              order: childOrder,
-                              userId: userData['user']['_id'],
-                              userPhone: userData['user']['phone'],
-                              serverToken: userData['user']['server_token'],
-                            ),
-                          ),
-                        ).then((_) => getUser());
-                      },
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+          )
+        : ComboOrderDetail(
+            orders: entry.comboOrders,
+            userId: userData['user']['_id'],
+            userPhone: userData['user']['phone'],
+            serverToken: userData['user']['server_token'],
+          );
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+    ).then((_) => getUser());
   }
 
   @override

@@ -102,11 +102,12 @@ class _AliProductListScreenState extends State<AliProductListScreen> {
   void getCart() async {
     // debugPrint("Fetching data");
     var data = await Service.read('cart');
-    if (data != null) {
-      setState(() {
-        cart = Cart.fromJson(data);
-      });
-    }
+    if (!mounted) return;
+    // Always sync with storage: when the cart was cleared (e.g. last item
+    // removed on the cart page) reset to null so the badge drops to 0.
+    setState(() {
+      cart = data != null ? Cart.fromJson(data) : null;
+    });
     // calculatePrice();
   }
 

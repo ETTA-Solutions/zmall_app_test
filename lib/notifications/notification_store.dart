@@ -650,6 +650,23 @@ class _NotificationStoreState extends State<NotificationStore> {
           addToCart(item, destination, storeLocation, storeId);
         });
       },
+      onReplace: () async {
+        // Drops the current second store; the first store stays.
+        await ComboCart.clear();
+        await ComboCart.start(
+          userData: userData,
+          storeId: storeId,
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
+        );
+      },
       onCombo: () async {
         await ComboCart.start(
           userData: userData,

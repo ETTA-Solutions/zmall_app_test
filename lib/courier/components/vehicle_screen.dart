@@ -1134,6 +1134,18 @@ class _VehicleScreenState extends State<VehicleScreen> {
 
   Future<dynamic> getCourierInvoice() async {
     // debugPrint("getting courier invoice");
+    // Schedule values are saved by the courier screen before this step.
+    // CourierScreen stores 'is_schedule' with Service.save (a JSON string),
+    // so Service.readBool would throw here and leave the screen loading.
+    bool isSchedule = false;
+    dynamic scheduleStart;
+    try {
+      isSchedule = (await Service.read('is_schedule')) == true;
+      scheduleStart = await Service.read('schedule_start');
+    } catch (_) {
+      isSchedule = false;
+      scheduleStart = null;
+    }
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_courier_order_invoice";
 
@@ -1149,6 +1161,16 @@ class _VehicleScreenState extends State<VehicleScreen> {
       "city_id": Provider.of<ZMetaData>(context, listen: false).cityId,
       "country_id": widget.userData['user']['country_id'],
       "is_round_trip": isRoundTrip,
+      // Order intent: saved by the backend with this order_payment and
+      // used to create the order itself once payment is confirmed.
+      "order_type": 7,
+      "delivery_type": 2,
+      "paid_by": paidBySender ? 1 : 2,
+      "is_schedule_order": isSchedule,
+      "schedule_order_start_at": isSchedule && scheduleStart != null
+          ? scheduleStart.toString()
+          : "",
+      "flow": "single",
     };
     var body = json.encode(data);
     // debugPrint(body);

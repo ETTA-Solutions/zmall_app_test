@@ -123,6 +123,14 @@ class ComboService {
       "store_id": route.waypointStoreId,
       "cart_id": combo.cartIdByStore[route.waypointStoreId],
     },
+    // Order intent: saved by the backend with both order_payments and used
+    // to create the two orders itself once both are paid. Same fields
+    // combo_create_order takes.
+    "flow": "combo",
+    "store_a_cart_id": combo.cartIdByStore[route.originStoreId],
+    "store_b_cart_id": combo.cartIdByStore[route.waypointStoreId],
+    "is_user_pick_up_order": false,
+    "order_from": Platform.isIOS ? "ios" : "android",
   });
 
   /// Step 3: pays both order payments. Like single-store pay_order_payment,

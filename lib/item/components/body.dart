@@ -15,6 +15,8 @@ import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/notifications/notification_store.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/services/zmall_availability_service.dart';
+import 'package:zmall/widgets/stock_left_notification.dart';
 import 'package:zmall/utils/size_config.dart';
 
 class Body extends StatefulWidget {
@@ -88,6 +90,89 @@ class _BodyState extends State<Body> {
   }
 
   void _specDebug(String msg) => debugPrint("[SPEC DEBUG] $msg");
+
+  // ── Odoo availability (same "Limited Stock" popup as the cart) ──────────
+
+  /// Last popup shown, so tapping + again doesn't reopen the same one.
+  String? _lastStockLeftSignature;
+
+  /// The store's Odoo /zmall_order URL, or null for non-POS stores.
+  String? _resolveOdooOrderUrl() {
+    final String? storeId = widget.item['store_id']?.toString();
+    String? url = ZmallAvailabilityService.extractOrderUrl(widget.item);
+    if (url != null && url.isNotEmpty) return url;
+    if (cart?.storeId == storeId &&
+        cart?.zmallOrderUrl != null &&
+        cart!.zmallOrderUrl!.isNotEmpty) {
+      return cart!.zmallOrderUrl;
+    }
+    if (storeId != null) {
+      url = ZmallAvailabilityService.getStoreOrderUrl(storeId);
+      if (url != null && url.isNotEmpty) return url;
+    }
+    final String? slug = zmallBranchSlugForStore(storeId);
+    if (slug != null && slug.isNotEmpty) {
+      return "$kZmallOdooBaseUrl/zmall_order/$slug";
+    }
+    return null;
+  }
+
+  /// Called when the user taps +. Asks Odoo for this item's stock and shows
+  /// the "Limited Stock" popup when the chosen quantity is above the
+  /// `forecasted_quantity`. Silent for non-POS stores and on network errors.
+  Future<void> _checkStockOnIncrease() async {
+    final int? odooId = extractOdooProductId(
+      widget.item is Map ? Map<String, dynamic>.from(widget.item) : null,
+    );
+    final String? orderUrl = _resolveOdooOrderUrl();
+    if (odooId == null || orderUrl == null) return;
+
+    final int requested = quantity;
+    final result = await ZmallAvailabilityService.check(
+      orderUrl: orderUrl,
+      products: [
+        {"product_id": odooId, "quantity": requested},
+      ],
+    );
+    // Ignore stale answers if the user changed the quantity meanwhile.
+    if (!mounted || result == null || !result.success) return;
+    if (requested != quantity) return;
+
+    for (final product in result.products) {
+      if (product.productId != odooId) continue;
+      final double? forecasted = product.forecastedQuantity;
+      if (product.isAvailableForRequestedQuantity || forecasted == null) {
+        return;
+      }
+      final int available = forecasted < 0 ? 0 : forecasted.toInt();
+      final String signature = '$odooId:$available:$requested';
+      if (signature == _lastStockLeftSignature) return;
+      _lastStockLeftSignature = signature;
+      final String baseUrl =
+          Provider.of<ZMetaData>(context, listen: false).baseUrl;
+      StockLeftNotification.show(
+        context: context,
+        items: [
+          StockLeftItem(
+            item: Item(
+              id: widget.item['_id'],
+              quantity: requested,
+              price: price,
+              itemName: widget.item['name'],
+              imageURL: widget.item['image_url'] != null &&
+                      widget.item['image_url'].length > 0
+                  ? "$baseUrl/${widget.item['image_url'][0]}"
+                  : null,
+              odooProductId: odooId,
+            ),
+            forecastedQty: available,
+            cartQty: requested,
+          ),
+        ],
+      );
+      return;
+    }
+  }
 
   void requiredCount() {
     _specDebug(
@@ -324,6 +409,7 @@ class _BodyState extends State<Body> {
                           quantity += 1;
                           updatePrice();
                         });
+                        _checkStockOnIncrease();
                       },
                     ),
                   ],
@@ -1138,6 +1224,24 @@ class _BodyState extends State<Body> {
           cart = Cart();
           addToCart(item, destination, storeLocation);
         });
+        Navigator.of(context).pop();
+      },
+      onReplace: () async {
+        // Drops the current second store; the first store stays.
+        await ComboCart.clear();
+        await ComboCart.start(
+          userData: userData,
+          storeId: widget.item['store_id'],
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
+        );
         Navigator.of(context).pop();
       },
       onCombo: () async {

@@ -30,23 +30,33 @@ class ChatService {
   }) async {
     // Get base URL from metadata provider
     final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
-    final url = "$baseUrl/api/chatbot/chat_web";
+    // chat_test is mounted at the server root, not under /api/chatbot
+    // (/api/chatbot/chat_test returns 404).
+    final url = "$baseUrl/chat_test";
 
-    debugPrint("═══════════════════════════════════════════════════════════════");
+    debugPrint(
+      "═════════════════════════════════════════════════════════i══════",
+    );
     debugPrint("💬 [CHAT SERVICE] >>> START sendMessage");
     debugPrint("💬 [CHAT SERVICE] Base URL: $baseUrl");
     debugPrint("💬 [CHAT SERVICE] Full URL: $url");
     debugPrint("💬 [CHAT SERVICE] User ID: $userId");
-    debugPrint("💬 [CHAT SERVICE] Session ID: ${sessionId ?? 'none (new session)'}");
+    debugPrint(
+      "💬 [CHAT SERVICE] Session ID: ${sessionId ?? 'none (new session)'}",
+    );
     debugPrint("💬 [CHAT SERVICE] Order ID: ${orderId ?? 'none'}");
-    debugPrint("💬 [CHAT SERVICE] Server Token: ${serverToken.isNotEmpty ? 'Present (${serverToken.length} chars)' : 'MISSING!'}");
+    debugPrint(
+      "💬 [CHAT SERVICE] Server Token: ${serverToken.isNotEmpty ? 'Present (${serverToken.length} chars)' : 'MISSING!'}",
+    );
     debugPrint("💬 [CHAT SERVICE] User Location: $userLocation");
     debugPrint("💬 [CHAT SERVICE] User Message: \"$message\"");
 
     // Build the system prompt that tells the backend model to return
     // structured JSON (browse_results / stores) matching the UI pipeline.
     final systemPrompt = getMockChatbotSystemPrompt(userOrderId: orderId);
-    debugPrint("💬 [CHAT SERVICE] System Prompt length: ${systemPrompt.length} chars");
+    debugPrint(
+      "💬 [CHAT SERVICE] System Prompt length: ${systemPrompt.length} chars",
+    );
 
     final Map<String, dynamic> data = {
       "message": message,
@@ -80,7 +90,9 @@ class ChatService {
 
       final stopwatch = Stopwatch()..start();
       try {
-        debugPrint("🌐 [CHAT SERVICE HTTP] Attempt $attempt: Sending POST to $url...");
+        debugPrint(
+          "🌐 [CHAT SERVICE HTTP] Attempt $attempt: Sending POST to $url...",
+        );
         final http.Response response = await http
             .post(
               Uri.parse(url),
@@ -99,38 +111,63 @@ class ChatService {
         debugPrint(
           "🌐 [CHAT SERVICE HTTP] Response Status Code: ${response.statusCode}",
         );
-        debugPrint("🌐 [CHAT SERVICE HTTP] Response Body (${response.body.length} chars): ${response.body}");
+        debugPrint(
+          "🌐 [CHAT SERVICE HTTP] Response Body (${response.body.length} chars): ${response.body}",
+        );
 
         if (response.statusCode == 200) {
           final decoded = json.decode(response.body);
-          debugPrint("✅ [CHAT SERVICE] Decoded JSON type: ${decoded.runtimeType}");
+          debugPrint(
+            "✅ [CHAT SERVICE] Decoded JSON type: ${decoded.runtimeType}",
+          );
           if (decoded is Map) {
-            debugPrint("✅ [CHAT SERVICE] Decoded Map keys: ${decoded.keys.toList()}");
+            debugPrint(
+              "✅ [CHAT SERVICE] Decoded Map keys: ${decoded.keys.toList()}",
+            );
             // Convert markdown replies into browse_results / stores JSON
-            final normalized = normalizeChatResponse(Map<String, dynamic>.from(decoded));
-            debugPrint("✅ [CHAT SERVICE] Normalized Result keys: ${normalized.keys.toList()}");
-            debugPrint("═══════════════════════════════════════════════════════════════");
+            final normalized = normalizeChatResponse(
+              Map<String, dynamic>.from(decoded),
+            );
+            debugPrint(
+              "✅ [CHAT SERVICE] Normalized Result keys: ${normalized.keys.toList()}",
+            );
+            debugPrint(
+              "═══════════════════════════════════════════════════════════════",
+            );
             return normalized;
           }
           debugPrint("✅ [CHAT SERVICE] Primitive response returned: $decoded");
-          debugPrint("═══════════════════════════════════════════════════════════════");
+          debugPrint(
+            "═══════════════════════════════════════════════════════════════",
+          );
           return {'message': decoded.toString()};
         }
 
         // Non-200 but the server responded — no point retrying
-        debugPrint("❌ [CHAT SERVICE HTTP] Server returned non-200 status: ${response.statusCode}");
+        debugPrint(
+          "❌ [CHAT SERVICE HTTP] Server returned non-200 status: ${response.statusCode}",
+        );
         debugPrint("❌ [CHAT SERVICE HTTP] Server error body: ${response.body}");
-        debugPrint("═══════════════════════════════════════════════════════════════");
+        debugPrint(
+          "═══════════════════════════════════════════════════════════════",
+        );
         return {
           'error': true,
-          'message': 'The server returned an error (${response.statusCode}). Please try again.',
+          'message':
+              'The server returned an error (${response.statusCode}). Please try again.',
         };
       } on TimeoutException catch (e) {
         stopwatch.stop();
-        debugPrint("⏰ [CHAT SERVICE TIMEOUT] Attempt $attempt timed out after ${stopwatch.elapsedMilliseconds}ms: $e");
+        debugPrint(
+          "⏰ [CHAT SERVICE TIMEOUT] Attempt $attempt timed out after ${stopwatch.elapsedMilliseconds}ms: $e",
+        );
         if (attempt > _maxRetries) {
-          debugPrint("❌ [CHAT SERVICE TIMEOUT] All $_maxRetries retries exhausted!");
-          debugPrint("═══════════════════════════════════════════════════════════════");
+          debugPrint(
+            "❌ [CHAT SERVICE TIMEOUT] All $_maxRetries retries exhausted!",
+          );
+          debugPrint(
+            "═══════════════════════════════════════════════════════════════",
+          );
           return {
             'error': true,
             'message':
@@ -139,10 +176,16 @@ class ChatService {
         }
       } on SocketException catch (e) {
         stopwatch.stop();
-        debugPrint("📡 [CHAT SERVICE NETWORK] Attempt $attempt SocketException after ${stopwatch.elapsedMilliseconds}ms: $e");
+        debugPrint(
+          "📡 [CHAT SERVICE NETWORK] Attempt $attempt SocketException after ${stopwatch.elapsedMilliseconds}ms: $e",
+        );
         if (attempt > _maxRetries) {
-          debugPrint("❌ [CHAT SERVICE NETWORK] All $_maxRetries retries exhausted on network error!");
-          debugPrint("═══════════════════════════════════════════════════════════════");
+          debugPrint(
+            "❌ [CHAT SERVICE NETWORK] All $_maxRetries retries exhausted on network error!",
+          );
+          debugPrint(
+            "═══════════════════════════════════════════════════════════════",
+          );
           return {
             'error': true,
             'message':
@@ -151,9 +194,13 @@ class ChatService {
         }
       } catch (e, stack) {
         stopwatch.stop();
-        debugPrint("❌ [CHAT SERVICE EXCEPTION] Attempt $attempt unexpected error after ${stopwatch.elapsedMilliseconds}ms: $e");
+        debugPrint(
+          "❌ [CHAT SERVICE EXCEPTION] Attempt $attempt unexpected error after ${stopwatch.elapsedMilliseconds}ms: $e",
+        );
         debugPrint("❌ [CHAT SERVICE EXCEPTION] Stack trace: $stack");
-        debugPrint("═══════════════════════════════════════════════════════════════");
+        debugPrint(
+          "═══════════════════════════════════════════════════════════════",
+        );
         return {
           'error': true,
           'message': 'Something went wrong. Please try again. 🙏',
@@ -162,8 +209,12 @@ class ChatService {
     }
 
     // Fallback (should not normally be reached)
-    debugPrint("⚠️ [CHAT SERVICE] Exited retry loop without definitive response");
-    debugPrint("═══════════════════════════════════════════════════════════════");
+    debugPrint(
+      "⚠️ [CHAT SERVICE] Exited retry loop without definitive response",
+    );
+    debugPrint(
+      "═══════════════════════════════════════════════════════════════",
+    );
     return {
       'error': true,
       'message':
@@ -181,7 +232,9 @@ class ChatService {
     final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
     final url = "$baseUrl/api/user/get_orders";
     debugPrint("📦 [CHAT ORDERS] Fetching orders from: $url");
-    debugPrint("📦 [CHAT ORDERS] userId: $userId, serverToken: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}");
+    debugPrint(
+      "📦 [CHAT ORDERS] userId: $userId, serverToken: ${serverToken.isNotEmpty ? 'Present' : 'Missing'}",
+    );
     Map data = {"user_id": userId, "server_token": serverToken};
     var body = json.encode(data);
     try {
@@ -204,7 +257,9 @@ class ChatService {
       debugPrint("📦 [CHAT ORDERS] Response Status: ${response.statusCode}");
       debugPrint("📦 [CHAT ORDERS] Response Body: ${response.body}");
       final decoded = json.decode(response.body);
-      debugPrint("📦 [CHAT ORDERS] Decoded success: ${decoded?['success']}, total orders: ${decoded?['order_list']?.length ?? 0}");
+      debugPrint(
+        "📦 [CHAT ORDERS] Decoded success: ${decoded?['success']}, total orders: ${decoded?['order_list']?.length ?? 0}",
+      );
       return decoded;
     } catch (e, stack) {
       debugPrint("❌ [CHAT ORDERS] Error fetching orders: $e");

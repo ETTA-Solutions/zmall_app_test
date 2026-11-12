@@ -1587,6 +1587,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       "server_token": cart!.serverToken,
       "vehicle_id": widget.vehicleId,
       "tip": tip,
+      // Order intent: saved by the backend with this order_payment and
+      // used to create the order itself once payment is confirmed.
+      "delivery_type": 1,
+      "is_schedule_order": cart!.isSchedule,
+      "schedule_order_start_at":
+          cart!.isSchedule && cart!.scheduleStart != null
+          ? cart!.scheduleStart!.toUtc().toString()
+          : "",
+      "flow": "single",
     };
 
     var body = json.encode(data);

@@ -24,7 +24,8 @@ import 'package:zmall/kifiya/components/ethswitch_screen.dart';
 import 'package:zmall/kifiya/components/etta_card_screen.dart';
 import 'package:zmall/kifiya/components/santimpay_screen.dart';
 import 'package:zmall/kifiya/components/telebirr_inapp.dart';
-import 'package:zmall/kifiya/components/telebirr_ussd.dart';
+import 'package:zmall/kifiya/components/telebirr_ussd.dart'; // ORIGINAL telebirr USSD (Odoo, gateway "tele birr")
+import 'package:zmall/kifiya/zoorya_pay/zoorya_telebirr_ussd_screen.dart'; // ZooryaPay telebirr USSD (method key "telebirr")
 import 'package:zmall/kifiya/components/wegagen_ussd.dart';
 import 'package:zmall/kifiya/components/yagoutpay.dart';
 import 'package:zmall/kifiya/zoorya_pay/mpesa_phone_sheet.dart';
@@ -32,6 +33,7 @@ import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_mpesa_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_otp_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_qr_screen.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
+import 'package:zmall/kifiya/order_settlement_service.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_ussd_screen.dart';
 import 'package:zmall/kifiya/kifiya_verification.dart';
 import 'package:zmall/login/login_screen.dart';
@@ -598,7 +600,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       // debugPrint( "order data>> $data\n_selectedPaymentMethod $_selectedPaymentMethod");
       if (!mounted) return;
       if (data != null && data['success']) {
-        if (data['duplicate'] != null && data['duplicate'] == true) {
+        // A duplicate that carries the orders is the backend-created combo:
+        // treat it as the success it is.
+        if (data['duplicate'] == true &&
+            !(widget.isCombo && _hasComboOrders(data))) {
           debugPrint(
             '[COMBO-DEBUG] ⚠ Step 4: duplicate order detected — combo_id=${data['combo_id']}',
           );
@@ -632,50 +637,12 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           await Service.remove('aliexpressCart');
           if (widget.isCombo) {
             await ComboCart.clear();
-            try {
-              final orderA = data['store_a']?['order_id']?.toString();
-              final orderB = data['store_b']?['order_id']?.toString();
-              final orderIds = [
-                if (orderA != null && orderA.isNotEmpty) orderA,
-                if (orderB != null && orderB.isNotEmpty) orderB,
-              ];
-              final uniqueIds = data['order_unique_ids'] is List
-                  ? List.from(data['order_unique_ids'])
-                  : [];
-              final cId = data['combo_id']?.toString() ?? widget.comboId ?? "";
-              if (cId.isNotEmpty && orderIds.isNotEmpty) {
-                final existingRaw = await Service.read('combo_orders');
-                List<dynamic> existingList = [];
-                if (existingRaw is List) {
-                  existingList = List.from(existingRaw);
-                } else if (existingRaw is String) {
-                  try {
-                    existingList = List.from(jsonDecode(existingRaw));
-                  } catch (_) {}
-                }
-                existingList.insert(0, {
-                  'combo_id': cId,
-                  'order_ids': orderIds,
-                  'order_unique_ids': uniqueIds,
-                  'created_at': DateTime.now().toIso8601String(),
-                });
-                if (existingList.length > 50) {
-                  existingList = existingList.sublist(0, 50);
-                }
-                await Service.save('combo_orders', existingList);
-              }
-            } catch (e) {
-              debugPrint("Failed to persist combo_orders: $e");
-            }
+            await _saveComboOrders(data);
           }
           if (!mounted) return;
 
-          final orderIdsList =
-              widget.isCombo && data['order_unique_ids'] is List
-              ? List.from(data['order_unique_ids'])
-              : null;
-          final uniqueId = (orderIdsList != null && orderIdsList.isNotEmpty)
-              ? orderIdsList.join(',')
+          final uniqueId = widget.isCombo
+              ? _comboReceiptId(data)
               : (widget.orderPaymentUniqueId ?? "");
 
           Navigator.pushReplacement(
@@ -864,7 +831,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => TelebirrUssd(
+                    builder: (context) => ZooryaTelebirrUssd(
                       userId: userData['user']['_id'],
                       serverToken: userData['user']['server_token'],
                       hisab: widget.price!,
@@ -872,7 +839,6 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                       uniqueId: widget.orderPaymentUniqueId!,
                       phone: userData['user']['phone'] ?? '',
                       orderPaymentId: widget.orderPaymentId!,
-                      isZooryaPay: true,
                       imageUrl: selImageUrl,
                       type: selType,
                     ),
@@ -963,7 +929,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                   //   _boaVerify();
                   // }
                   if (value is Map) {
-                    _finishBackendCreatedOrder(value);
+                    _finishOrWait(value);
                   } else if (value == true) {
                     _boaVerify(skipCreateOrder: true);
                   }
@@ -971,8 +937,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               },
             );
             return;
-          } else if (selKey == 'nib' ||
-              selKey == 'ethswitch') {
+          } else if (selKey == 'nib' || selKey == 'ethswitch') {
             _showProceedToPayDialog(
               displayName: selDisplayName,
               type: selType,
@@ -1017,7 +982,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             _startTelebirrInApp();
             return;
           } else if (selKey == 'cash') {
-            final List<dynamic> allGws = paymentResponse != null &&
+            final List<dynamic> allGws =
+                paymentResponse != null &&
                     paymentResponse['payment_gateway'] is List
                 ? paymentResponse['payment_gateway'] as List<dynamic>
                 : [];
@@ -1025,8 +991,14 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               (g) => g['name'].toString().toLowerCase().contains('cash'),
               orElse: () => null,
             );
-            final String cashGwId =
-                cashGw != null ? cashGw['_id'].toString() : '0';
+            final String cashGwId = cashGw != null
+                ? cashGw['_id'].toString()
+                : '0';
+            // Double-charge guard: is this cart already paid / in flight?
+            if (!await _guardBeforePay()) {
+              if (mounted && !_waitingForOrder) _stopLoading();
+              return;
+            }
             var data = await payOrderPayment(
               otp,
               cashGwId,
@@ -1034,14 +1006,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             );
             if (!mounted) return;
             if (data != null && data['success']) {
-              widget.isCombo
-                  ? _createOrder()
-                  : widget.isCourier!
-                  ? _createCourierOrder()
-                  : (aliexpressCart != null &&
-                        aliexpressCart!.cart.storeId == cart.storeId)
-                  ? _createAliexpressOrder()
-                  : _createOrder();
+              _afterPayOrderPayment(data);
             } else {
               setState(() {
                 _loading = false;
@@ -1072,17 +1037,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       final String _zooryaGatewayId = _zooryaGw != null
           ? _zooryaGw['_id'].toString()
           : '';
+      // Double-charge guard: is this cart already paid / in flight?
+      if (!await _guardBeforePay()) {
+        if (mounted && !_waitingForOrder) _stopLoading();
+        return;
+      }
       var data = await payOrderPayment(otp, _zooryaGatewayId);
       if (!mounted) return;
       if (data != null && data['success']) {
-        widget.isCombo
-            ? _createOrder()
-            : widget.isCourier!
-            ? _createCourierOrder()
-            : (aliexpressCart != null &&
-                  aliexpressCart!.cart.storeId == cart.storeId)
-            ? _createAliexpressOrder()
-            : _createOrder();
+        _afterPayOrderPayment(data);
       } else {
         setState(() {
           _loading = false;
@@ -1127,7 +1090,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       return;
     }
     if (value is Map) {
-      _finishBackendCreatedOrder(value);
+      _finishOrWait(value);
     } else {
       _boaVerify(skipCreateOrder: true);
     }
@@ -1301,7 +1264,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       setState(() => kifiyaMethod = -1);
       Service.showMessage(
         context: context,
-        title: pay?['message']?.toString() ??
+        title:
+            pay?['message']?.toString() ??
             'Couldn\'t open card payment. Check your internet connection and try again.',
         error: true,
       );
@@ -1353,7 +1317,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     if (CyberSourceService.isInvalidToken(result)) {
       Service.showMessage(
         context: context,
-        title: errorCodes['999'] ?? 'Your session has expired. Please log in again.',
+        title:
+            errorCodes['999'] ??
+            'Your session has expired. Please log in again.',
         error: true,
       );
       await Service.saveBool('logged', false);
@@ -1365,8 +1331,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
     final String status = result['status']?.toString() ?? '';
     if (result['is_paid'] == true || status == CyberSourceService.paid) {
-      // Order already exists server-side; just show it.
-      await _finishBackendCreatedOrder(result);
+      // Paid: the backend creates the order; show it (or wait for it).
+      await _finishOrWait(result);
       return;
     }
 
@@ -1393,7 +1359,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     Service.showMessage(
       context: context,
       title: message,
-      error: status != CyberSourceService.review &&
+      error:
+          status != CyberSourceService.review &&
           status != CyberSourceService.verifying,
       duration: 5,
     );
@@ -1430,10 +1397,13 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                onPressed: () {
+                onPressed: () async {
+                  Navigator.of(dialogContext).pop();
+                  // Double-charge guard: is this cart already paid / in flight?
+                  if (!await _guardBeforePay()) return;
+                  if (!mounted) return;
                   var uniqueId = RandomDigits.getString(6);
                   String uniqueIdString = uniqueId;
-                  Navigator.of(dialogContext).pop();
 
                   setState(() {
                     inAppTraceNumber =
@@ -1470,6 +1440,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                         error: false,
                         title: "Telebirr payment confirmed.",
                       );
+                      // The backend creates the order; wait for it.
+                      _afterPaymentConfirmed();
 
                       // FOR TESTING TELEBIRR INAPP: commented out create order endpoint
                       // if (widget.isCourier!) {
@@ -1499,26 +1471,31 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
   }
 
-  /// Uses the /admin/check_paid_order response (the backend already created
-  /// the order there): clear the cart and open the receipt.
+  /// The backend created the order (its response carries order_id /
+  /// order_unique_id): clear local state and open the receipt.
   Future<void> _finishBackendCreatedOrder(Map response) async {
+    if (widget.isCombo) {
+      await _finishBackendCreatedComboOrder(response);
+      return;
+    }
     debugPrint(
-      '[ZOORYA-PAY] ✅ Order created by /admin/check_paid_order — '
+      '[SETTLEMENT] ✅ Order created by the backend — '
       'NOT calling /api/user/create_order. Response: $response',
     );
-    final dynamic d = response['data'] is Map ? response['data'] : null;
-    final dynamic o = response['order'] is Map
-        ? response['order']
-        : (d is Map && d['order'] is Map ? d['order'] : null);
-    final String uniqueId = (response['order_unique_id'] ??
-            d?['order_unique_id'] ??
-            o?['unique_id'] ??
-            widget.orderPaymentUniqueId ??
-            "")
-        .toString();
+    final String uniqueId =
+        OrderSettlementService.orderUniqueIdOf(response) ??
+        widget.orderPaymentUniqueId ??
+        "";
 
-    await Service.remove('cart');
-    await Service.remove('aliexpressCart');
+    _orderPlaced = true;
+    await OrderSettlementService.clearPending();
+    if (widget.isCourier == true) {
+      // Courier orders never touch the store cart.
+      await Service.remove('images');
+    } else {
+      await Service.remove('cart');
+      await Service.remove('aliexpressCart');
+    }
     if (widget.isCombo) await ComboCart.clear();
     if (!mounted) return;
     setState(() {
@@ -1536,9 +1513,416 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         builder: (context) => ReportScreen(
           price: widget.price!,
           orderPaymentUniqueId: uniqueId,
+          isCourier: widget.isCourier == true,
         ),
       ),
     );
+  }
+
+  // ───────────────────────────── Combo orders ─────────────────────────────
+  // Shape (combo_create_order): { combo_id, store_a: {order_id},
+  // store_b: {order_id}, order_unique_ids: [a, b] }.
+
+  static String? _comboOrderId(dynamic store) {
+    final id = store is Map ? store['order_id']?.toString() : null;
+    return id == null || id.isEmpty || id == 'null' ? null : id;
+  }
+
+  /// True when [data] carries the combo's created orders.
+  bool _hasComboOrders(Map? data) {
+    if (data == null) return false;
+    final ids = data['order_unique_ids'];
+    return _comboOrderId(data['store_a']) != null ||
+        _comboOrderId(data['store_b']) != null ||
+        (ids is List && ids.any((id) => id != null && '$id'.isNotEmpty));
+  }
+
+  /// Both order numbers for the receipt, e.g. "470605,470606".
+  String _comboReceiptId(Map data) {
+    final ids = data['order_unique_ids'];
+    return ids is List && ids.isNotEmpty
+        ? ids.join(',')
+        : (OrderSettlementService.orderUniqueIdOf(data) ??
+              widget.orderPaymentUniqueId ??
+              "");
+  }
+
+  /// Remembers which two orders belong to this combo (order history groups
+  /// them by it).
+  Future<void> _saveComboOrders(Map data) async {
+    try {
+      final orderIds = [
+        _comboOrderId(data['store_a']),
+        _comboOrderId(data['store_b']),
+      ].whereType<String>().toList();
+      final uniqueIds = data['order_unique_ids'] is List
+          ? List.from(data['order_unique_ids'])
+          : [];
+      final cId = data['combo_id']?.toString() ?? widget.comboId ?? "";
+      if (cId.isEmpty || orderIds.isEmpty) return;
+      final existingRaw = await Service.read('combo_orders');
+      List<dynamic> existingList = [];
+      if (existingRaw is List) {
+        existingList = List.from(existingRaw);
+      } else if (existingRaw is String) {
+        try {
+          existingList = List.from(jsonDecode(existingRaw));
+        } catch (_) {}
+      }
+      existingList.insert(0, {
+        'combo_id': cId,
+        'order_ids': orderIds,
+        'order_unique_ids': uniqueIds,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      if (existingList.length > 50) {
+        existingList = existingList.sublist(0, 50);
+      }
+      await Service.save('combo_orders', existingList);
+    } catch (e) {
+      debugPrint("Failed to persist combo_orders: $e");
+    }
+  }
+
+  /// The backend created both combo orders: clear local state and open the
+  /// receipt without calling combo_create_order.
+  Future<void> _finishBackendCreatedComboOrder(Map data) async {
+    debugPrint(
+      '[SETTLEMENT] ✅ Combo orders created by the backend — '
+      'NOT calling combo_create_order. Response: $data',
+    );
+    _orderPlaced = true;
+    await OrderSettlementService.clearPending();
+    await Service.remove('cart');
+    await Service.remove('aliexpressCart');
+    await ComboCart.clear();
+    await _saveComboOrders(data);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _placeOrder = false;
+    });
+    Service.showMessage(
+      context: context,
+      title: "Order successfully created",
+      error: false,
+    );
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReportScreen(
+          price: widget.price!,
+          orderPaymentUniqueId: _comboReceiptId(data),
+        ),
+      ),
+    );
+  }
+
+  // ───────────── Order settlement: the backend creates the order ─────────────
+  // See OrderSettlementService. Flow: check_before_pay → pay once → wait for
+  // the backend-created order (order_id). Slow → "processing", never re-pay.
+
+  /// True while a check_before_pay call is running (blocks double taps).
+  bool _checkingBeforePay = false;
+
+  /// True while this screen is polling for the backend-created order.
+  bool _waitingForOrder = false;
+
+  /// Courier: how long to wait for the backend's order after the payment is
+  /// confirmed before creating the order from the app.
+  static const Duration _courierPaidNoOrderGrace = Duration(seconds: 6);
+
+  /// The cart this payment belongs to, as check_before_pay expects it.
+  String get _settlementCartId {
+    if (widget.isCombo) return widget.storeACartId ?? '';
+    if (widget.isCourier == true) {
+      return courierCart?['cart_id']?.toString() ?? '';
+    }
+    return userData?['user']?['cart_id']?.toString() ?? '';
+  }
+
+  /// Double-charge guard. Call right before launching any payment.
+  /// Returns true only when it is safe to start a NEW payment.
+  Future<bool> _guardBeforePay() async {
+    if (_checkingBeforePay || _waitingForOrder) return false;
+    final cartId = _settlementCartId;
+    if (cartId.isEmpty || userData == null) return true;
+
+    _checkingBeforePay = true;
+    final res = await OrderSettlementService.checkBeforePay(
+      context: context,
+      userId: userData['user']['_id'],
+      serverToken: userData['user']['server_token'],
+      cartId: cartId,
+    );
+    _checkingBeforePay = false;
+    if (!mounted) return false;
+
+    switch (OrderSettlementService.stateOf(res)) {
+      case 'ORDER_CREATED':
+        await _finishBackendCreatedOrder(res!);
+        return false;
+      case 'PENDING':
+      case 'PAID':
+        Service.showMessage(
+          context: context,
+          title:
+              "A payment for this order is already in progress. You don't need to pay again.",
+          error: false,
+          duration: 4,
+        );
+        _waitForOrder();
+        return false;
+      default:
+        // NONE, or the check could not be completed: allow the payment and
+        // remember it so it can be re-checked if the app is closed.
+        await OrderSettlementService.savePending(
+          orderPaymentId: widget.orderPaymentId ?? '',
+          orderPaymentUniqueId: widget.orderPaymentUniqueId ?? '',
+          isCourier: widget.isCourier == true,
+        );
+        return true;
+    }
+  }
+
+  /// Orders the backend can't create on its own yet are still created from
+  /// the app: AliExpress (its order ids
+  /// are created after payment) and courier orders with proof photos (photos
+  /// only travel on create_order). create_order is idempotent on the backend.
+  static const bool _bypassCourierImageUpload = true; // TESTING ONLY
+
+  bool get _mustCreateOrderFromApp {
+    // Combo: the backend creates both orders from the intent sent on the
+    // combo invoice. Online payments wait for them ([_waitForOrder]);
+    // cash/wallet call combo_create_order ([_afterPayOrderPayment]).
+    if (widget.isCombo) return false;
+    if (widget.isCourier == true) {
+      // TESTING: skip the proof-photo upload so the backend creates the
+      // courier order. Set _bypassCourierImageUpload to false to restore.
+      if (_bypassCourierImageUpload) return false;
+      return imagePath != null && imagePath.length > 0;
+    }
+    return aliexpressCart != null &&
+        aliexpressCart!.cart.storeId == cart.storeId;
+  }
+
+  /// The old app-side order creation (create_order).
+  void _createOrderFromApp() {
+    if (widget.isCombo) {
+      _createOrder();
+    } else if (widget.isCourier == true) {
+      _createCourierOrder();
+    } else if (aliexpressCart != null &&
+        aliexpressCart!.cart.storeId == cart.storeId) {
+      _createAliexpressOrder();
+    } else {
+      _createOrder();
+    }
+  }
+
+  /// A gateway confirmed the payment: get the order the backend creates.
+  void _afterPaymentConfirmed() {
+    if (_mustCreateOrderFromApp) {
+      _createOrderFromApp();
+      return;
+    }
+    _waitForOrder();
+  }
+
+  /// pay_order_payment succeeded (cash, wallet, OTP): use the order if the
+  /// backend already created it, otherwise create it from the app as before
+  /// (safe: create_order returns the existing order instead of a second one).
+  void _afterPayOrderPayment(Map data) {
+    // Combo cash/wallet: create the orders from the app (combo_create_order)
+    // as before. Only online gateways (Zoorya Pay) rely on the backend.
+    if (widget.isCombo) {
+      if (_hasComboOrders(data)) {
+        _finishBackendCreatedComboOrder(data);
+      } else {
+        _createOrder();
+      }
+      return;
+    }
+    if (!_mustCreateOrderFromApp && OrderSettlementService.hasOrder(data)) {
+      _finishBackendCreatedOrder(data);
+      return;
+    }
+    _createOrderFromApp();
+  }
+
+  /// A paid response: open the order if it exists, otherwise wait for it.
+  Future<void> _finishOrWait(Map response) async {
+    if (OrderSettlementService.hasOrder(response)) {
+      await _finishBackendCreatedOrder(response);
+    } else {
+      await _waitForOrder();
+    }
+  }
+
+  /// Polls the backend until it reports the created order. Never starts a new
+  /// payment. Ends in: receipt (order_id), failure (payment failed), or the
+  /// "processing" dialog when the window runs out.
+  Future<void> _waitForOrder() async {
+    if (_waitingForOrder || !mounted) return;
+    _waitingForOrder = true;
+    _setProgressText("Confirming your order...");
+    setState(() {
+      _loading = true;
+      _placeOrder = true;
+    });
+
+    final started = DateTime.now();
+    bool paidLogged = false;
+    DateTime? paidAt;
+    bool createCourierFromApp = false;
+    int pollCount = 0; // DEBUG
+    try {
+      while (mounted &&
+          DateTime.now().difference(started) <
+              OrderSettlementService.pollWindow) {
+        final res = await OrderSettlementService.checkOrder(
+          context: context,
+          userId: userData['user']['_id'],
+          serverToken: userData['user']['server_token'],
+          orderPaymentId: widget.orderPaymentId!,
+          orderPaymentUniqueId: widget.orderPaymentUniqueId,
+        );
+        if (!mounted) return;
+        final Map? map = res;
+
+        // DEBUG: show exactly what check_paid_order returned and how the app read it.
+        pollCount++;
+        debugPrint('════════ [ORDER DEBUG] poll #$pollCount '
+            '(${DateTime.now().difference(started).inSeconds}s) ════════');
+        debugPrint('[ORDER DEBUG] order_payment_id sent: ${widget.orderPaymentId}');
+        debugPrint('[ORDER DEBUG] response type: ${res.runtimeType}');
+        debugPrint('[ORDER DEBUG] top-level keys: ${map?.keys.toList()}');
+        if (map?['data'] is Map) {
+          debugPrint('[ORDER DEBUG] data keys: ${(map!['data'] as Map).keys.toList()}');
+        }
+        debugPrint('[ORDER DEBUG] order_id found: ${OrderSettlementService.orderIdOf(map)}');
+        debugPrint('[ORDER DEBUG] order_unique_id found: ${OrderSettlementService.orderUniqueIdOf(map)}');
+        debugPrint('[ORDER DEBUG] hasOrder=${OrderSettlementService.hasOrder(map)} '
+            'isPaid=${OrderSettlementService.isPaid(map)} '
+            'isFailed=${OrderSettlementService.isFailed(map)}');
+        if (!OrderSettlementService.hasOrder(map)) {
+          debugPrint('[ORDER DEBUG] ⏳ No order id in response → app keeps waiting');
+        }
+
+        if (OrderSettlementService.hasOrder(map)) {
+          _waitingForOrder = false;
+          await _finishBackendCreatedOrder(map!);
+          return;
+        }
+        if (OrderSettlementService.isFailed(map)) {
+          await OrderSettlementService.clearPending();
+          if (!mounted) return;
+          setState(() {
+            _loading = false;
+            _placeOrder = false;
+            kifiyaMethod = -1;
+          });
+          Service.showMessage(
+            context: context,
+            title:
+                "The payment did not go through. You can try again with a new payment.",
+            error: true,
+            duration: 5,
+          );
+          return;
+        }
+        if (!paidLogged && OrderSettlementService.isPaid(map)) {
+          paidLogged = true;
+          debugPrint('[SETTLEMENT] Paid; waiting for order_id. Response: $map');
+        }
+        // Courier: the payment is confirmed but /status doesn't return the
+        // order. Don't spin for the whole window; create it from the app
+        // (create_order returns the existing order instead of a duplicate).
+        if (widget.isCourier == true && OrderSettlementService.isPaid(map)) {
+          paidAt ??= DateTime.now();
+          if (DateTime.now().difference(paidAt) >=
+              _courierPaidNoOrderGrace) {
+            debugPrint(
+              '[SETTLEMENT] Courier paid but no order_id after '
+              '${_courierPaidNoOrderGrace.inSeconds}s → create_order from app',
+            );
+            createCourierFromApp = true;
+            break;
+          }
+        }
+        await Future.delayed(OrderSettlementService.pollInterval);
+      }
+    } finally {
+      _waitingForOrder = false;
+    }
+    if (!mounted) return;
+    if (createCourierFromApp) {
+      _createCourierOrder();
+      return;
+    }
+    setState(() {
+      _loading = false;
+      _placeOrder = false;
+    });
+    _showOrderProcessingDialog();
+  }
+
+  /// Shown when the order isn't confirmed within the polling window. The
+  /// payment is NOT treated as failed and the user is not asked to pay again.
+  void _showOrderProcessingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: kPrimaryColor,
+        title: const Text("We're confirming your payment"),
+        content: Text(
+          "This is taking longer than usual. You don't need to pay again. "
+          "We'll notify you as soon as your order is placed.\n\n"
+          "Reference: ${widget.orderPaymentUniqueId}",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _waitForOrder();
+            },
+            child: Text(
+              "Check again",
+              style: TextStyle(color: kSecondaryColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            child: Text(
+              "OK",
+              style: TextStyle(color: kBlackColor, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setProgressText(String text) {
+    setState(() {
+      linearProgressIndicator = Container(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SpinKitWave(
+              color: kSecondaryColor,
+              size: getProportionateScreenWidth(kDefaultPadding),
+            ),
+            SizedBox(height: kDefaultPadding * 0.5),
+            Text(text, style: TextStyle(color: kBlackColor)),
+          ],
+        ),
+      );
+    });
   }
 
   Future<bool> _boaVerify({bool skipCreateOrder = false}) async {
@@ -1570,7 +1954,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         _loading = false;
         _placeOrder = false;
       });
-      await _finishBackendCreatedOrder(data);
+      await _finishOrWait(data);
       return true;
     }
     if (data != null && data['success']) {
@@ -1604,12 +1988,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         error: false,
         duration: 2,
       );
-      widget.isCourier!
-          ? _createCourierOrder()
-          : (aliexpressCart != null &&
-                aliexpressCart!.cart.storeId == cart.storeId)
-          ? _createAliexpressOrder()
-          : _createOrder();
+      _afterPaymentConfirmed();
       return true;
     } else {
       setState(() {
@@ -1639,8 +2018,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     required VoidCallback onProceed,
   }) {
     final formattedName = Service.capitalizeFirstLetters(displayName);
-    final String typeSuffix =
-        (type != null && type.isNotEmpty) ? " (${type.toUpperCase()})" : "";
+    final String typeSuffix = (type != null && type.isNotEmpty)
+        ? " (${type.toUpperCase()})"
+        : "";
     showDialog(
       context: context,
       builder: (context) {
@@ -1654,9 +2034,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
             TextButton(
               child: Text(
                 Provider.of<ZLanguage>(context).cancel,
-                style: TextStyle(
-                  color: kSecondaryColor,
-                ),
+                style: TextStyle(color: kSecondaryColor),
               ),
               onPressed: () {
                 Navigator.of(context).pop();
@@ -1673,8 +2051,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
+                // Double-charge guard: is this cart already paid / in flight?
+                if (!await _guardBeforePay()) return;
                 onProceed();
               },
             ),
@@ -1687,7 +2067,6 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   int _zooryaPollAttempt = 0;
   // Direct NIB / EthSwitch checks stop after ZooryaPayService.pollWindow (2 min).
   DateTime? _zooryaPollStartedAt;
-  String _zooryaDirectDisplayName = '';
 
   Future<void> _startDirectZooryaPayUssd({
     required String method,
@@ -1742,12 +2121,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       _placeOrder = true;
       _zooryaPollAttempt = 0;
       _zooryaPollStartedAt = DateTime.now();
-      _zooryaDirectDisplayName = displayName;
     });
 
-    debugPrint('╔══════════════════════════════════════════════════════════════════╗');
+    debugPrint(
+      '╔══════════════════════════════════════════════════════════════════╗',
+    );
     debugPrint('║ 🚀 [ZOORYA-PAY] DIRECT USSD INITIATION: $method');
-    debugPrint('╚══════════════════════════════════════════════════════════════════╝');
+    debugPrint(
+      '╚══════════════════════════════════════════════════════════════════╝',
+    );
 
     final result = await ZooryaPayService.pay(
       context: context,
@@ -1762,7 +2144,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     if (!mounted) return;
 
     if (result == null || result['success'] != true) {
-      final msg = result?['message']?.toString() ??
+      final msg =
+          result?['message']?.toString() ??
           'Payment initiation failed. Please try again.';
       debugPrint('[ZOORYA-PAY] ❌ Direct USSD Initiation Failed: $msg');
       setState(() {
@@ -1779,7 +2162,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       return;
     }
 
-    debugPrint('[ZOORYA-PAY] ✅ Direct USSD initiated successfully! Prompt sent to user device.');
+    debugPrint(
+      '[ZOORYA-PAY] ✅ Direct USSD initiated successfully! Prompt sent to user device.',
+    );
     if (method != 'mpesa') {
       Service.showMessage(
         context: context,
@@ -1801,7 +2186,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   }) async {
     if (!mounted) return;
     _zooryaPollAttempt++;
-    debugPrint('[ZOORYA-PAY] 🔄 Poll attempt #$_zooryaPollAttempt for orderPaymentId=$orderPaymentId');
+    debugPrint(
+      '[ZOORYA-PAY] 🔄 Poll attempt #$_zooryaPollAttempt for orderPaymentId=$orderPaymentId',
+    );
 
     final result = await ZooryaPayService.checkPaidOrder(
       context: context,
@@ -1814,21 +2201,30 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
     bool isPaid = false;
     if (result != null) {
-      if (result['success'] == true || result['success'] == 'true') isPaid = true;
-      if (result['is_paid'] == true || result['is_paid'] == 'true') isPaid = true;
+      if (result['success'] == true || result['success'] == 'true')
+        isPaid = true;
+      if (result['is_paid'] == true || result['is_paid'] == 'true')
+        isPaid = true;
       if (result['paid'] == true || result['paid'] == 'true') isPaid = true;
       if (result['data'] is Map) {
         final data = result['data'] as Map;
         if (data['is_paid'] == true || data['is_paid'] == 'true') isPaid = true;
         if (data['paid'] == true || data['paid'] == 'true') isPaid = true;
-        if (data['status'] == 'PAID' || data['status'] == 'COMPLETED') isPaid = true;
+        if (data['status'] == 'PAID' || data['status'] == 'COMPLETED')
+          isPaid = true;
       }
     }
 
     if (isPaid) {
-      debugPrint('╔══════════════════════════════════════════════════════════════════╗');
-      debugPrint('║ ✅ [ZOORYA-PAY] DIRECT PAYMENT CONFIRMED! VERIFYING ORDER        ║');
-      debugPrint('╚══════════════════════════════════════════════════════════════════╝');
+      debugPrint(
+        '╔══════════════════════════════════════════════════════════════════╗',
+      );
+      debugPrint(
+        '║ ✅ [ZOORYA-PAY] DIRECT PAYMENT CONFIRMED! VERIFYING ORDER        ║',
+      );
+      debugPrint(
+        '╚══════════════════════════════════════════════════════════════════╝',
+      );
       _boaVerify();
     } else {
       final elapsed = DateTime.now().difference(
@@ -1850,45 +2246,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           _loading = false;
           _placeOrder = false;
         });
-        _showZooryaTimeoutDialog(method: method);
+        // Slow is not failed: show "processing", never offer to pay again.
+        _showOrderProcessingDialog();
       }
     }
-  }
-
-  /// Shown when a direct NIB / EthSwitch payment isn't confirmed within 2 min.
-  void _showZooryaTimeoutDialog({required String method}) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("We couldn't confirm your payment"),
-        content: const Text(
-          'The prompt may have expired. Resend it, or check again if you already paid.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              _boaVerify(); // one single check
-            },
-            child: const Text("I've paid, check again"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              _startDirectZooryaPayUssd(
-                method: method,
-                displayName: _zooryaDirectDisplayName,
-              );
-            },
-            child: const Text(
-              'Resend prompt',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   void _ethSwitchVerify(String traceNo) async {
@@ -2347,7 +2708,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                         final String displayName =
                                             method['name'].toString();
                                         final String methodType =
-                                            (method['type'] ?? 'ussd').toString();
+                                            (method['type'] ?? 'ussd')
+                                                .toString();
                                         final String? methodImageUrl =
                                             method['image_url']?.toString();
 
@@ -2359,15 +2721,19 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                         // ZOORYA-PAY image map (from backend image_url or fallback to local assets)
                                         final String zooryaImagePath =
                                             (methodImageUrl != null &&
-                                                    methodImageUrl.isNotEmpty)
+                                                methodImageUrl.isNotEmpty)
                                             ? methodImageUrl
                                             : paymentName == 'cash'
                                             ? 'images/payment/cod.png'
                                             : (paymentName == 'telebirr' ||
-                                                paymentName == 'telebirr_qr' ||
-                                                paymentName == 'telebirr inapp' ||
-                                                paymentName == 'telebirr in app' ||
-                                                paymentName == 'telebirr in-app')
+                                                  paymentName ==
+                                                      'telebirr_qr' ||
+                                                  paymentName ==
+                                                      'telebirr inapp' ||
+                                                  paymentName ==
+                                                      'telebirr in app' ||
+                                                  paymentName ==
+                                                      'telebirr in-app')
                                             ? 'images/payment/new_payment/telebirr.png'
                                             : paymentName == 'mpesa'
                                             ? 'images/payment/new_payment/mpesa.png'
@@ -2398,11 +2764,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             });
 
                                             // -- Telebirr InApp --
-                                            if (paymentName == 'telebirr inapp' ||
-                                                paymentName == 'telebirr in app' ||
-                                                paymentName == 'telebirr in-app') {
+                                            if (paymentName ==
+                                                    'telebirr inapp' ||
+                                                paymentName ==
+                                                    'telebirr in app' ||
+                                                paymentName ==
+                                                    'telebirr in-app') {
                                               setState(() {
-                                                _selectedPaymentMethod = paymentName;
+                                                _selectedPaymentMethod =
+                                                    paymentName;
                                               });
                                               _startTelebirrInApp();
                                               return;
@@ -2424,7 +2794,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                 });
                                               } else {
                                                 setState(() {
-                                                  _selectedPaymentMethod = "cash";
+                                                  _selectedPaymentMethod =
+                                                      "cash";
                                                 });
                                                 await useBorsa();
                                               }
@@ -2432,12 +2803,14 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             }
 
                                             // -- CyberSource card (Visa / Mastercard, 3-D Secure) via WebView --
-                                            if (paymentName == _cyberSourceKey) {
+                                            if (paymentName ==
+                                                _cyberSourceKey) {
                                               _showProceedToPayDialog(
                                                 displayName: displayName,
-                                                onProceed: () => _startCyberSource(
-                                                  displayName: displayName,
-                                                ),
+                                                onProceed: () =>
+                                                    _startCyberSource(
+                                                      displayName: displayName,
+                                                    ),
                                               );
                                               return;
                                             }
@@ -2451,21 +2824,30 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                   Navigator.push(
                                                     context,
                                                     MaterialPageRoute(
-                                                      builder: (context) => TelebirrUssd(
-                                                        userId: userData['user']['_id'],
-                                                        serverToken: userData['user']['server_token'],
+                                                      builder: (context) => ZooryaTelebirrUssd(
+                                                        userId:
+                                                            userData['user']['_id'],
+                                                        serverToken:
+                                                            userData['user']['server_token'],
                                                         hisab: widget.price!,
-                                                        traceNo: widget.orderPaymentUniqueId!,
-                                                        uniqueId: widget.orderPaymentUniqueId!,
-                                                        phone: userData['user']['phone'] ?? '',
-                                                        orderPaymentId: widget.orderPaymentId!,
-                                                        isZooryaPay: true,
-                                                        imageUrl: methodImageUrl,
+                                                        traceNo: widget
+                                                            .orderPaymentUniqueId!,
+                                                        uniqueId: widget
+                                                            .orderPaymentUniqueId!,
+                                                        phone:
+                                                            userData['user']['phone'] ??
+                                                            '',
+                                                        orderPaymentId: widget
+                                                            .orderPaymentId!,
+                                                        imageUrl:
+                                                            methodImageUrl,
                                                         type: methodType,
                                                       ),
                                                     ),
                                                   ).then((value) {
-                                                    _onZooryaTelebirrResult(value);
+                                                    _onZooryaTelebirrResult(
+                                                      value,
+                                                    );
                                                   });
                                                 },
                                               );
@@ -2483,13 +2865,19 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                     MaterialPageRoute(
                                                       builder: (_) => ZooryaPayOtpScreen(
                                                         method: paymentName,
-                                                        displayName: displayName,
-                                                        imageUrl: methodImageUrl,
+                                                        displayName:
+                                                            displayName,
+                                                        imageUrl:
+                                                            methodImageUrl,
                                                         amount: widget.price!,
-                                                        userId: userData['user']['_id'],
-                                                        serverToken: userData['user']['server_token'],
-                                                        uniqueId: widget.orderPaymentUniqueId!,
-                                                        orderPaymentId: widget.orderPaymentId!,
+                                                        userId:
+                                                            userData['user']['_id'],
+                                                        serverToken:
+                                                            userData['user']['server_token'],
+                                                        uniqueId: widget
+                                                            .orderPaymentUniqueId!,
+                                                        orderPaymentId: widget
+                                                            .orderPaymentId!,
                                                       ),
                                                     ),
                                                   ).then((value) {
@@ -2513,15 +2901,23 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                     MaterialPageRoute(
                                                       builder: (_) => ZooryaPayUssdScreen(
                                                         method: paymentName,
-                                                        displayName: displayName,
+                                                        displayName:
+                                                            displayName,
                                                         type: methodType,
-                                                        imageUrl: methodImageUrl,
+                                                        imageUrl:
+                                                            methodImageUrl,
                                                         amount: widget.price!,
-                                                        userId: userData['user']['_id'],
-                                                        serverToken: userData['user']['server_token'],
-                                                        uniqueId: widget.orderPaymentUniqueId!,
-                                                        orderPaymentId: widget.orderPaymentId!,
-                                                        phoneNumber: userData['user']['phone'] ?? '',
+                                                        userId:
+                                                            userData['user']['_id'],
+                                                        serverToken:
+                                                            userData['user']['server_token'],
+                                                        uniqueId: widget
+                                                            .orderPaymentUniqueId!,
+                                                        orderPaymentId: widget
+                                                            .orderPaymentId!,
+                                                        phoneNumber:
+                                                            userData['user']['phone'] ??
+                                                            '',
                                                       ),
                                                     ),
                                                   ).then((value) {
@@ -2542,14 +2938,22 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                     context,
                                                     MaterialPageRoute(
                                                       builder: (_) => ZooryaPayMpesaScreen(
-                                                        displayName: displayName,
-                                                        imageUrl: methodImageUrl,
+                                                        displayName:
+                                                            displayName,
+                                                        imageUrl:
+                                                            methodImageUrl,
                                                         amount: widget.price!,
-                                                        userId: userData['user']['_id'],
-                                                        serverToken: userData['user']['server_token'],
-                                                        uniqueId: widget.orderPaymentUniqueId!,
-                                                        orderPaymentId: widget.orderPaymentId!,
-                                                        initialPhoneNumber: userData['user']['phone']?.toString(),
+                                                        userId:
+                                                            userData['user']['_id'],
+                                                        serverToken:
+                                                            userData['user']['server_token'],
+                                                        uniqueId: widget
+                                                            .orderPaymentUniqueId!,
+                                                        orderPaymentId: widget
+                                                            .orderPaymentId!,
+                                                        initialPhoneNumber:
+                                                            userData['user']['phone']
+                                                                ?.toString(),
                                                       ),
                                                     ),
                                                   ).then((value) {
@@ -2559,9 +2963,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                     //   _boaVerify();
                                                     // }
                                                     if (value is Map) {
-                                                      _finishBackendCreatedOrder(value);
+                                                      _finishOrWait(value);
                                                     } else if (value == true) {
-                                                      _boaVerify(skipCreateOrder: true);
+                                                      _boaVerify(
+                                                        skipCreateOrder: true,
+                                                      );
                                                     }
                                                   });
                                                 },
@@ -2597,8 +3003,10 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                     MaterialPageRoute(
                                                       builder: (_) => ZooryaPayQrScreen(
                                                         method: paymentName,
-                                                        displayName: displayName,
-                                                        imageUrl: methodImageUrl,
+                                                        displayName:
+                                                            displayName,
+                                                        imageUrl:
+                                                            methodImageUrl,
                                                         amount: widget.price!,
                                                         userId:
                                                             userData['user']['_id'],
@@ -2606,8 +3014,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                             userData['user']['server_token'],
                                                         uniqueId: widget
                                                             .orderPaymentUniqueId!,
-                                                        orderPaymentId:
-                                                            widget.orderPaymentId!,
+                                                        orderPaymentId: widget
+                                                            .orderPaymentId!,
                                                       ),
                                                     ),
                                                   ).then((_) => _boaVerify());
@@ -2616,6 +3024,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                               return;
                                             }
 
+                                            // Older gateways below launch a payment
+                                            // directly: double-charge guard first.
+                                            if (!await _guardBeforePay())
+                                              return;
+                                            if (!mounted) return;
                                             if (paymentName == "cash") {
                                               if (widget.onlyCashless!) {
                                                 Service.showMessage(
@@ -2742,19 +3155,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                                 //   _createOrder();
                                                                 // }
                                                                 /////////old/////
-                                                                if (widget
-                                                                    .isCourier!) {
-                                                                  _createCourierOrder();
-                                                                } else if ((aliexpressCart !=
-                                                                        null &&
-                                                                    aliexpressCart!
-                                                                            .cart
-                                                                            .storeId ==
-                                                                        cart.storeId)) {
-                                                                  _createAliexpressOrder();
-                                                                } else {
-                                                                  _createOrder();
-                                                                }
+                                                                _afterPaymentConfirmed();
                                                               }
                                                             });
                                                           },
@@ -3346,7 +3747,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                   kifiyaMethod = -1;
                                                 });
                                               }
-                                            } else if (paymentName ==
+                                            }
+                                            // -- ORIGINAL Telebirr USSD (Ethio Telecom via Odoo /telebirr/ussd/send_sms) --
+                                            // Gateway name "tele birr" from the backend. Separate from the ZooryaPay
+                                            // telebirr (key "telebirr") above, which uses ZooryaTelebirrUssd.
+                                            else if (paymentName ==
                                                 "tele birr") {
                                               var data = await useBorsa();
                                               if (data != null &&
@@ -4239,14 +4644,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                               // _boaVerify step).
                                                               if (value ==
                                                                   true) {
-                                                                widget.isCourier!
-                                                                    ? _createCourierOrder()
-                                                                    : (aliexpressCart !=
-                                                                              null &&
-                                                                          aliexpressCart!.cart.storeId ==
-                                                                              cart.storeId)
-                                                                    ? _createAliexpressOrder()
-                                                                    : _createOrder();
+                                                                _afterPaymentConfirmed();
                                                               } else {
                                                                 Service.showMessage(
                                                                   context:
@@ -4617,7 +5015,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     }
   }
 
-  Future<dynamic> payOrderPayment(otp, paymentId, {bool isPaymentModeCash = false}) async {
+  Future<dynamic> payOrderPayment(
+    otp,
+    paymentId, {
+    bool isPaymentModeCash = false,
+  }) async {
     if (widget.isCombo) {
       debugPrint(
         '[COMBO-DEBUG] ▶ Step 3: combo_pay_order_payment\n'

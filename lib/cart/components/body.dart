@@ -21,6 +21,7 @@ import 'package:zmall/models/cart.dart';
 import 'package:zmall/combo/models/combo_cart.dart';
 import 'package:zmall/combo/services/combo_service.dart';
 import 'package:zmall/combo/widgets/combo_store_section.dart';
+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/notifications/notification_store.dart';
@@ -1345,6 +1346,10 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                           GestureDetector(
                                             onTap: () {
                                               setState(() {
+                                                // Keep the store id before `cart` may be set
+                                                // to null below (last item removed).
+                                                final removedStoreId =
+                                                    cart?.storeId;
                                                 cart?.items?.removeAt(index);
                                                 if (cart?.items?.isEmpty ??
                                                     true) {
@@ -1361,7 +1366,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                                     aliexpressCart!
                                                             .cart
                                                             .storeId ==
-                                                        cart!.storeId) {
+                                                        removedStoreId) {
                                                   aliexpressCart!.cart.items!
                                                       .removeAt(index);
                                                   aliexpressCart!.itemIds!
@@ -1756,50 +1761,50 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     }
   }
 
-  void _showDialog(item, destination, storeLocation, storeId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext alertContext) {
-        return AlertDialog(
-          backgroundColor: kPrimaryColor,
-          title: Text(Provider.of<ZLanguage>(context).warning),
-          content: Text(Provider.of<ZLanguage>(context).itemsFound),
-          actions: [
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).cancel,
-                style: TextStyle(
-                  color: kBlackColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(alertContext).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).clear,
-                style: TextStyle(
-                  color: kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  cart!.toJson();
-                  Service.remove('cart');
-                  Service.remove('aliexpressCart'); ////NEW
-                  ComboCart.clear();
-                  cart = Cart();
-                  addToCart(item, destination, storeLocation, storeId);
-                });
+  Future<void> _showDialog(item, destination, storeLocation, storeId) async {
+    final comboFull = await ComboCart.load() != null;
+    final allowCombo = await ComboCart.canStartWith(cart);
+    if (!mounted) return;
 
-                Navigator.of(alertContext).pop();
-              },
-            ),
-          ],
-        );
+    // Starts (or restarts) the combo with [item] as the second store.
+    Future<void> startCombo() async {
+      await ComboCart.start(
+        userData: userData,
+        storeId: storeId,
+        item: item,
+        storeLocation: storeLocation,
+        destination: destination,
+      );
+      if (!mounted) return;
+      await _loadComboCart();
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+        error: false,
+      );
+    }
+
+    showStoreConflictDialog(
+      context: context,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+      onClear: () {
+        setState(() {
+          cart!.toJson();
+          Service.remove('cart');
+          Service.remove('aliexpressCart'); ////NEW
+          ComboCart.clear();
+          comboCart = null;
+          cart = Cart();
+          addToCart(item, destination, storeLocation, storeId);
+        });
+      },
+      onCombo: startCombo,
+      // Keeps the first store, swaps the combo's second store for this one.
+      onReplace: () async {
+        await ComboCart.clear();
+        await startCombo();
       },
     );
   }

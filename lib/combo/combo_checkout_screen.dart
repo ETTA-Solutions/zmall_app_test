@@ -146,10 +146,7 @@ class _ComboCheckoutScreenState extends State<ComboCheckoutScreen> {
               size: getProportionateScreenWidth(kDefaultPadding),
             ),
             SizedBox(height: kDefaultPadding * 0.5),
-            Text(
-              "Generating Order Invoice...",
-              style: TextStyle(color: kBlackColor),
-            ),
+            Text("Loading...", style: TextStyle(color: kBlackColor)),
           ],
         ),
       );
@@ -433,10 +430,12 @@ class _ComboCheckoutScreenState extends State<ComboCheckoutScreen> {
 
   Widget _deliveryDetailsCard(ZLanguage lang) {
     final String fullName = userData != null && userData['user'] != null
-        ? "${userData['user']['first_name'] ?? ''} ${userData['user']['last_name'] ?? ''}".trim()
+        ? "${userData['user']['first_name'] ?? ''} ${userData['user']['last_name'] ?? ''}"
+              .trim()
         : "";
     final String phone = userData != null && userData['user'] != null
-        ? "${Provider.of<ZMetaData>(context, listen: false).areaCode} ${userData['user']['phone'] ?? ''}".trim()
+        ? "${Provider.of<ZMetaData>(context, listen: false).areaCode} ${userData['user']['phone'] ?? ''}"
+              .trim()
         : "";
     final String address =
         cart?.destinationAddress?.name?.split(',')[0] ?? "Current location";
@@ -451,20 +450,11 @@ class _ComboCheckoutScreenState extends State<ComboCheckoutScreen> {
             icon: HeroiconsOutline.informationCircle,
           ),
           SizedBox(height: getProportionateScreenHeight(kDefaultPadding)),
-          DetailsRow(
-            title: lang.name,
-            subtitle: fullName,
-          ),
+          DetailsRow(title: lang.name, subtitle: fullName),
           SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 3)),
-          DetailsRow(
-            title: lang.phone,
-            subtitle: phone,
-          ),
+          DetailsRow(title: lang.phone, subtitle: phone),
           SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 3)),
-          DetailsRow(
-            title: lang.deliveryAddress,
-            subtitle: address,
-          ),
+          DetailsRow(title: lang.deliveryAddress, subtitle: address),
         ],
       ),
     );
@@ -472,8 +462,8 @@ class _ComboCheckoutScreenState extends State<ComboCheckoutScreen> {
 
   Widget _storeCard(int pickup, String storeId, String? currency) {
     // Resolve the StoreInvoice leg from the typed model by store_id.
-    final leg = (storeId == route?.originStoreId ||
-            _invoice!.origin.storeId == storeId)
+    final leg =
+        (storeId == route?.originStoreId || _invoice!.origin.storeId == storeId)
         ? _invoice!.origin
         : _invoice!.secondary;
 
@@ -574,10 +564,7 @@ class _ComboCheckoutScreenState extends State<ComboCheckoutScreen> {
           ],
           if (eta.isNotEmpty) ...[
             SizedBox(height: getProportionateScreenHeight(kDefaultPadding / 3)),
-            DetailsRow(
-              title: "Estimated Time",
-              subtitle: eta,
-            ),
+            DetailsRow(title: "Estimated Time", subtitle: eta),
           ],
         ],
       ),

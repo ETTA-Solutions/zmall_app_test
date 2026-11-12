@@ -30,12 +30,17 @@ class OrderDetail extends StatefulWidget {
     required this.serverToken,
     //
     required this.userPhone,
+    this.embedded = false,
   });
 
   final order;
   final String userId, serverToken;
   //
   final String userPhone;
+
+  /// True when shown inside the combo store tabs (ComboOrderDetail):
+  /// hides this page's own title bar so only one app bar is visible.
+  final bool embedded;
 
   @override
   _OrderDetailState createState() => _OrderDetailState();
@@ -116,87 +121,6 @@ class _OrderDetailState extends State<OrderDetail> {
   //     onForceLogout: _forceLogout,
   //   );
   // }
-
-  // ---------------------------------------------------------------------------
-  // Combo cross-reference banner (§order-detail-combo-banner)
-  //
-  // Shown at the top of the Order Status tab when this order is part of a
-  // two-store combo.  Detects combo membership via:
-  //   1. order['combo_id']
-  //   2. order['order_payment_detail']?['combo_id']
-  //
-  // Tapping the banner pops back to the store-picker bottom sheet or the
-  // orders list — no extra route plumbing needed.
-  // ---------------------------------------------------------------------------
-  String? _resolveComboId() {
-    final raw = widget.order;
-    final id = raw['combo_id'] ?? raw['order_payment_detail']?['combo_id'];
-    if (id == null) return null;
-    final s = id.toString();
-    return s.isNotEmpty ? s : null;
-  }
-
-  Widget _buildComboCrossRefBanner() {
-    final comboId = _resolveComboId();
-    if (comboId == null) return const SizedBox.shrink();
-
-    return GestureDetector(
-      onTap: () => Navigator.of(context).pop(),
-      child: Container(
-        margin: EdgeInsets.symmetric(
-          horizontal: getProportionateScreenWidth(kDefaultPadding),
-          vertical: getProportionateScreenHeight(kDefaultPadding / 3),
-        ),
-        padding: EdgeInsets.symmetric(
-          horizontal: getProportionateScreenWidth(kDefaultPadding / 1.5),
-          vertical: getProportionateScreenHeight(kDefaultPadding / 2),
-        ),
-        decoration: BoxDecoration(
-          color: kSecondaryColor.withValues(alpha: 0.08),
-          border: Border.all(color: kSecondaryColor.withValues(alpha: 0.30)),
-          borderRadius: BorderRadius.circular(kDefaultPadding / 1.2),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              HeroiconsOutline.shoppingBag,
-              size: getProportionateScreenHeight(16),
-              color: kSecondaryColor,
-            ),
-            SizedBox(width: getProportionateScreenWidth(kDefaultPadding / 2)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Part of a combo order (2 stores · 1 driver)',
-                    style: TextStyle(
-                      color: kSecondaryColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: getProportionateScreenHeight(12.5),
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Tap to view the other store\'s order',
-                    style: TextStyle(
-                      color: kSecondaryColor.withValues(alpha: 0.75),
-                      fontSize: getProportionateScreenHeight(11),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              HeroiconsOutline.chevronRight,
-              size: getProportionateScreenHeight(16),
-              color: kSecondaryColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   //
   void _getOrderStatus() async {
@@ -381,29 +305,30 @@ class _OrderDetailState extends State<OrderDetail> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Order Detail", style: TextStyle(color: kBlackColor)),
+          title: widget.embedded
+              ? null
+              : Text("Order Detail", style: TextStyle(color: kBlackColor)),
+          automaticallyImplyLeading: !widget.embedded,
+          toolbarHeight: widget.embedded ? 0 : null,
           elevation: 1.0,
           bottom: TabBar(
             indicatorColor: kSecondaryColor,
             tabs: [
-              Column(
-                children: [
-                  Tab(
-                    icon: Icon(HeroiconsOutline.truck, color: kSecondaryColor),
-                  ),
-                  Text("Order Status", style: TextStyle(color: kBlackColor)),
-                ],
+              // Tab(icon + child) lets TabBar reserve the full icon+label
+              // height; the old Column-of-Tab layout overflowed the bar.
+              Tab(
+                icon: Icon(HeroiconsOutline.truck, color: kSecondaryColor),
+                child: Text(
+                  "Order Status",
+                  style: TextStyle(color: kBlackColor),
+                ),
               ),
-              Column(
-                children: [
-                  Tab(
-                    icon: Icon(
-                      HeroiconsOutline.shoppingBag,
-                      color: kSecondaryColor,
-                    ),
-                  ),
-                  Text("Cart", style: TextStyle(color: kBlackColor)),
-                ],
+              Tab(
+                icon: Icon(
+                  HeroiconsOutline.shoppingBag,
+                  color: kSecondaryColor,
+                ),
+                child: Text("Cart", style: TextStyle(color: kBlackColor)),
               ),
             ],
           ),
@@ -419,9 +344,6 @@ class _OrderDetailState extends State<OrderDetail> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Combo cross-reference banner ───────────────────
-                        // Visible only when this order is part of a combo.
-                        _buildComboCrossRefBanner(),
                         ////order price section///
                         Container(
                           padding: EdgeInsets.symmetric(
