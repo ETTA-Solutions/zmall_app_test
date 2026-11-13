@@ -150,6 +150,11 @@ class _VehicleScreenState extends State<VehicleScreen> {
     setState(() {
       _loading = true;
     });
+    // Proof photos go to the courier cart before the invoice/payment.
+    if (!await _uploadCourierImages()) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
     var data = await getCourierInvoice();
     if (data != null && data['success']) {
       Navigator.push(
@@ -1130,6 +1135,53 @@ class _VehicleScreenState extends State<VehicleScreen> {
       );
       return null;
     }
+  }
+
+  // Paths already uploaded: the endpoint appends, so never send one twice.
+  final Set<String> _uploadedImages = {};
+
+  /// POST /api/user/upload_courier_image, once per image, for the courier cart.
+  /// Returns false if the user must fix something and retry.
+  Future<bool> _uploadCourierImages() async {
+    if (imagePath.isEmpty) return true;
+    final batch = await ImageUploadService.validateBatch(imagePath);
+    if (batch.hasIssues && batch.allFailed) {
+      _showImageError(
+        "Image issue: ${batch.summary}. Please select your images again.",
+      );
+      return false;
+    }
+    final courier = await Service.read('courier');
+    final cartId = courier?['cart_id'];
+    if (cartId == null) return true;
+    final url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/upload_courier_image";
+    for (final path in batch.validPaths) {
+      if (_uploadedImages.contains(path)) continue;
+      try {
+        final request = http.MultipartRequest("POST", Uri.parse(url))
+          ..fields['user_id'] = widget.userData['user']['_id']
+          ..fields['server_token'] = widget.userData['user']['server_token']
+          ..fields['cart_id'] = cartId.toString();
+        request.files.add(await http.MultipartFile.fromPath('file', path));
+        final res = await http.Response.fromStream(
+          await request.send().timeout(Duration(seconds: 30)),
+        );
+        final body = json.decode(res.body);
+        if (body['success'] == true) {
+          _uploadedImages.add(path);
+        } else {
+          _showImageError(
+            body['message']?.toString() ?? "Could not upload your image.",
+          );
+          return false;
+        }
+      } catch (e) {
+        _showImageError("Could not upload your image. Check your connection.");
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<dynamic> getCourierInvoice() async {

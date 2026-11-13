@@ -3,6 +3,7 @@
 //     final cart = cartFromJson(jsonString);
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 Cart cartFromJson(String str) => Cart.fromJson(json.decode(str));
 
@@ -127,7 +128,7 @@ class AbroadCart {
         ? null
         : DateTime.parse(json["schedule_start"]),
     isForOthers: json["delivery_for_other"],
-    isOpen: true, // BYPASS store closed flag — was: json['is_open']
+    isOpen: kDebugMode ? true : json['is_open'],
     isAbroad: json["is_abroad"],
     userName: json["username"],
     phone: json['phone'],

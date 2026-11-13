@@ -1645,22 +1645,15 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   }
 
   /// Orders the backend can't create on its own yet are still created from
-  /// the app: AliExpress (its order ids
-  /// are created after payment) and courier orders with proof photos (photos
-  /// only travel on create_order). create_order is idempotent on the backend.
-  static const bool _bypassCourierImageUpload = true; // TESTING ONLY
-
+  /// the app: AliExpress (its order ids are created after payment).
+  /// Courier proof photos are uploaded to the cart (upload_courier_image)
+  /// before the invoice, so courier orders are backend-created.
   bool get _mustCreateOrderFromApp {
     // Combo: the backend creates both orders from the intent sent on the
     // combo invoice. Online payments wait for them ([_waitForOrder]);
     // cash/wallet call combo_create_order ([_afterPayOrderPayment]).
     if (widget.isCombo) return false;
-    if (widget.isCourier == true) {
-      // TESTING: skip the proof-photo upload so the backend creates the
-      // courier order. Set _bypassCourierImageUpload to false to restore.
-      if (_bypassCourierImageUpload) return false;
-      return imagePath != null && imagePath.length > 0;
-    }
+    if (widget.isCourier == true) return false;
     return aliexpressCart != null &&
         aliexpressCart!.cart.storeId == cart.storeId;
   }
@@ -5567,87 +5560,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         // Idempotency key: backend should return the existing order for a
         // repeated call with the same unique id instead of creating a duplicate.
         ..fields['order_payment_unique_id'] = widget.orderPaymentUniqueId!;
-      if (imagePath != null && imagePath.length > 0) {
-        // Validate all image paths using the shared service
-        final batch = await ImageUploadService.validateBatch(imagePath);
-
-        // If every image failed validation, stop the order
-        if (batch.allFailed) {
-          if (mounted)
-            setState(() {
-              _loading = false;
-              _placeOrder = false;
-            });
-
-          if (!mounted) return null;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "All images failed validation (${batch.issues.map((i) => i.label).join('; ')}). "
-                "Please go back and select images again.",
-                style: TextStyle(color: kPrimaryColor),
-              ),
-              backgroundColor: kSecondaryColor,
-              duration: Duration(seconds: 5),
-              action: SnackBarAction(
-                label: "OK",
-                textColor: kPrimaryColor,
-                onPressed: () {},
-              ),
-            ),
-          );
-
-          return null;
-        }
-
-        // If some (but not all) images had issues, warn but continue with valid ones
-        if (batch.hasIssues) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "${batch.issues.length} image(s) skipped (${batch.issues.map((i) => i.label).join('; ')}). "
-                "Continuing with ${batch.validPaths.length} valid image(s).",
-                style: TextStyle(color: kPrimaryColor),
-              ),
-              backgroundColor: kSecondaryColor,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-
-        // Upload valid images
-        if (batch.hasValid) {
-          setState(() {
-            linearProgressIndicator = Container(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SpinKitWave(
-                    color: kSecondaryColor,
-                    size: getProportionateScreenWidth(kDefaultPadding),
-                  ),
-                  SizedBox(height: kDefaultPadding * 0.5),
-                  Text(
-                    "Uploading ${batch.validPaths.length} image(s)...",
-                    style: TextStyle(color: kBlackColor),
-                  ),
-                ],
-              ),
-            );
-          });
-
-          for (var i = 0; i < batch.validPaths.length; i++) {
-            try {
-              http.MultipartFile multipartFile = await http
-                  .MultipartFile.fromPath('file', batch.validPaths[i]);
-              request.files.add(multipartFile);
-            } catch (e) {
-              // Skip files that fail to attach (e.g., deleted between validation and attach)
-              //debugPrint('Failed to attach image: ${batch.validPaths[i]} - $e');
-            }
-          }
-        }
-      }
+      // Proof photos are already on the cart (upload_courier_image).
       await request
           .send()
           .then((response) async {
