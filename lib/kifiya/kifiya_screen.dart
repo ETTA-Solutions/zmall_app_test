@@ -15,6 +15,7 @@ import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/kifiya/components/addis_pay.dart';
 import 'package:zmall/kifiya/components/amole_screen.dart';
 import 'package:zmall/kifiya/components/cbe_ussd.dart';
+import 'package:zmall/kifiya/components/birrlink_screen.dart';
 import 'package:zmall/kifiya/components/chapa_screen.dart';
 import 'package:zmall/kifiya/components/cyber_source.dart';
 import 'package:zmall/kifiya/cybersource/cybersource_webview.dart';
@@ -784,6 +785,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       return; // Stop payment - images are invalid
     }
 
+    _zooryaSelected = false; // set again below if a ZOORYA-PAY method is chosen
     var pId = "";
     if (otp.toString().isNotEmpty) {
       pId = paymentId;
@@ -812,7 +814,13 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           final String selDisplayName = selMethod['name'].toString();
           final String selType = (selMethod['type'] ?? 'ussd').toString();
           final String? selImageUrl = selMethod['image_url']?.toString();
-          if (selKey == _cyberSourceKey) {
+          // ZOORYA-PAY methods have no legacy gateway_id.
+          _zooryaSelected =
+              selMethod['gateway_id'] == null &&
+              selKey != 'cash' &&
+              selKey != 'wallet' &&
+              !selKey.startsWith('telebirr in');
+          if (selKey.contains('cyber')) {
             setState(() {
               _loading = false;
               _placeOrder = false;
@@ -1034,9 +1042,16 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
           }
         }
       }
-      final String _zooryaGatewayId = _zooryaGw != null
-          ? _zooryaGw['_id'].toString()
-          : '';
+      // Legacy gateways (wallet, amole, ...) carry their own gateway _id.
+      final List<dynamic> _selMethods = _visiblePaymentMethods(_zooryaGw);
+      final String? _legacyGwId =
+          (kifiyaMethod >= 0 && kifiyaMethod < _selMethods.length)
+          ? _selMethods[kifiyaMethod]['gateway_id']?.toString()
+          : null;
+      final String _zooryaGatewayId =
+          (_legacyGwId != null && _legacyGwId.isNotEmpty)
+          ? _legacyGwId
+          : (_zooryaGw != null ? _zooryaGw['_id'].toString() : '');
       // Double-charge guard: is this cart already paid / in flight?
       if (!await _guardBeforePay()) {
         if (mounted && !_waitingForOrder) _stopLoading();
@@ -1098,12 +1113,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
   // ───────────────────────── CyberSource card payment ─────────────────────────
 
-  static const String _cyberSourceKey = 'cybersource';
-
-  /// ZOORYA-PAY methods visible to the user, plus the CyberSource card tile
-  /// when the backend's `payment_gateway` list contains an enabled
-  /// CyberSource gateway (`is_payment_visible: true`). Nothing is hardcoded:
-  /// the tile's name and image come from that gateway.
+  /// ZOORYA-PAY methods plus every other gateway in the backend's
+  /// `payment_gateway` list (cash, wallet, chapa, CyberSource, ...). If the
+  /// backend sends a gateway it shows; if not, it doesn't.
   List<dynamic> _visiblePaymentMethods(dynamic zooryaGateway) {
     final List<dynamic> methods =
         (zooryaGateway != null && zooryaGateway['methods'] is List)
@@ -1116,96 +1128,27 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
               .toList()
         : <dynamic>[];
 
-    // The backend creates a plain ZMall order on PAID; it does not place the
-    // AliExpress order, so card payment is hidden for AliExpress carts.
-    final bool isAliexpressCart =
-        aliexpressCart != null && aliexpressCart!.cart.storeId == cart.storeId;
-    final dynamic cyberSourceGateway = _cyberSourceGateway();
-    if (!isAliexpressCart && cyberSourceGateway != null) {
-      methods.add({
-        'key': _cyberSourceKey, // internal routing key only
-        'name': cyberSourceGateway['name'].toString(),
-        'image_url': cyberSourceGateway['image_url']?.toString(),
-        'type': '',
-        'is_visible': true,
-      });
-    }
-
+    // Every other gateway: shown if the backend sends it, hidden if not.
     final gateways = paymentResponse?['payment_gateway'];
     if (gateways is List) {
-      // 1. Telebirr InApp
-      bool foundTelebirrInApp = false;
+      final Set<String> usedKeys = methods
+          .map((m) => m['key'].toString().toLowerCase())
+          .toSet();
       for (final g in gateways) {
         if (g is! Map) continue;
-        final name = g['name'].toString().toLowerCase();
-        if ((name.contains('telebirr inapp') ||
-                name.contains('telebirr in app') ||
-                name.contains('telebirr in-app')) &&
-            g['is_payment_visible'] != false) {
-          methods.add({
-            'key': 'telebirr inapp',
-            'name': g['name'].toString(),
-            'image_url': 'images/payment/telebirr.png',
-            'type': 'inapp',
-            'is_visible': true,
-          });
-          foundTelebirrInApp = true;
-          break;
-        }
-      }
-      if (!foundTelebirrInApp) {
+        final String gName = g['name'].toString();
+        final String key = gName.toLowerCase();
+        if (key == 'zoorya-pay') continue; // expanded into its methods above
+        // Combo orders: cash and wallet only.
+        if (widget.isCombo && key != 'cash' && key != 'wallet') continue;
+        if (!usedKeys.add(key)) continue; // already provided by ZOORYA-PAY
         methods.add({
-          'key': 'telebirr inapp',
-          'name': 'Telebirr InApp',
-          'image_url': 'images/payment/telebirr.png',
-          'type': 'inapp',
+          'key': key,
+          'name': gName,
+          'image_url': _legacyGatewayImage(key, g['image_url']?.toString()),
+          'type': key == 'cash' ? 'cash' : '',
           'is_visible': true,
-        });
-      }
-
-      // 2. Cash payment (if not cashless only)
-      if (widget.onlyCashless != true) {
-        bool foundCash = false;
-        for (final g in gateways) {
-          if (g is! Map) continue;
-          final name = g['name'].toString().toLowerCase();
-          if (name.contains('cash') && g['is_payment_visible'] != false) {
-            methods.add({
-              'key': 'cash',
-              'name': g['name'].toString(),
-              'image_url': 'images/payment/cod.png',
-              'type': 'cash',
-              'is_visible': true,
-            });
-            foundCash = true;
-            break;
-          }
-        }
-        if (!foundCash) {
-          methods.add({
-            'key': 'cash',
-            'name': 'Cash',
-            'image_url': 'images/payment/cod.png',
-            'type': 'cash',
-            'is_visible': true,
-          });
-        }
-      }
-    } else {
-      methods.add({
-        'key': 'telebirr inapp',
-        'name': 'Telebirr InApp',
-        'image_url': 'images/payment/telebirr.png',
-        'type': 'inapp',
-        'is_visible': true,
-      });
-      if (widget.onlyCashless != true) {
-        methods.add({
-          'key': 'cash',
-          'name': 'Cash',
-          'image_url': 'images/payment/cod.png',
-          'type': 'cash',
-          'is_visible': true,
+          'gateway_id': g['_id']?.toString(),
         });
       }
     }
@@ -1213,21 +1156,32 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
     return methods;
   }
 
-  /// The CyberSource gateway from `payment_gateway`, or null when the backend
-  /// doesn't list it or has hidden it. Matched on the name containing "cyber"
-  /// so spelling variants (e.g. "CyberSoruce") still match.
-  dynamic _cyberSourceGateway() {
-    final gateways = paymentResponse?['payment_gateway'];
-    if (gateways is! List) return null;
-    for (final g in gateways) {
-      if (g is! Map) continue;
-      final name = g['name'].toString().toLowerCase().replaceAll(
-        RegExp(r'[^a-z]'),
-        '',
-      );
-      if (name.contains('cyber') && g['is_payment_visible'] == true) return g;
+  /// Logo for a legacy gateway: bundled asset by name, else the backend's
+  /// `image_url`, else the default placeholder.
+  String _legacyGatewayImage(String key, String? backendUrl) {
+    if (key == 'wallet') return 'images/payment/wallet.png';
+    if (key == 'cash') return 'images/payment/cod.png';
+    if (key == 'dashen mastercard') return 'images/payment/dashenmpgs.png';
+    if (key == 'addis pay') return 'images/payment/addispay.png';
+    if (key == 'santimpay') return 'images/payment/santimpay.png';
+    if (key == 'etta card') return 'images/payment/ettacard.png';
+    if (key == 'cbe birr') return 'images/payment/cbebirr.png';
+    if (key == 'ethswitch') return 'images/payment/ethswitch.png';
+    if (key == 'chapa') return 'images/payment/chapa.png';
+    if (key == 'birrlink') return 'images/payment/birrlink.png';
+    if (key == 'amole') return 'images/payment/amole.png';
+    if (key == 'boa') return 'images/payment/boa.png';
+    if (key == 'zemen') return 'images/payment/zemen.png';
+    if (key.contains('wegagen')) return 'images/payment/wegagen_real.png';
+    if (key == 'awash') return 'images/payment/awash.png';
+    if (key == 'dashen') return 'images/payment/dashen.png';
+    if (key == 'yagoutpay') return 'images/payment/yagoutpay.png';
+    if (key == 'starpay') return 'images/payment/starpay.png';
+    if (key.contains('telebirr') || key.contains('tele birr')) {
+      return 'images/payment/telebirr.png';
     }
-    return null;
+    if (backendUrl != null && backendUrl.isNotEmpty) return backendUrl;
+    return 'images/payment/default_payment.png';
   }
 
   /// CyberSource card payment: /pay → WebView → /status.
@@ -1628,6 +1582,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   /// True while this screen is polling for the backend-created order.
   bool _waitingForOrder = false;
 
+  /// True only while a ZOORYA-PAY method is the selected payment. For these
+  /// the backend creates the order; every other gateway (cash, wallet,
+  /// Telebirr In-App, legacy gateways) creates it from the app as before.
+  bool _zooryaSelected = false;
+
   /// Courier: how long to wait for the backend's order after the payment is
   /// confirmed before creating the order from the app.
   static const Duration _courierPaidNoOrderGrace = Duration(seconds: 6);
@@ -1722,7 +1681,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
   /// A gateway confirmed the payment: get the order the backend creates.
   void _afterPaymentConfirmed() {
-    if (_mustCreateOrderFromApp) {
+    // Not ZOORYA-PAY: create the order from the app as before.
+    if (!_zooryaSelected || _mustCreateOrderFromApp) {
       _createOrderFromApp();
       return;
     }
@@ -1733,6 +1693,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
   /// backend already created it, otherwise create it from the app as before
   /// (safe: create_order returns the existing order instead of a second one).
   void _afterPayOrderPayment(Map data) {
+    // Not ZOORYA-PAY (cash, wallet, legacy gateways): app creates the order.
+    if (!_zooryaSelected) {
+      _createOrderFromApp();
+      return;
+    }
     // Combo cash/wallet: create the orders from the app (combo_create_order)
     // as before. Only online gateways (Zoorya Pay) rely on the backend.
     if (widget.isCombo) {
@@ -1792,21 +1757,35 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
 
         // DEBUG: show exactly what check_paid_order returned and how the app read it.
         pollCount++;
-        debugPrint('════════ [ORDER DEBUG] poll #$pollCount '
-            '(${DateTime.now().difference(started).inSeconds}s) ════════');
-        debugPrint('[ORDER DEBUG] order_payment_id sent: ${widget.orderPaymentId}');
+        debugPrint(
+          '════════ [ORDER DEBUG] poll #$pollCount '
+          '(${DateTime.now().difference(started).inSeconds}s) ════════',
+        );
+        debugPrint(
+          '[ORDER DEBUG] order_payment_id sent: ${widget.orderPaymentId}',
+        );
         debugPrint('[ORDER DEBUG] response type: ${res.runtimeType}');
         debugPrint('[ORDER DEBUG] top-level keys: ${map?.keys.toList()}');
         if (map?['data'] is Map) {
-          debugPrint('[ORDER DEBUG] data keys: ${(map!['data'] as Map).keys.toList()}');
+          debugPrint(
+            '[ORDER DEBUG] data keys: ${(map!['data'] as Map).keys.toList()}',
+          );
         }
-        debugPrint('[ORDER DEBUG] order_id found: ${OrderSettlementService.orderIdOf(map)}');
-        debugPrint('[ORDER DEBUG] order_unique_id found: ${OrderSettlementService.orderUniqueIdOf(map)}');
-        debugPrint('[ORDER DEBUG] hasOrder=${OrderSettlementService.hasOrder(map)} '
-            'isPaid=${OrderSettlementService.isPaid(map)} '
-            'isFailed=${OrderSettlementService.isFailed(map)}');
+        debugPrint(
+          '[ORDER DEBUG] order_id found: ${OrderSettlementService.orderIdOf(map)}',
+        );
+        debugPrint(
+          '[ORDER DEBUG] order_unique_id found: ${OrderSettlementService.orderUniqueIdOf(map)}',
+        );
+        debugPrint(
+          '[ORDER DEBUG] hasOrder=${OrderSettlementService.hasOrder(map)} '
+          'isPaid=${OrderSettlementService.isPaid(map)} '
+          'isFailed=${OrderSettlementService.isFailed(map)}',
+        );
         if (!OrderSettlementService.hasOrder(map)) {
-          debugPrint('[ORDER DEBUG] ⏳ No order id in response → app keeps waiting');
+          debugPrint(
+            '[ORDER DEBUG] ⏳ No order id in response → app keeps waiting',
+          );
         }
 
         if (OrderSettlementService.hasOrder(map)) {
@@ -1840,8 +1819,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         // (create_order returns the existing order instead of a duplicate).
         if (widget.isCourier == true && OrderSettlementService.isPaid(map)) {
           paidAt ??= DateTime.now();
-          if (DateTime.now().difference(paidAt) >=
-              _courierPaidNoOrderGrace) {
+          if (DateTime.now().difference(paidAt) >= _courierPaidNoOrderGrace) {
             debugPrint(
               '[SETTLEMENT] Courier paid but no order_id after '
               '${_courierPaidNoOrderGrace.inSeconds}s → create_order from app',
@@ -2755,8 +2733,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                           imagePath: zooryaImagePath,
                                           // CyberSource logo is wide (Visa/Mastercard):
                                           // let it fill the badge so it stays readable.
-                                          fillImage:
-                                              paymentName == _cyberSourceKey,
+                                          fillImage: paymentName.contains(
+                                            'cyber',
+                                          ),
                                           press: () async {
                                             // Select this method card
                                             setState(() {
@@ -2803,8 +2782,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                             }
 
                                             // -- CyberSource card (Visa / Mastercard, 3-D Secure) via WebView --
-                                            if (paymentName ==
-                                                _cyberSourceKey) {
+                                            if (paymentName.contains('cyber')) {
                                               _showProceedToPayDialog(
                                                 displayName: displayName,
                                                 onProceed: () =>
@@ -3048,6 +3026,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                               }
                                             } else if (paymentName ==
                                                 "wallet") {
+                                              _selectedPaymentMethod =
+                                                  paymentName;
                                               if (widget.onlyCashless! &&
                                                   paymentResponse != null &&
                                                   paymentResponse['wallet'] <
@@ -3632,6 +3612,131 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                               ),
                                                             ).then((value) {
                                                               _boaVerify();
+                                                            });
+                                                          },
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
+                                                );
+                                              } else {
+                                                Service.showMessage(
+                                                  context: context,
+                                                  title:
+                                                      "Something went wrong! Please try again!",
+                                                  error: true,
+                                                );
+                                                setState(() {
+                                                  kifiyaMethod = -1;
+                                                });
+                                              }
+                                            } else if (paymentName ==
+                                                "birrlink") {
+                                              var data = await useBorsa();
+                                              if (data != null &&
+                                                  data['success']) {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (context) {
+                                                    return AlertDialog(
+                                                      backgroundColor:
+                                                          kPrimaryColor,
+                                                      title: Text(
+                                                        "Pay Using BirrLink",
+                                                      ),
+                                                      content: Text(
+                                                        "Proceed to pay ${Provider.of<ZMetaData>(context, listen: false).currency} ${widget.price!.toStringAsFixed(2)} using BirrLink?",
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          child: Text(
+                                                            Provider.of<
+                                                                  ZLanguage
+                                                                >(context)
+                                                                .cancel,
+                                                            style: TextStyle(
+                                                              color:
+                                                                  kSecondaryColor,
+                                                            ),
+                                                          ),
+                                                          onPressed: () {
+                                                            Navigator.of(
+                                                              context,
+                                                            ).pop();
+                                                            setState(() {
+                                                              kifiyaMethod = -1;
+                                                            });
+                                                          },
+                                                        ),
+                                                        TextButton(
+                                                          child: Text(
+                                                            Provider.of<
+                                                                  ZLanguage
+                                                                >(context)
+                                                                .cont,
+                                                            style: TextStyle(
+                                                              color:
+                                                                  kBlackColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          onPressed: () {
+                                                            Navigator.of(
+                                                              context,
+                                                            ).pop();
+                                                            String baseUrl =
+                                                                Provider.of<
+                                                                      ZMetaData
+                                                                    >(
+                                                                      context,
+                                                                      listen:
+                                                                          false,
+                                                                    )
+                                                                    .baseUrl;
+                                                            if (baseUrl
+                                                                .isEmpty) {
+                                                              baseUrl =
+                                                                  BASE_URL;
+                                                            }
+                                                            final int
+                                                            birrLinkUniqueId =
+                                                                int.tryParse(
+                                                                  widget.orderPaymentUniqueId ??
+                                                                      '',
+                                                                ) ??
+                                                                0;
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder: (context) {
+                                                                  return BirrLinkScreen(
+                                                                    title:
+                                                                        "BirrLink Payment",
+                                                                    generateUrl:
+                                                                        "$baseUrl/api/birrlink/generatepaymenturl",
+                                                                    statusUrl:
+                                                                        "$baseUrl/api/birrlink/checktransactionstatus",
+                                                                    uniqueId:
+                                                                        birrLinkUniqueId,
+                                                                    amount: widget
+                                                                        .price!,
+                                                                    phone:
+                                                                        userData['user']['phone'],
+                                                                  );
+                                                                },
+                                                              ),
+                                                            ).then((value) {
+                                                              if (value ==
+                                                                  true) {
+                                                                _boaVerify();
+                                                              } else if (mounted) {
+                                                                setState(() {
+                                                                  kifiyaMethod =
+                                                                      -1;
+                                                                });
+                                                              }
                                                             });
                                                           },
                                                         ),
