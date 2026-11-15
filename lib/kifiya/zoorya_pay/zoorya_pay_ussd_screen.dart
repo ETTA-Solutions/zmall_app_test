@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'zoorya_brand.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/models/metadata.dart';
@@ -85,7 +86,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'nib_qr':
         return const Color(0xFF8A4D21); // Nib Brown
       case 'dashen':
-        return const Color(0xFF002B49); // Dashen Navy
+        return kZooryaBlue; // Dashen Navy
       case 'mpesa':
       case 'telebirr':
       case 'telebirr_qr':
@@ -104,7 +105,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       case 'nib_qr':
         return const Color(0xFFFEB914); // Nib Yellow / Gold
       case 'dashen':
-        return const Color(0xFFD4AF37); // Dashen Gold
+        return kZooryaBlue; // Dashen Gold
       case 'ethswitch':
       case 'ethswitch_qr':
         return const Color(0xFF142548); // EthSwitch Navy
@@ -463,9 +464,9 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
   // DASHEN — CLEAN LIGHT UI
   // ═══════════════════════════════════════════════════════════════════════════
-  static const Color _dNavy = Color(0xFF002B49);
-  static const Color _dNavyDark = Color(0xFF001A2E);
-  static const Color _dGold = Color(0xFFD4AF37);
+  static const Color _dNavy = kZooryaBlue;
+  static const Color _dNavyDark = kZooryaBlueDark;
+  static const Color _dGold = kZooryaBlue;
   static const Color _dBg = Color(0xFFF5F6FA);
   static const Color _dInk = Color(0xFF111827);
   static const Color _dMuted = Color(0xFF6B7280);
@@ -551,30 +552,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
                       ),
               ),
               const SizedBox(height: 22),
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.lock_outline_rounded,
-                    size: 14,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                  SizedBox(width: 5),
-                  Text(
-                    'Secured by ',
-                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
-                  ),
-                  Text(
-                    'ZOORYA-PAY',
-                    style: TextStyle(
-                      color: _dMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ],
-              ),
+              const ZooryaPayBadge(),
             ],
           ),
         ),
@@ -1618,16 +1596,16 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFF002B49),
+          color: kZooryaBlue,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFD4AF37), width: 1.2),
+          border: Border.all(color: kZooryaBlue, width: 1.2),
         ),
         child: const Text(
           'Dashen Bank',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: Color(0xFFD4AF37),
+            color: kZooryaBlue,
             letterSpacing: 0.3,
           ),
         ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'zoorya_brand.dart';
 import 'package:flutter/services.dart';
 
-const Color _mpesaGreen = Color(0xFF00A650);
+const Color _mpesaGreen = kZooryaBlue;
 const Color _ink = Color(0xFF111827);
 const Color _muted = Color(0xFF6B7280);
 

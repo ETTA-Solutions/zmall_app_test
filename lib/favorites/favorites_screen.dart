@@ -96,10 +96,6 @@ class FavoritesScreenState extends State<FavoritesScreen> {
 
   void storeOpen(List stores) {
     isOpen.clear();
-    if (Service.debugAllStoresOpen) {
-      isOpen.addAll(List<bool>.filled(stores.length, true));
-      return;
-    }
     stores.forEach((store) {
       bool isStoreOpen = false;
       if (store['store_time'] != null && store['store_time'].length != 0) {

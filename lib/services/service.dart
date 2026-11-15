@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
@@ -594,11 +593,7 @@ class Service {
   ///   print('Store is open');
   /// }
   /// ```
-  /// DEBUG ONLY: when true, every store is treated as open. Always false in release builds.
-  static const bool debugAllStoresOpen = kDebugMode && true;
-
   static Future<bool> isStoreOpen(var store) async {
-    if (debugAllStoresOpen) return true;
     List<bool> result = await storeOpen([store]);
     return result.isNotEmpty ? result[0] : false;
   }
@@ -623,7 +618,6 @@ class Service {
   /// }
   /// ```
   static Future<List<bool>> storeOpen(List stores) async {
-    if (debugAllStoresOpen) return List<bool>.filled(stores.length, true);
     List<bool> isOpen = [];
     DateFormat dateFormat = DateFormat.Hm();
     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));

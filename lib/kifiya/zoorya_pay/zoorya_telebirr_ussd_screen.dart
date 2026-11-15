@@ -21,6 +21,7 @@
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:zmall/kifiya/zoorya_pay/zoorya_brand.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/models/metadata.dart';
@@ -270,61 +271,60 @@ class _ZooryaTelebirrUssdState extends State<ZooryaTelebirrUssd> {
         centerTitle: false,
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(getProportionateScreenWidth(kDefaultPadding)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Pay Using ${widget.type.toUpperCase()}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Pay With ZooryaPay',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF8E8E93),
-                    fontWeight: FontWeight.normal,
-                  ),
-                ),
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding * 2),
-                ),
-                _buildTelebirrLogo(context),
-                SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding * 2),
-                ),
-                if (_timedOut)
-                  _buildTimedOut()
-                else ...[
-                  const SpinKitPouringHourGlassRefined(
-                    color: Colors.black,
-                    size: 40,
-                  ),
-                  SizedBox(
-                    height: getProportionateScreenHeight(kDefaultPadding),
-                  ),
-                  const Text(
-                    "Please complete payment through the USSD prompt.\nWaiting for payment to be completed....",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      height: 1.45,
-                      color: Color(0xFF2C2C2E),
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: getProportionateScreenWidth(kDefaultPadding * 1.5),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Spacer(flex: 2),
+                    _buildTelebirrLogo(context),
+                    const SizedBox(height: 28),
+                    Text(
+                      'Pay with ${widget.type.toUpperCase()}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
                     ),
-                  ),
-                ],
-              ],
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Secured by Zoorya Pay',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 17, color: Color(0xFF8E8E93)),
+                    ),
+                    const SizedBox(height: 40),
+                    if (_timedOut)
+                      _buildTimedOut()
+                    else ...[
+                      const SpinKitPouringHourGlassRefined(
+                        color: Colors.black,
+                        size: 56,
+                      ),
+                      const SizedBox(height: 22),
+                      const Text(
+                        "Complete the payment on the USSD prompt.\nWaiting for confirmation…",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          height: 1.5,
+                          color: Color(0xFF2C2C2E),
+                        ),
+                      ),
+                    ],
+                    const Spacer(flex: 3),
+                    const ZooryaPayBadge(height: 56),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -337,7 +337,7 @@ class _ZooryaTelebirrUssdState extends State<ZooryaTelebirrUssd> {
     if (img.startsWith('http://') || img.startsWith('https://')) {
       return Image.network(
         img,
-        height: 65,
+        height: 110,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => _fallbackLogo(),
       );
@@ -347,7 +347,7 @@ class _ZooryaTelebirrUssdState extends State<ZooryaTelebirrUssd> {
         final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
         return Image.network(
           '$baseUrl/$img',
-          height: 65,
+          height: 110,
           fit: BoxFit.contain,
           errorBuilder: (_, __, ___) => _fallbackLogo(),
         );
@@ -361,11 +361,11 @@ class _ZooryaTelebirrUssdState extends State<ZooryaTelebirrUssd> {
   Widget _fallbackLogo() {
     return Image.asset(
       "images/payment/telebirr.png",
-      height: 65,
+      height: 110,
       fit: BoxFit.contain,
       errorBuilder: (_, __, ___) => Image.asset(
         "images/payment/new_payment/telebirr.png",
-        height: 65,
+        height: 110,
         fit: BoxFit.contain,
       ),
     );

@@ -177,6 +177,7 @@ class _MyAppState extends State<MyApp> {
     // pushReplacement (8-second timer + SharedPreferences reads) has fully
     // settled. This avoids the Flutter debug "_debugLocked" / "deactivated
     // widget" race that fires when pushReplacement and pushNamed overlap.
+
     debugPrint(
       '[MCP DEEP LINK] Starting 3s delay before McpCartScreen navigation attempts...',
     );

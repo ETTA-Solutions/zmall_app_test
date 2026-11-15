@@ -951,9 +951,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                           zmallClose.minute,
                                         );
 
-                                        if (Service.debugAllStoresOpen ||
-                                            (now.isAfter(zmallOpen) &&
-                                                now.isBefore(zmallClose))) {
+                                        if (now.isAfter(zmallOpen) &&
+                                            now.isBefore(zmallClose)) {
                                           // ── Min-order check ─────────────────
                                           final minErr = _checkMinOrderPrice();
                                           if (minErr != null) {

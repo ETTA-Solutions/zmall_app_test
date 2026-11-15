@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'zoorya_brand.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
@@ -57,21 +58,7 @@ class _ZooryaPayOtpScreenState extends State<ZooryaPayOtpScreen> {
   int _resendCountdown = 0;
   Timer? _countdownTimer;
 
-  Color get _methodColor {
-    switch (widget.method) {
-      case 'zemen':
-      case 'zemen_qr':
-        return const Color(0xFFD3214B); // Zemen Red
-      case 'ethswitch':
-      case 'ethswitch_qr':
-        return const Color(0xFFF37423); // EthSwitch Orange
-      case 'nib':
-      case 'nib_qr':
-        return const Color(0xFF8A4D21); // Nib Brown
-      default:
-        return kPrimaryColor;
-    }
-  }
+  Color get _methodColor => kZooryaBlue;
 
   String get _methodLogo {
     switch (widget.method) {
@@ -1031,22 +1018,7 @@ class _ZooryaPayOtpScreenState extends State<ZooryaPayOtpScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        const Text.rich(
-          TextSpan(
-            text: 'Powered by ',
-            style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
-            children: [
-              TextSpan(
-                text: 'ZOORYA-PAY',
-                style: TextStyle(
-                  color: _muted,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ],
-          ),
-        ),
+        const ZooryaPayBadge(),
       ],
     );
   }

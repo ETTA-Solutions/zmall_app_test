@@ -108,10 +108,6 @@ class _BodyState extends State<Body> {
 
   void storeOpen(List stores) async {
     isOpen.clear();
-    if (Service.debugAllStoresOpen) {
-      isOpen.addAll(List<bool>.filled(stores.length, true));
-      return;
-    }
     DateFormat dateFormat = new DateFormat.Hm();
     DateTime now = DateTime.now().toUtc().add(Duration(hours: 3));
     if (appOpen == null || appClose == null) {

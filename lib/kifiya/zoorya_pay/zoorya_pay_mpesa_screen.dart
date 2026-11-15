@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'zoorya_brand.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:zmall/kifiya/zoorya_pay/zoorya_pay_service.dart';
@@ -45,8 +46,8 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
   static const Color _ink = Color(0xFF111827);
   static const Color _muted = Color(0xFF6B7280);
   static const Color _line = Color(0xFFE5E7EB);
-  static const Color _mpesaGreen = Color(0xFF00A650);
-  static const Color _mpesaGreenDark = Color(0xFF007A3D);
+  static const Color _mpesaGreen = kZooryaBlue;
+  static const Color _mpesaGreenDark = kZooryaBlueDark;
 
   bool _promptSent = false;
   bool _loading = false;
@@ -1077,22 +1078,7 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        const Text.rich(
-          TextSpan(
-            text: 'Powered by ',
-            style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
-            children: [
-              TextSpan(
-                text: 'ZOORYA-PAY',
-                style: TextStyle(
-                  color: _muted,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ],
-          ),
-        ),
+        const ZooryaPayBadge(),
       ],
     );
   }
