@@ -26,12 +26,14 @@ class StockAvailabilityDialog extends StatelessWidget {
     this.branchName,
     this.onAdjustAll,
     this.onAdjustItem,
+    this.onReviewCart,
   });
 
   final List<StockItemIssue> issues;
   final String? branchName;
   final VoidCallback? onAdjustAll;
   final void Function(Item item, int maxAvailable)? onAdjustItem;
+  final VoidCallback? onReviewCart;
 
   static Future<void> show({
     required BuildContext context,
@@ -39,6 +41,7 @@ class StockAvailabilityDialog extends StatelessWidget {
     required ZmallAvailabilityResult availabilityResult,
     VoidCallback? onAdjustAll,
     void Function(Item item, int maxAvailable)? onAdjustItem,
+    VoidCallback? onReviewCart,
   }) async {
     final List<StockItemIssue> issues = [];
 
@@ -76,6 +79,7 @@ class StockAvailabilityDialog extends StatelessWidget {
         branchName: availabilityResult.branch,
         onAdjustAll: onAdjustAll,
         onAdjustItem: onAdjustItem,
+        onReviewCart: onReviewCart,
       ),
     );
   }
@@ -317,7 +321,10 @@ class StockAvailabilityDialog extends StatelessWidget {
                       // Secondary button (Review/Close)
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            onReviewCart?.call();
+                          },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: kBlackColor,
                             side: BorderSide(

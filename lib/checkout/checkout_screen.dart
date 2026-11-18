@@ -8,7 +8,10 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
+import 'package:zmall/cart/cart_screen.dart';
 import 'package:zmall/services/address_validation_service.dart';
+import 'package:zmall/services/zmall_availability_service.dart';
+import 'package:zmall/widgets/stock_availability_dialog.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
@@ -46,6 +49,87 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   AliExpressCart? aliexpressCart;
   bool _loading = true;
   bool _placeOrder = false;
+
+  /// Live Odoo stock check for POS ZMall stores. Returns true when the order
+  /// may proceed (non-POS store, or everything in stock).
+  Future<bool> _checkOdooStock() async {
+    final c = cart;
+    if (c == null || c.items == null || c.items!.isEmpty) return true;
+
+    String? orderUrl = c.zmallOrderUrl;
+    if (orderUrl == null || orderUrl.isEmpty) {
+      orderUrl = c.storeId == null
+          ? null
+          : ZmallAvailabilityService.getStoreOrderUrl(c.storeId!);
+    }
+    if (orderUrl == null || orderUrl.isEmpty) {
+      final slug = zmallBranchSlugForStore(c.storeId);
+      if (slug != null) orderUrl = "$kZmallOdooBaseUrl/zmall_order/$slug";
+    }
+    if (orderUrl == null || orderUrl.isEmpty) return true; // not a POS store
+
+    final products = <Map<String, dynamic>>[];
+    for (final item in c.items!) {
+      final id = item.odooProductId;
+      if (id == null) {
+        Service.showMessage(
+          context: context,
+          title:
+              "Some items are missing store inventory IDs. Remove them and add again.",
+          error: true,
+          duration: 4,
+        );
+        return false;
+      }
+      products.add({"product_id": id, "quantity": item.quantity ?? 1});
+    }
+
+    setState(() => _placeOrder = true);
+    ZmallAvailabilityResult? result;
+    try {
+      result = await ZmallAvailabilityService.check(
+        orderUrl: orderUrl,
+        products: products,
+      );
+    } finally {
+      if (mounted) setState(() => _placeOrder = false);
+    }
+    if (!mounted) return false;
+
+    if (result == null) {
+      Service.showMessage(
+        context: context,
+        title:
+            "Could not verify item availability. Please check your connection and try again.",
+        error: true,
+      );
+      return false;
+    }
+    if (!result.success) {
+      Service.showMessage(
+        context: context,
+        title: result.error ?? "Availability check failed.",
+        error: true,
+      );
+      return false;
+    }
+    if (!result.canCheckout ||
+        result.products.any((p) => !p.isAvailableForRequestedQuantity)) {
+      await StockAvailabilityDialog.show(
+        context: context,
+        cartItems: c.items!,
+        availabilityResult: result,
+        onReviewCart: () {
+          if (!mounted) return;
+          Navigator.of(context).popUntil(
+            (route) => route.settings.name == CartScreen.routeName || route.isFirst,
+          );
+        },
+      );
+      return false;
+    }
+    return true;
+  }
   bool orderAsap = true;
   bool scheduledOrder = false;
   bool selfPickup = false;
@@ -426,7 +510,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   CustomButton(
                     isLoading: _placeOrder,
                     title: Provider.of<ZLanguage>(context).placeOrder,
-                    press: () {
+                    press: () async {
+                      if (_placeOrder) return;
                       if (responseData == null ||
                           responseData['success'] != true) {
                         Service.showMessage(
@@ -459,6 +544,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         );
                         return;
                       }
+                      // POS ZMall (Odoo) stores only: re-check live stock
+                      // right before the user commits to the order.
+                      if (!await _checkOdooStock()) return;
+                      if (!mounted) return;
                       if (scheduledOrder) {
                         if (_scheduledDate != null) {
                           Navigator.push(

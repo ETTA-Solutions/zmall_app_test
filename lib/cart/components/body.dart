@@ -21,6 +21,10 @@ import 'package:zmall/models/cart.dart';
 import 'package:zmall/combo/models/combo_cart.dart';
 import 'package:zmall/combo/services/combo_service.dart';
 import 'package:zmall/combo/widgets/combo_store_section.dart';
+import 'package:zmall/combo/widgets/combo_pairing_strip.dart';
+import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
+import 'package:zmall/login/login_screen.dart';
+import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/combo/widgets/store_conflict_dialog.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
@@ -71,6 +75,9 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   String storeName = '';
   var userData;
   var extraItems;
+  // combo_recommendations ("Perfect Pairing" from nearby stores)
+  List<Map<String, dynamic>> comboRecs = [];
+  String? _comboRecBusyId;
   //double walletBalance = 0.0;
   //String payeePhone = "964345364";
   //String payerPassword = "";
@@ -225,6 +232,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         // }
         _getStoreExtraItemList();
         await _loadComboCart();
+        _loadComboRecommendations();
 
         calculatePrice();
         _refreshAvailability();
@@ -812,6 +820,14 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                   children: [
                     //
                     if (extraItems != null) showExtraItems(),
+                    if (comboCart == null && comboRecs.isNotEmpty)
+                      ComboPairingStrip(
+                        recommendations: comboRecs,
+                        baseUrl: Provider.of<ZMetaData>(context, listen: false).baseUrl,
+                        currency: Provider.of<ZMetaData>(context, listen: false).currency,
+                        onAdd: _onPairingAdd,
+                        busyItemId: _comboRecBusyId,
+                      ),
                     // Spacer(),
                     Padding(
                       padding: EdgeInsets.symmetric(
@@ -1807,6 +1823,178 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     );
   }
 
+  /// Loads admin-configured pairings from nearby stores for the cart items.
+  /// Empty / failed -> the section simply stays hidden.
+  Future<void> _loadComboRecommendations() async {
+    final items = cart?.items;
+    if (userData == null ||
+        cart?.storeId == null ||
+        items == null ||
+        items.isEmpty) {
+      if (mounted && comboRecs.isNotEmpty) setState(() => comboRecs = []);
+      return;
+    }
+    final names = items.map((i) => i.itemName).whereType<String>().toList();
+    final data = await ComboService.getRecommendations(
+      context,
+      userData: userData,
+      storeId: cart!.storeId!,
+      itemNames: names,
+    );
+    if (!mounted) return;
+    if (ComboService.isSessionExpired(data)) {
+      Service.showMessage(
+        context: context,
+        title: "${errorCodes['999']}!",
+        error: true,
+      );
+      await CoreServices.clearCache();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+      return;
+    }
+    final list = (data != null && data['success'] == true)
+        ? List<Map<String, dynamic>>.from(
+            ((data['recommendations'] as List?) ?? const []).whereType<Map>().map(
+              (e) => Map<String, dynamic>.from(e),
+            ),
+          )
+        : <Map<String, dynamic>>[];
+    // Guard against junk: promo placeholders (price 0), nameless rows, and the
+    // same item repeated for one store.
+    final seen = <String>{};
+    final clean = list.where((r) {
+      final price = (r['price'] as num?)?.toDouble() ?? 0.0;
+      final name = '${r['name'] ?? ''}'.trim();
+      if (price <= 0 || name.isEmpty) return false;
+      return seen.add('${r['store_id']}|$name');
+    }).toList();
+    setState(() => comboRecs = clean);
+  }
+
+  /// Tap on a recommendation: checks distance, then starts the combo with the
+  /// recommended store as the second store, right here on the cart page.
+  Future<void> _onPairingAdd(Map<String, dynamic> rec) async {
+    if (_comboRecBusyId != null || cart == null || userData == null) return;
+    final recStoreId = '${rec['store_id']}';
+    final itemId = '${rec['item_id']}';
+    final meta = Provider.of<ZMetaData>(context, listen: false);
+    final image = '${rec['image'] ?? ''}';
+    final item = Item(
+      id: itemId,
+      quantity: 1,
+      specification: [],
+      noteForItem: "",
+      price: (rec['price'] as num?)?.toDouble() ?? 0.0,
+      itemName: '${rec['name'] ?? ''}',
+      imageURL: image.isEmpty ? "https://ibb.co/vkhzjd6" : "${meta.baseUrl}/$image",
+    );
+    final destination = DestinationAddress(
+      long: meta.longitude,
+      lat: meta.latitude,
+      name: "Current Location",
+      note: "User current location",
+    );
+
+    // Same store as the cart: plain add.
+    if (recStoreId == cart!.storeId) {
+      setState(() {
+        Service.addOrMergeCartItem(cart!, item);
+        Service.save('cart', cart!.toJson())
+            .then((_) => calculatePrice())
+            .then((_) => setState(() {}));
+      });
+      _refreshAvailability();
+      return;
+    }
+
+    if (!await ComboCart.canStartWith(cart)) {
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: "A combo is already in your cart.",
+        error: true,
+      );
+      return;
+    }
+
+    setState(() => _comboRecBusyId = itemId);
+    try {
+      final detail = await ComboService.getStoreDetail(
+        context,
+        storeId: recStoreId,
+      );
+      if (!mounted) return;
+      final loc = detail?['store']?['location'];
+      if (detail == null ||
+          detail['success'] != true ||
+          loc is! List ||
+          loc.length < 2) {
+        Service.showMessage(
+          context: context,
+          title: "Store location unavailable. Cannot verify combo distance.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+      final storeLocation = StoreLocation(long: loc[1], lat: loc[0]);
+
+      // Distance check (fail-closed), same rule as the item screens.
+      final distRes = await ComboService.StoreDistancegetMax(
+        context,
+        userData: userData,
+        storeIdA: cart!.storeId ?? '',
+        storeIdB: recStoreId,
+      );
+      if (!mounted) return;
+      if (distRes == null ||
+          distRes['success'] != true ||
+          storeLocations is! List ||
+          storeLocations.length < 2) {
+        Service.showMessage(
+          context: context,
+          title: "Could not verify store distance. Please try again.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+      final maxM = (distRes['max_distance'] as num? ?? 0.0).toDouble();
+      final actualM = AddressValidationService.calculateDistanceInMeters(
+        storeLocations[0],
+        storeLocations[1],
+        loc[0],
+        loc[1],
+      );
+      if (actualM > maxM) {
+        await showComboTooFarDialog(
+          context: context,
+          actualKm: actualM / 1000.0,
+          maxKm: maxM / 1000.0,
+        );
+        return;
+      }
+
+      await ComboCart.start(
+        userData: userData,
+        storeId: recStoreId,
+        item: item,
+        storeLocation: storeLocation,
+        destination: destination,
+      );
+      if (!mounted) return;
+      await _loadComboCart();
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+        error: false,
+      );
+    } finally {
+      if (mounted) setState(() => _comboRecBusyId = null);
+    }
+  }
   Widget showExtraItems() {
     bool isNull = extraItems.every(
       (extraItem) => cart!.items!.any(

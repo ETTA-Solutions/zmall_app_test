@@ -671,6 +671,9 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
                   controller: _phoneController,
                   focusNode: _phoneFocus,
                   keyboardType: TextInputType.phone,
+                  // Scroll the field higher when the keyboard opens, so the
+                  // button under it stays clear of the keyboard.
+                  scrollPadding: const EdgeInsets.only(bottom: 160),
                   autofillHints: const [AutofillHints.telephoneNumber],
                   maxLength: 9, // 7XXXXXXXX
                   inputFormatters: [_MpesaPhoneFormatter()],

@@ -4,7 +4,8 @@ import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/borsa/borsa_screen.dart';
-import 'package:zmall/profile/subscription/subscription.dart';
+// safe_prod: subscription disabled
+// import 'package:zmall/profile/subscription/subscription.dart';
 import 'package:zmall/profile/components/addresses.dart';
 import 'package:zmall/profile/components/change_password.dart';
 import 'package:zmall/profile/components/confirmation_bottom_sheet.dart';
@@ -651,23 +652,22 @@ class _BodyState extends State<Body> {
                             },
                           ),
                           Divider(color: kWhiteColor, height: 1),
-                          // Subscription Section
-                          NewProfileListTile(
-                            borderColor: kWhiteColor,
-                            icon: Icon(HeroiconsOutline.sparkles),
-                            title: "Zmall Pro",
-
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      SubscriptionScreen(userData: userData),
-                                ),
-                              ).then((value) => getUser());
-                            },
-                          ),
-                          Divider(color: kWhiteColor, height: 1),
+                          // safe_prod: subscription (Zmall Pro) disabled
+                          // NewProfileListTile(
+                          //   borderColor: kWhiteColor,
+                          //   icon: Icon(HeroiconsOutline.sparkles),
+                          //   title: "Zmall Pro",
+                          //   onTap: () {
+                          //     Navigator.push(
+                          //       context,
+                          //       MaterialPageRoute(
+                          //         builder: (context) =>
+                          //             SubscriptionScreen(userData: userData),
+                          //       ),
+                          //     ).then((value) => getUser());
+                          //   },
+                          // ),
+                          // Divider(color: kWhiteColor, height: 1),
                           //  Address Section
                           NewProfileListTile(
                             borderColor: kWhiteColor,

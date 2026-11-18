@@ -970,19 +970,19 @@ class ItemsTabView extends StatelessWidget {
                                                   : "",
                                               color: item['similarity'] != null
                                                   ? ((item['similarity']
-                                                                        as double) *
+                                                                        as num) *
                                                                     100)
                                                                 .toInt() >
                                                             90
                                                         ? Colors.green
                                                         : ((item['similarity']
-                                                                          as double) *
+                                                                          as num) *
                                                                       100)
                                                                   .toInt() >
                                                               70
                                                         ? Colors.orange
                                                         : ((item['similarity']
-                                                                          as double) *
+                                                                          as num) *
                                                                       100)
                                                                   .toInt() >
                                                               50

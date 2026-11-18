@@ -13,6 +13,7 @@
 //   * Verify: POST {baseUrl}/admin/check_paid_order, polled every 2s until
 //             success == true, then the screen pops and kifiya_screen calls
 //             _boaVerify() (which creates the order).
+
 //
 // The NEW ZooryaPay telebirr USSD (method key "telebirr" under the
 // ZOORYA-PAY gateway) is a different flow with its own screen:
@@ -103,10 +104,10 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       debugPrint('[TelebirrUssd] ❌ Init failed or unapproved: $data');
       final errorMsg =
           (data != null &&
-                  data['result'] != null &&
-                  data['result']['message'] != null)
-              ? data['result']['message'].toString()
-              : "Telebirr USSD initialization failed";
+              data['result'] != null &&
+              data['result']['message'] != null)
+          ? data['result']['message'].toString()
+          : "Telebirr USSD initialization failed";
       Service.showMessage(
         context: context,
         title: errorMsg,
@@ -137,9 +138,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       debugPrint(
         '[TelebirrUssd] ⏳ Payment not yet completed. Re-checking in 2 seconds...',
       );
-      await Future.delayed(
-        Duration(seconds: 2),
-      );
+      await Future.delayed(Duration(seconds: 2));
       if (mounted) {
         _verifyPayment();
       }
@@ -320,9 +319,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
             },
           );
 
-      debugPrint(
-        '[TelebirrUssd] verifyPayment Status: ${response.statusCode}',
-      );
+      debugPrint('[TelebirrUssd] verifyPayment Status: ${response.statusCode}');
       debugPrint('[TelebirrUssd] verifyPayment Raw Body: ${response.body}');
       return json.decode(response.body);
     } catch (e, stackTrace) {

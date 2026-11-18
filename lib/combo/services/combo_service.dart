@@ -211,6 +211,23 @@ class ComboService {
     "store_id": storeId,
   }, timeout: 20);
 
+  /// Admin-configured "goes with" items from nearby stores, for the cart page.
+  /// Needs no server cart_id: [storeId] and [itemNames] come from local
+  /// storage. An empty `recommendations` list means: hide the section.
+  static Future<Map<String, dynamic>?> getRecommendations(
+    BuildContext context, {
+    required dynamic userData,
+    required String storeId,
+    required List<String> itemNames,
+    int limit = 10,
+  }) => _post(context, "combo_recommendations", {
+    "user_id": userData['user']['_id'],
+    "server_token": userData['user']['server_token'],
+    "store_id": storeId,
+    "item_names": itemNames,
+    "limit": limit,
+  }, timeout: 15);
+
   /// Fetches the maximum allowed distance (in metres) between two combo stores.
   ///
   /// Backend response: `{ "success": true, "combo_max_store_distance_km": 50 }`

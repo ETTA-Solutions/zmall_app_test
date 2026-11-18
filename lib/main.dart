@@ -181,6 +181,7 @@ class _MyAppState extends State<MyApp> {
     debugPrint(
       '[MCP DEEP LINK] Starting 3s delay before McpCartScreen navigation attempts...',
     );
+
     _cartDelayTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted || pushed) return;
       _cartNavigationTimer = Timer.periodic(const Duration(milliseconds: 500), (
