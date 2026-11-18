@@ -206,6 +206,7 @@ class HelpScreen extends StatelessWidget {
               //     Navigator.pushNamed(context, FAQScreen.routeName);
               //   },
               // ),
+
               NewProfileListTile(
                 hasBorder: true,
                 icon: Icon(

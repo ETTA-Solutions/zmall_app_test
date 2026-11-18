@@ -12,9 +12,15 @@ import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/item/item_screen.dart';
 import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/models/cart.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';
+import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
+import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/services/zmall_availability_service.dart';
 import 'package:zmall/utils/pagination_controller.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/widgets/custom_search_bar.dart';
@@ -49,6 +55,8 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> {
   final GlobalKey _filterButtonKey = GlobalKey();
   bool _loading = true;
+  // Guard: prevents re-entrant distance-check calls when the user taps fast.
+  bool _comboDistanceCheckInProgress = false;
   // var responseData;
   var favoriteResponseData;
   var products;
@@ -126,11 +134,12 @@ class _ProductScreenState extends State<ProductScreen> {
   void getCart() async {
     // debugPrint("Fetching data");
     var data = await Service.read('cart');
-    if (data != null) {
-      setState(() {
-        cart = Cart.fromJson(data);
-      });
-    }
+    if (!mounted) return;
+    // Always sync with storage: when the cart was cleared (e.g. last item
+    // removed on the cart page) reset to null so the badge drops to 0.
+    setState(() {
+      cart = data != null ? Cart.fromJson(data) : null;
+    });
   }
 
   void isLogged() async {
@@ -164,6 +173,9 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   void addToCart(item, destination, storeLocation, storeId) {
+    final String? cachedOdooUrl = ZmallAvailabilityService.getStoreOrderUrl(
+      storeId.toString(),
+    );
     cart = Cart(
       userId: userData['user']['_id'],
       items: [item],
@@ -171,6 +183,7 @@ class _ProductScreenState extends State<ProductScreen> {
       destinationAddress: destination,
       storeId: storeId,
       storeLocation: storeLocation,
+      zmallOrderUrl: cachedOdooUrl,
     );
 
     Service.save('cart', cart!.toJson());
@@ -397,10 +410,13 @@ class _ProductScreenState extends State<ProductScreen> {
       controller: searchPagination.scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        // items
-        ..._searchResult.map((item) {
-          return SliverToBoxAdapter(
-            child: Padding(
+        // items — built lazily (only the cards on screen), so sorting a big
+        // store doesn't build every card and image at once.
+        SliverList.builder(
+          itemCount: _searchResult.length,
+          itemBuilder: (context, index) {
+            final item = _searchResult[index];
+            return Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: kDefaultPadding,
                 vertical: getProportionateScreenHeight(kDefaultPadding / 4),
@@ -411,9 +427,9 @@ class _ProductScreenState extends State<ProductScreen> {
                 onTap: () => _handleItemTap(item),
                 onAddTap: () => _handleAddToCart(item),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          },
+        ),
 
         // Loading more indicator (exactly as you wanted)
         SliverToBoxAdapter(
@@ -500,7 +516,9 @@ class _ProductScreenState extends State<ProductScreen> {
             noMoreText: "No more products to load",
           ),
         ),
-         SliverToBoxAdapter(child: SizedBox(height:MediaQuery.of(context).padding.bottom+ 24)),
+        SliverToBoxAdapter(
+          child: SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
+        ),
       ],
     );
   }
@@ -582,7 +600,17 @@ class _ProductScreenState extends State<ProductScreen> {
       note: "User current location",
     );
 
-    if (cart != null) {
+    debugPrint(
+      "==================== PRODUCT ORDER DEBUG ====================\n"
+      "📍 Product Name: ${item['name']}\n"
+      "📍 Product ID: ${item['_id']}\n"
+      "📍 Store ID: ${item['store_id']}\n"
+      "📍 Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}\n"
+      "📍 Destination Location: Lat: ${destination.lat}, Long: ${destination.long}\n"
+      "=============================================================",
+    );
+
+    if (cart != null && cart!.items != null && cart!.items!.isNotEmpty) {
       if (userData != null) {
         if (cart!.storeId == item['store_id']) {
           setState(() {
@@ -595,7 +623,12 @@ class _ProductScreenState extends State<ProductScreen> {
             error: false,
           );
         } else {
-          _showDialog(cartItem, destination, storeLocation, item['store_id']);
+          _handleOtherStore(
+            cartItem,
+            destination,
+            storeLocation,
+            item['store_id'],
+          );
         }
       } else {
         Service.showMessage(
@@ -739,13 +772,13 @@ class _ProductScreenState extends State<ProductScreen> {
       switch (val) {
         case 0:
           doMerge(list, 1);
-          _searchResult = list;
+          _showLocalResult(list);
           controller.text = textValues[val];
           setState(() {});
           break;
         case 1:
           doMerge(list, 2);
-          _searchResult = list;
+          _showLocalResult(list);
           controller.text = textValues[val];
           setState(() {});
           break;
@@ -909,78 +942,38 @@ class _ProductScreenState extends State<ProductScreen> {
         }
       }
     }
-    _searchResult = filteredList;
+    _showLocalResult(filteredList);
     controller.text =
         "$dropDownValue ${price}0 ${Provider.of<ZMetaData>(context, listen: false).currency}";
     setState(() {});
   }
 
-  void merge(arr, l, m, r, int sortType) {
-    var n1 = m - l + 1;
-    var n2 = r - m;
-
-    var L = List.filled(n1, {});
-    var R = List.filled(n2, {});
-    for (int i = 0; i < n1; i++) L[i] = arr[l + i];
-    for (int j = 0; j < n2; j++) R[j] = arr[m + 1 + j];
-
-    var i = 0;
-    var j = 0;
-    var k = l;
-
-    while (i < n1 && j < n2) {
-      var lPrice = Service.getPrice(L[i]).isNotEmpty
-          ? Service.getPrice(L[i])
-          : 0;
-      var rPrice = Service.getPrice(R[j]).isNotEmpty
-          ? Service.getPrice(R[j])
-          : 0;
-
-      if (sortType == 1) {
-        if (double.parse(lPrice.toString()) <=
-            double.parse(rPrice.toString())) {
-          arr[k] = L[i];
-          i++;
-        } else {
-          arr[k] = R[j];
-          j++;
-        }
-      } else {
-        if (double.parse(lPrice.toString()) >=
-            double.parse(rPrice.toString())) {
-          arr[k] = L[i];
-          i++;
-        } else {
-          arr[k] = R[j];
-          j++;
-        }
-      }
-      k++;
-    }
-    while (i < n1) {
-      arr[k] = L[i];
-      i++;
-      k++;
-    }
-    while (j < n2) {
-      arr[k] = R[j];
-      j++;
-      k++;
-    }
+  /// Shows a locally sorted/filtered list in the search list and stops search
+  /// paging, so scrolling to the bottom can't append pages of an older search.
+  void _showLocalResult(List list) {
+    _searchResult = list;
+    _lastSearchQuery = '';
+    searchPagination.reset();
+    searchPagination.hasMore = false;
   }
 
-  void mergeSort(arr, l, r, int sortType) {
-    if (l >= r) {
-      return;
-    }
-    int m = l + ((r - l) ~/ 2);
-    mergeSort(arr, l, m, sortType);
-    mergeSort(arr, m + 1, r, sortType);
-    merge(arr, l, m, r, sortType);
-  }
-
+  /// Sorts [list] in place by price. sortType 1 = lowest first, 2 = highest
+  /// first. Each price is computed once (Service.getPrice is not cheap), and
+  /// equal prices keep their original order.
   void doMerge(List list, int sortType) {
-    mergeSort(list, 0, list.length - 1, sortType);
+    final keyed = <MapEntry<double, int>>[];
+    for (var i = 0; i < list.length; i++) {
+      final p = Service.getPrice(list[i]);
+      keyed.add(MapEntry(double.tryParse(p.toString()) ?? 0, i));
+    }
+    keyed.sort((x, y) {
+      final c = sortType == 1 ? x.key.compareTo(y.key) : y.key.compareTo(x.key);
+      return c != 0 ? c : x.value.compareTo(y.value);
+    });
+    final original = List.from(list);
+    for (var i = 0; i < keyed.length; i++) {
+      list[i] = original[keyed[i].value];
+    }
   }
 
   // void debugPrintList(List list) {
@@ -1066,6 +1059,18 @@ class _ProductScreenState extends State<ProductScreen> {
     if (!mounted) return;
 
     if (result != null && result['success'] == true) {
+      final String? odooUrl = ZmallAvailabilityService.extractOrderUrl(result);
+      if (odooUrl != null &&
+          odooUrl.isNotEmpty &&
+          widget.store['_id'] != null) {
+        final String sId = widget.store['_id'].toString();
+        ZmallAvailabilityService.setStoreOrderUrl(sId, odooUrl);
+        if (cart != null && cart!.storeId == sId) {
+          cart!.zmallOrderUrl = odooUrl;
+          Service.save('cart', cart!.toJson());
+        }
+      }
+
       final newProducts = result['products'] ?? [];
       final total = Service.calculateTotalPages(result);
 
@@ -1226,516 +1231,617 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
-  void _showDialog(item, destination, storeLocation, storeId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext alertContext) {
-        return AlertDialog(
-          backgroundColor: kPrimaryColor,
-          title: Text(Provider.of<ZLanguage>(context).warning),
-          content: Text(Provider.of<ZLanguage>(context).itemsFound),
-          actions: [
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).cancel,
-                style: TextStyle(
-                  color: kBlackColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(alertContext).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).clear,
-                style: TextStyle(
-                  color: kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  cart!.toJson();
-                  Service.remove('cart');
-                  Service.remove('aliexpressCart');
-                  cart = Cart();
-                  addToCart(item, destination, storeLocation, storeId);
-                });
+  /// Item is from a store other than the cart's: merge into the combo's
+  /// second store, or ask whether to clear or order from both stores.
+  Future<void> _handleOtherStore(
+    Item item,
+    DestinationAddress destination,
+    StoreLocation storeLocation,
+    String storeId,
+  ) async {
+    // ── Re-entrancy guard ─────────────────────────────────────────────────
+    // Prevents multiple rapid taps from racing through while the async
+    // distance-check API call is awaited.
+    if (_comboDistanceCheckInProgress) return;
 
-                Navigator.of(alertContext).pop();
-                // Future.delayed(Duration(seconds: 2));
-                // Navigator.of(context).pop();
-              },
-            ),
-          ],
+    // ── Distance check ────────────────────────────────────────────────────
+    // Block before showing any dialog if the stores are too far apart.
+    // Fail-closed: if store locations are missing or the API call fails,
+    // block the combo rather than allowing an unchecked add.
+    final firstStoreLoc = cart?.storeLocation;
+    if (cart != null) {
+      // If location data is missing, block combo (fail-closed)
+      if (firstStoreLoc == null ||
+          firstStoreLoc.lat == null ||
+          firstStoreLoc.long == null ||
+          storeLocation.lat == null ||
+          storeLocation.long == null) {
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: "Store location unavailable. Cannot verify combo distance.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+
+      _comboDistanceCheckInProgress = true;
+      try {
+        final distRes = await ComboService.StoreDistancegetMax(
+          context,
+          userData: userData,
+          storeIdA: cart!.storeId ?? '',
+          storeIdB: storeId,
+        );
+        if (!mounted) return;
+
+        // Fail-closed: API failure → block
+        if (distRes == null || distRes['success'] != true) {
+          Service.showMessage(
+            context: context,
+            title: "Could not verify store distance. Please try again.",
+            error: true,
+            duration: 4,
+          );
+          return;
+        }
+
+        final double maxDistM = (distRes['max_distance'] as num? ?? 0.0)
+            .toDouble();
+        final double actualDistM =
+            AddressValidationService.calculateDistanceInMeters(
+              firstStoreLoc.lat!,
+              firstStoreLoc.long!,
+              storeLocation.lat!,
+              storeLocation.long!,
+            );
+        if (actualDistM > maxDistM) {
+          if (!mounted) return;
+          await showComboTooFarDialog(
+            context: context,
+            actualKm: actualDistM / 1000.0,
+            maxKm: maxDistM / 1000.0,
+          );
+          return; // blocked — no combo dialog shown
+        }
+      } finally {
+        _comboDistanceCheckInProgress = false;
+      }
+    }
+    // ── end distance check ─────────────────────────────────────────────────
+
+    if (await ComboCart.addToSecondStoreIfMatches(storeId, item)) {
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: "Item added to cart",
+        error: false,
+      );
+      return;
+    }
+    final comboFull = await ComboCart.load() != null;
+    final allowCombo = await ComboCart.canStartWith(cart);
+    if (!mounted) return;
+    _showDialog(
+      item,
+      destination,
+      storeLocation,
+      storeId,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+    );
+  }
+
+  void _showDialog(
+    item,
+    destination,
+    storeLocation,
+    storeId, {
+    bool allowCombo = false,
+    bool comboFull = false,
+  }) {
+    showStoreConflictDialog(
+      context: context,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+      onClear: () {
+        setState(() {
+          Service.remove('cart');
+          Service.remove('aliexpressCart');
+          ComboCart.clear();
+          cart = Cart();
+          addToCart(item, destination, storeLocation, storeId);
+        });
+        Service.showMessage(
+          context: context,
+          title: "Item added to cart",
+          error: false,
+        );
+      },
+      onReplace: () async {
+        // Drops the current second store; the first store stays.
+        await ComboCart.clear();
+        await ComboCart.start(
+          userData: userData,
+          storeId: storeId,
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
+        );
+      },
+      onCombo: () async {
+        await ComboCart.start(
+          userData: userData,
+          storeId: storeId,
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
         );
       },
     );
   }
 }
-  /////////////Favorites Feature: not needed for now//////////////////////////
-  // void addToFavorites() async {
-  //   setState(() {
-  //     _loading = true;
-  //   });
-  //   await _addToFavorite(
-  //     userData['user']['_id'],
-  //     widget.store['_id'],
-  //     userData['user']['server_token'],
-  //   );
-  //   if (favoriteResponseData != null && favoriteResponseData['success']) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text("Added to favorite"),
-  //         backgroundColor: kGreyColor,
-  //       ),
-  //     );
-  //     userData['user']['favourite_stores'].add(widget.store['_id']);
-  //     await Service.save('user', userData);
-  //     checkFavorite();
-  //     setState(() {
-  //       _loading = false;
-  //     });
-  //     reSaveFavorites();
-  //   } else {
-  //     if (responseData['error_code'] != null &&
-  //         favoriteResponseData['error_code'] == 999) {
-  //       await Service.saveBool('logged', false);
-  //       await Service.remove('user');
-  //       // Navigator.pushReplacementNamed(context, LoginScreen.routeName);
-  //     }
-  //     setState(() {
-  //       _loading = false;
-  //     });
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(
-  //           "${errorCodes['${favoriteResponseData['error_code']}']}",
-  //         ),
-  //         backgroundColor: kSecondaryColor,
-  //       ),
-  //     );
-  //   }
-  // }
+/////////////Favorites Feature: not needed for now//////////////////////////
+// void addToFavorites() async {
+//   setState(() {
+//     _loading = true;
+//   });
+//   await _addToFavorite(
+//     userData['user']['_id'],
+//     widget.store['_id'],
+//     userData['user']['server_token'],
+//   );
+//   if (favoriteResponseData != null && favoriteResponseData['success']) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text("Added to favorite"),
+//         backgroundColor: kGreyColor,
+//       ),
+//     );
+//     userData['user']['favourite_stores'].add(widget.store['_id']);
+//     await Service.save('user', userData);
+//     checkFavorite();
+//     setState(() {
+//       _loading = false;
+//     });
+//     reSaveFavorites();
+//   } else {
+//     if (responseData['error_code'] != null &&
+//         favoriteResponseData['error_code'] == 999) {
+//       await Service.saveBool('logged', false);
+//       await Service.remove('user');
+//       // Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+//     }
+//     setState(() {
+//       _loading = false;
+//     });
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text(
+//           "${errorCodes['${favoriteResponseData['error_code']}']}",
+//         ),
+//         backgroundColor: kSecondaryColor,
+//       ),
+//     );
+//   }
+// }
 
-  // void reSaveFavorites() async {
-  //   var url =
-  //       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_favourite_store_list";
-  //   Map data = {
-  //     "user_id": userData['user']['_id'],
-  //     "server_token": userData['user']['server_token'],
-  //   };
-  //   var body = json.encode(data);
-  //   try {
-  //     http.Response response = await http
-  //         .post(
-  //           Uri.parse(url),
-  //           headers: <String, String>{
-  //             "Content-Type": "application/json",
-  //             "Accept": "application/json",
-  //           },
-  //           body: body,
-  //         )
-  //         .timeout(
-  //           Duration(seconds: 10),
-  //           onTimeout: () {
-  //             Service.showMessage(
-  //               context: context,
-  //               title: "Network error",
-  //               error: true,
-  //             );
-  //             throw TimeoutException("The connection has timed out!");
-  //           },
-  //         );
-  //     var val = json.decode(response.body);
-  //     if (val['success']) {
-  //       await Service.save("user_favorite_stores", val);
-  //     }
-  //   } catch (e) {
-  //     // debugPrint(e);
-  //     return null;
-  //   }
-  // }
+// void reSaveFavorites() async {
+//   var url =
+//       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_favourite_store_list";
+//   Map data = {
+//     "user_id": userData['user']['_id'],
+//     "server_token": userData['user']['server_token'],
+//   };
+//   var body = json.encode(data);
+//   try {
+//     http.Response response = await http
+//         .post(
+//           Uri.parse(url),
+//           headers: <String, String>{
+//             "Content-Type": "application/json",
+//             "Accept": "application/json",
+//           },
+//           body: body,
+//         )
+//         .timeout(
+//           Duration(seconds: 10),
+//           onTimeout: () {
+//             Service.showMessage(
+//               context: context,
+//               title: "Network error",
+//               error: true,
+//             );
+//             throw TimeoutException("The connection has timed out!");
+//           },
+//         );
+//     var val = json.decode(response.body);
+//     if (val['success']) {
+//       await Service.save("user_favorite_stores", val);
+//     }
+//   } catch (e) {
+//     // debugPrint(e);
+//     return null;
+//   }
+// }
 
-  // void removeFavorites() async {
-  //   setState(() {
-  //     _loading = true;
-  //   });
-  //   await _removeFavorite(
-  //     userData['user']['_id'],
-  //     widget.store['_id'],
-  //     userData['user']['server_token'],
-  //   );
-  //   if (favoriteResponseData != null && favoriteResponseData['success']) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(
-  //           "Store removed from favorites",
-  //           style: TextStyle(color: kBlackColor),
-  //         ),
-  //         backgroundColor: kSecondaryColor,
-  //       ),
-  //     );
-  //     userData['user']['favourite_stores'].removeWhere(
-  //       (item) => item == widget.store['_id'],
-  //     );
-  //     await Service.save('user', userData);
-  //     checkFavorite();
-  //     setState(() {
-  //       _loading = false;
-  //     });
-  //     reSaveFavorites();
-  //   } else {
-  //     if (responseData['error_code'] != null &&
-  //         favoriteResponseData['error_code'] == 999) {
-  //       // debugPrint('Server token expired please log user out');
-  //       await Service.saveBool('logged', false);
-  //       await Service.remove('user');
-  //       // Navigator.pushReplacementNamed(context, LoginScreen.routeName);
-  //     }
-  //     setState(() {
-  //       _loading = false;
-  //     });
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(
-  //           "${errorCodes['${favoriteResponseData['error_code']}']}",
-  //         ),
-  //         backgroundColor: kSecondaryColor,
-  //       ),
-  //     );
-  //   }
-  // }
-  /////////////////////////////////////
-  // ignore: missing_return
+// void removeFavorites() async {
+//   setState(() {
+//     _loading = true;
+//   });
+//   await _removeFavorite(
+//     userData['user']['_id'],
+//     widget.store['_id'],
+//     userData['user']['server_token'],
+//   );
+//   if (favoriteResponseData != null && favoriteResponseData['success']) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text(
+//           "Store removed from favorites",
+//           style: TextStyle(color: kBlackColor),
+//         ),
+//         backgroundColor: kSecondaryColor,
+//       ),
+//     );
+//     userData['user']['favourite_stores'].removeWhere(
+//       (item) => item == widget.store['_id'],
+//     );
+//     await Service.save('user', userData);
+//     checkFavorite();
+//     setState(() {
+//       _loading = false;
+//     });
+//     reSaveFavorites();
+//   } else {
+//     if (responseData['error_code'] != null &&
+//         favoriteResponseData['error_code'] == 999) {
+//       // debugPrint('Server token expired please log user out');
+//       await Service.saveBool('logged', false);
+//       await Service.remove('user');
+//       // Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+//     }
+//     setState(() {
+//       _loading = false;
+//     });
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text(
+//           "${errorCodes['${favoriteResponseData['error_code']}']}",
+//         ),
+//         backgroundColor: kSecondaryColor,
+//       ),
+//     );
+//   }
+// }
+/////////////////////////////////////
+// ignore: missing_return
 
-  // If no default spec exists, use the first spec’s first price as a fallback.
-  // String _getPrice(item) {
-  //   if (item['price'] == null || item['price'] == 0) {
-  //     // look for a default-selected spec
-  //     for (var i = 0; i < item['specifications'].length; i++) {
-  //       for (var j = 0; j < item['specifications'][i]['list'].length; j++) {
-  //         final spec = item['specifications'][i]['list'][j];
-  //         if (spec['is_default_selected'] == true) {
-  //           return spec['price'].toStringAsFixed(2);
-  //         }
-  //       }
-  //     }
+// If no default spec exists, use the first spec’s first price as a fallback.
+// String _getPrice(item) {
+//   if (item['price'] == null || item['price'] == 0) {
+//     // look for a default-selected spec
+//     for (var i = 0; i < item['specifications'].length; i++) {
+//       for (var j = 0; j < item['specifications'][i]['list'].length; j++) {
+//         final spec = item['specifications'][i]['list'][j];
+//         if (spec['is_default_selected'] == true) {
+//           return spec['price'].toStringAsFixed(2);
+//         }
+//       }
+//     }
 
-  //     // fallback to first available price if none are default-selected
-  //     if (item['specifications'].isNotEmpty &&
-  //         item['specifications'][0]['list'].isNotEmpty) {
-  //       final firstSpecPrice = item['specifications'][0]['list'][0]['price'];
-  //       return firstSpecPrice.toStringAsFixed(2);
-  //     }
-  //   } else {
-  //     return item['price'].toStringAsFixed(2);
-  //   }
+//     // fallback to first available price if none are default-selected
+//     if (item['specifications'].isNotEmpty &&
+//         item['specifications'][0]['list'].isNotEmpty) {
+//       final firstSpecPrice = item['specifications'][0]['list'][0]['price'];
+//       return firstSpecPrice.toStringAsFixed(2);
+//     }
+//   } else {
+//     return item['price'].toStringAsFixed(2);
+//   }
 
-  //   return "0.00";
-  // }
+//   return "0.00";
+// }
 
+// Future<dynamic> _addToFavorite(
+//   var userId,
+//   var storeId,
+//   var serverToken,
+// ) async {
+//   var url =
+//       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/add_favourite_store";
+//   Map data = {
+//     "user_id": userId,
+//     "store_id": storeId,
+//     "server_token": serverToken,
+//   };
+//   var body = json.encode(data);
+//   try {
+//     http.Response response = await http
+//         .post(
+//           Uri.parse(url),
+//           headers: <String, String>{
+//             "Content-Type": "application/json",
+//             "Accept": "application/json",
+//           },
+//           body: body,
+//         )
+//         .timeout(
+//           Duration(seconds: 10),
+//           onTimeout: () {
+//             Service.showMessage(
+//               context: context,
+//               title: "Network error",
+//               error: true,
+//             );
+//             setState(() {
+//               _loading = false;
+//             });
+//             throw TimeoutException("The connection has timed out!");
+//           },
+//         );
+//     favoriteResponseData = json.decode(response.body);
+//     return json.decode(response.body);
+//   } catch (e) {
+//     // debugPrint(e);
+//     return null;
+//   }
+// }
 
-  // Future<dynamic> _addToFavorite(
-  //   var userId,
-  //   var storeId,
-  //   var serverToken,
-  // ) async {
-  //   var url =
-  //       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/add_favourite_store";
-  //   Map data = {
-  //     "user_id": userId,
-  //     "store_id": storeId,
-  //     "server_token": serverToken,
-  //   };
-  //   var body = json.encode(data);
-  //   try {
-  //     http.Response response = await http
-  //         .post(
-  //           Uri.parse(url),
-  //           headers: <String, String>{
-  //             "Content-Type": "application/json",
-  //             "Accept": "application/json",
-  //           },
-  //           body: body,
-  //         )
-  //         .timeout(
-  //           Duration(seconds: 10),
-  //           onTimeout: () {
-  //             Service.showMessage(
-  //               context: context,
-  //               title: "Network error",
-  //               error: true,
-  //             );
-  //             setState(() {
-  //               _loading = false;
-  //             });
-  //             throw TimeoutException("The connection has timed out!");
-  //           },
-  //         );
-  //     favoriteResponseData = json.decode(response.body);
-  //     return json.decode(response.body);
-  //   } catch (e) {
-  //     // debugPrint(e);
-  //     return null;
-  //   }
-  // }
-
-  // Future<dynamic> _removeFavorite(
-  //   var userId,
-  //   var storeId,
-  //   var serverToken,
-  // ) async {
-  //   var url =
-  //       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/remove_favourite_store";
-  //   Map data = {
-  //     "user_id": userId,
-  //     "store_id": [storeId],
-  //     "server_token": serverToken,
-  //   };
-  //   var body = json.encode(data);
-  //   try {
-  //     http.Response response = await http
-  //         .post(
-  //           Uri.parse(url),
-  //           headers: <String, String>{
-  //             "Content-Type": "application/json",
-  //             "Accept": "application/json",
-  //           },
-  //           body: body,
-  //         )
-  //         .timeout(
-  //           Duration(seconds: 10),
-  //           onTimeout: () {
-  //             Service.showMessage(
-  //               context: context,
-  //               title: "Network error",
-  //               error: true,
-  //             );
-  //             setState(() {
-  //               _loading = false;
-  //             });
-  //             throw TimeoutException("The connection has timed out!");
-  //           },
-  //         );
-  //     favoriteResponseData = json.decode(response.body);
-  //     return json.decode(response.body);
-  //   } catch (e) {
-  //     // debugPrint(e);
-  //     return null;
-  //   }
-  // }
+// Future<dynamic> _removeFavorite(
+//   var userId,
+//   var storeId,
+//   var serverToken,
+// ) async {
+//   var url =
+//       "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/remove_favourite_store";
+//   Map data = {
+//     "user_id": userId,
+//     "store_id": [storeId],
+//     "server_token": serverToken,
+//   };
+//   var body = json.encode(data);
+//   try {
+//     http.Response response = await http
+//         .post(
+//           Uri.parse(url),
+//           headers: <String, String>{
+//             "Content-Type": "application/json",
+//             "Accept": "application/json",
+//           },
+//           body: body,
+//         )
+//         .timeout(
+//           Duration(seconds: 10),
+//           onTimeout: () {
+//             Service.showMessage(
+//               context: context,
+//               title: "Network error",
+//               error: true,
+//             );
+//             setState(() {
+//               _loading = false;
+//             });
+//             throw TimeoutException("The connection has timed out!");
+//           },
+//         );
+//     favoriteResponseData = json.decode(response.body);
+//     return json.decode(response.body);
+//   } catch (e) {
+//     // debugPrint(e);
+//     return null;
+//   }
+// }
 ///////////////////////////////////////
 ///
 ///
 
-
-
-
-
-
-
-
-
-
-
-
-
 //               // Main content
-  //               Expanded(
-  //                 child: _searchResult.length != 0 || controller.text.isNotEmpty
-  //                     ? ListView.separated(
-  //                         shrinkWrap: true,
-  //                         itemCount: _searchResult.length,
-  //                         physics: ClampingScrollPhysics(),
-  //                         padding: EdgeInsets.symmetric(
-  //                           horizontal: kDefaultPadding,
-  //                           vertical: kDefaultPadding / 2,
-  //                         ),
-  //                         separatorBuilder: (BuildContext context, int index) {
-  //                           return SizedBox(
-  //                             height: getProportionateScreenHeight(
-  //                               kDefaultPadding / 2,
-  //                             ),
-  //                           );
-  //                         },
-  //                         itemBuilder: (BuildContext context, int index) {
-  //                           final item = _searchResult[index];
-  //                           return ProductItemCard(
-  //                             item: item,
-  //                             isOpen: widget.isOpen ?? false,
-  //                             onTap: () => _handleItemTap(item),
-  //                             onAddTap: () => _handleAddToCart(item),
-  //                           );
-  //                         },
-  //                       )
-  //                     : products != null
-  //                     ? SafeArea(
-  //                         child: ListView.separated(
-  //                           shrinkWrap: true,
-  //                           itemCount: products.length,
-  //                           padding: EdgeInsets.symmetric(
-  //                             horizontal: kDefaultPadding,
-  //                             vertical: getProportionateScreenHeight(
-  //                               kDefaultPadding / 2,
-  //                             ),
-  //                           ),
-  //                           separatorBuilder:
-  //                               (BuildContext context, int index) {
-  //                                 return SizedBox(
-  //                                   height: getProportionateScreenHeight(
-  //                                     kDefaultPadding / 2,
-  //                                   ),
-  //                                 );
-  //                               },
-  //                           itemBuilder: (BuildContext context, int index) {
-  //                             final category = products[index];
-  //                             return ExpansionTile(
-  //                               textColor: kBlackColor,
-  //                               backgroundColor: kPrimaryColor,
-  //                               collapsedBackgroundColor: kPrimaryColor,
-  //                               shape: RoundedRectangleBorder(
-  //                                 side: BorderSide(color: kWhiteColor),
-  //                                 borderRadius: BorderRadius.circular(
-  //                                   kDefaultPadding,
-  //                                 ),
-  //                               ),
-  //                               collapsedShape: RoundedRectangleBorder(
-  //                                 side: BorderSide(color: kWhiteColor),
-  //                                 borderRadius: BorderRadius.circular(
-  //                                   kDefaultPadding,
-  //                                 ),
-  //                               ),
-  //                               leading: const Icon(
-  //                                 Icons.dining,
-  //                                 size: 18,
-  //                                 color: kBlackColor,
-  //                               ),
-  //                               childrenPadding: EdgeInsets.only(
-  //                                 left: getProportionateScreenWidth(
-  //                                   kDefaultPadding / 2,
-  //                                 ),
-  //                                 right: getProportionateScreenWidth(
-  //                                   kDefaultPadding / 2,
-  //                                 ),
-  //                                 bottom: getProportionateScreenHeight(
-  //                                   kDefaultPadding,
-  //                                 ),
-  //                               ),
-  //                               title: Text(
-  //                                 Service.capitalizeFirstLetters(
-  //                                   category["_id"]["name"],
-  //                                 ),
-  //                                 style: Theme.of(context).textTheme.bodyLarge
-  //                                     ?.copyWith(fontWeight: FontWeight.w700),
-  //                               ),
-  //                               children: [
-  //                                 ListView.separated(
-  //                                   physics: const ClampingScrollPhysics(),
-  //                                   shrinkWrap: true,
-  //                                   itemCount: category['items'].length,
-  //                                   separatorBuilder: (context, index) =>
-  //                                       SizedBox(
-  //                                         height: getProportionateScreenHeight(
-  //                                           kDefaultPadding / 2,
-  //                                         ),
-  //                                       ),
-  //                                   itemBuilder:
-  //                                       (BuildContext context, int idx) {
-  //                                         final item = category['items'][idx];
-  //                                         return ProductItemCard(
-  //                                           item: item,
-  //                                           isOpen: widget.isOpen ?? false,
-  //                                           onTap: () => _handleItemTap(item),
-  //                                           onAddTap: () =>
-  //                                               _handleAddToCart(item),
-  //                                         );
-  //                                       },
-  //                                 ),
-  //                               ],
-  //                             );
-  //                           },
-  //                         ),
-  //                       )
-  //                     : !_loading
-  //                     ? Padding(
-  //                         padding: EdgeInsets.symmetric(
-  //                           horizontal: getProportionateScreenWidth(
-  //                             kDefaultPadding * 4,
-  //                           ),
-  //                           vertical: getProportionateScreenHeight(
-  //                             kDefaultPadding * 4,
-  //                           ),
-  //                         ),
-  //                         child: Column(
-  //                           mainAxisAlignment: MainAxisAlignment.end,
-  //                           children: [
-  //                             CustomButton(
-  //                               title: "Retry",
-  //                               press: () => _loadPage(1),
-  //                               // press: () {
-  //                               //   _getStoreProductList();
-  //                               // },
-  //                               color: kSecondaryColor,
-  //                             ),
-  //                           ],
-  //                         ),
-  //                       )
-  //                     : const SizedBox.shrink(),
-  //               ),
-  //               // // ========== PAGE INDICATOR (always under the list) ==========
-  //               // if (products != null &&
-  //               //     _searchResult.isEmpty &&
-  //               //     controller.text.isEmpty &&
-  //               //     totalPages > 1)
-  //               //   PageIndicator(
-  //               //     currentPage: currentPage,
-  //               //     totalPages: totalPages,
-  //               //     onPageChanged: (page) {
-  //               //       if (page != currentPage) {
-  //               //         _loadPage(page);
-  //               //       }
-  //               //     },
-  //               //     activeColor: kSecondaryColor,
-  //               //   ),
-  //               // ========== PAGE INDICATOR ==========
-  //               if (!_loading) ...[
-  //                 // Search mode
-  //                 if ((_searchResult.isNotEmpty ||
-  //                         controller.text.isNotEmpty) &&
-  //                     searchTotalPages > 1)
-  //                   PageIndicator(
-  //                     currentPage: searchCurrentPage,
-  //                     totalPages: searchTotalPages,
-  //                     onPageChanged: (page) {
-  //                       if (page != searchCurrentPage) {
-  //                         _loadSearchPage(page);
-  //                       }
-  //                     },
-  //                     activeColor: kSecondaryColor,
-  //                   )
-  //                 // Normal product list mode
-  //                 else if (products != null &&
-  //                     _searchResult.isEmpty &&
-  //                     controller.text.isEmpty &&
-  //                     totalPages > 1)
-  //                   PageIndicator(
-  //                     currentPage: currentPage,
-  //                     totalPages: totalPages,
-  //                     onPageChanged: (page) {
-  //                       if (page != currentPage) {
-  //                         _loadPage(page);
-  //                       }
-  //                     },
-  //                     activeColor: kSecondaryColor,
-  //                   ),
-  //               ],
-  //             ],
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
+//               Expanded(
+//                 child: _searchResult.length != 0 || controller.text.isNotEmpty
+//                     ? ListView.separated(
+//                         shrinkWrap: true,
+//                         itemCount: _searchResult.length,
+//                         physics: ClampingScrollPhysics(),
+//                         padding: EdgeInsets.symmetric(
+//                           horizontal: kDefaultPadding,
+//                           vertical: kDefaultPadding / 2,
+//                         ),
+//                         separatorBuilder: (BuildContext context, int index) {
+//                           return SizedBox(
+//                             height: getProportionateScreenHeight(
+//                               kDefaultPadding / 2,
+//                             ),
+//                           );
+//                         },
+//                         itemBuilder: (BuildContext context, int index) {
+//                           final item = _searchResult[index];
+//                           return ProductItemCard(
+//                             item: item,
+//                             isOpen: widget.isOpen ?? false,
+//                             onTap: () => _handleItemTap(item),
+//                             onAddTap: () => _handleAddToCart(item),
+//                           );
+//                         },
+//                       )
+//                     : products != null
+//                     ? SafeArea(
+//                         child: ListView.separated(
+//                           shrinkWrap: true,
+//                           itemCount: products.length,
+//                           padding: EdgeInsets.symmetric(
+//                             horizontal: kDefaultPadding,
+//                             vertical: getProportionateScreenHeight(
+//                               kDefaultPadding / 2,
+//                             ),
+//                           ),
+//                           separatorBuilder:
+//                               (BuildContext context, int index) {
+//                                 return SizedBox(
+//                                   height: getProportionateScreenHeight(
+//                                     kDefaultPadding / 2,
+//                                   ),
+//                                 );
+//                               },
+//                           itemBuilder: (BuildContext context, int index) {
+//                             final category = products[index];
+//                             return ExpansionTile(
+//                               textColor: kBlackColor,
+//                               backgroundColor: kPrimaryColor,
+//                               collapsedBackgroundColor: kPrimaryColor,
+//                               shape: RoundedRectangleBorder(
+//                                 side: BorderSide(color: kWhiteColor),
+//                                 borderRadius: BorderRadius.circular(
+//                                   kDefaultPadding,
+//                                 ),
+//                               ),
+//                               collapsedShape: RoundedRectangleBorder(
+//                                 side: BorderSide(color: kWhiteColor),
+//                                 borderRadius: BorderRadius.circular(
+//                                   kDefaultPadding,
+//                                 ),
+//                               ),
+//                               leading: const Icon(
+//                                 Icons.dining,
+//                                 size: 18,
+//                                 color: kBlackColor,
+//                               ),
+//                               childrenPadding: EdgeInsets.only(
+//                                 left: getProportionateScreenWidth(
+//                                   kDefaultPadding / 2,
+//                                 ),
+//                                 right: getProportionateScreenWidth(
+//                                   kDefaultPadding / 2,
+//                                 ),
+//                                 bottom: getProportionateScreenHeight(
+//                                   kDefaultPadding,
+//                                 ),
+//                               ),
+//                               title: Text(
+//                                 Service.capitalizeFirstLetters(
+//                                   category["_id"]["name"],
+//                                 ),
+//                                 style: Theme.of(context).textTheme.bodyLarge
+//                                     ?.copyWith(fontWeight: FontWeight.w700),
+//                               ),
+//                               children: [
+//                                 ListView.separated(
+//                                   physics: const ClampingScrollPhysics(),
+//                                   shrinkWrap: true,
+//                                   itemCount: category['items'].length,
+//                                   separatorBuilder: (context, index) =>
+//                                       SizedBox(
+//                                         height: getProportionateScreenHeight(
+//                                           kDefaultPadding / 2,
+//                                         ),
+//                                       ),
+//                                   itemBuilder:
+//                                       (BuildContext context, int idx) {
+//                                         final item = category['items'][idx];
+//                                         return ProductItemCard(
+//                                           item: item,
+//                                           isOpen: widget.isOpen ?? false,
+//                                           onTap: () => _handleItemTap(item),
+//                                           onAddTap: () =>
+//                                               _handleAddToCart(item),
+//                                         );
+//                                       },
+//                                 ),
+//                               ],
+//                             );
+//                           },
+//                         ),
+//                       )
+//                     : !_loading
+//                     ? Padding(
+//                         padding: EdgeInsets.symmetric(
+//                           horizontal: getProportionateScreenWidth(
+//                             kDefaultPadding * 4,
+//                           ),
+//                           vertical: getProportionateScreenHeight(
+//                             kDefaultPadding * 4,
+//                           ),
+//                         ),
+//                         child: Column(
+//                           mainAxisAlignment: MainAxisAlignment.end,
+//                           children: [
+//                             CustomButton(
+//                               title: "Retry",
+//                               press: () => _loadPage(1),
+//                               // press: () {
+//                               //   _getStoreProductList();
+//                               // },
+//                               color: kSecondaryColor,
+//                             ),
+//                           ],
+//                         ),
+//                       )
+//                     : const SizedBox.shrink(),
+//               ),
+//               // // ========== PAGE INDICATOR (always under the list) ==========
+//               // if (products != null &&
+//               //     _searchResult.isEmpty &&
+//               //     controller.text.isEmpty &&
+//               //     totalPages > 1)
+//               //   PageIndicator(
+//               //     currentPage: currentPage,
+//               //     totalPages: totalPages,
+//               //     onPageChanged: (page) {
+//               //       if (page != currentPage) {
+//               //         _loadPage(page);
+//               //       }
+//               //     },
+//               //     activeColor: kSecondaryColor,
+//               //   ),
+//               // ========== PAGE INDICATOR ==========
+//               if (!_loading) ...[
+//                 // Search mode
+//                 if ((_searchResult.isNotEmpty ||
+//                         controller.text.isNotEmpty) &&
+//                     searchTotalPages > 1)
+//                   PageIndicator(
+//                     currentPage: searchCurrentPage,
+//                     totalPages: searchTotalPages,
+//                     onPageChanged: (page) {
+//                       if (page != searchCurrentPage) {
+//                         _loadSearchPage(page);
+//                       }
+//                     },
+//                     activeColor: kSecondaryColor,
+//                   )
+//                 // Normal product list mode
+//                 else if (products != null &&
+//                     _searchResult.isEmpty &&
+//                     controller.text.isEmpty &&
+//                     totalPages > 1)
+//                   PageIndicator(
+//                     currentPage: currentPage,
+//                     totalPages: totalPages,
+//                     onPageChanged: (page) {
+//                       if (page != currentPage) {
+//                         _loadPage(page);
+//                       }
+//                     },
+//                     activeColor: kSecondaryColor,
+//                   ),
+//               ],
+//             ],
+//           ),
+//         ),
+//       ),
+//     ),
+//   );
+// }

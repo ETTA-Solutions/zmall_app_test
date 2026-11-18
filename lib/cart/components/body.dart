@@ -18,6 +18,14 @@ import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/delivery/delivery_screen.dart';
 import 'package:zmall/lunch_home/lunch_home_screen.dart';
 import 'package:zmall/models/cart.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
+import 'package:zmall/combo/widgets/combo_store_section.dart';
+import 'package:zmall/combo/widgets/combo_pairing_strip.dart';
+import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
+import 'package:zmall/login/login_screen.dart';
+import 'package:zmall/services/address_validation_service.dart';
+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';
 import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/notifications/notification_store.dart';
@@ -49,6 +57,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   bool isLocationServicesEnabled = false;
   Cart? cart;
   AliExpressCart? aliexpressCart;
+  ComboCart? comboCart;
+  String comboStoreName = '';
   bool _loading = true;
   bool _checkingAvailability = false;
   bool _checkoutBlocked = false;
@@ -65,6 +75,12 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   String storeName = '';
   var userData;
   var extraItems;
+  // combo_recommendations ("Perfect Pairing" from nearby stores)
+  // Pairings per cart item name (only items with a dashboard rule have an entry).
+  final Map<String, List<Map<String, dynamic>>> comboRecsByItem = {};
+  // Item names already asked about, so each name is requested only once.
+  final Set<String> _recAsked = {};
+  String? _comboRecBusyId;
   //double walletBalance = 0.0;
   //String payeePhone = "964345364";
   //String payerPassword = "";
@@ -88,9 +104,105 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     cart?.items?.forEach((item) {
       tempPrice += item.price!;
     });
+    comboCart?.second.items?.forEach((item) {
+      tempPrice += item.price!;
+    });
     setState(() {
       price = tempPrice;
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Minimum order price guard (Task: Cart Screen Minimum Order Price Check)
+  // Checks each store's subtotal against the store's min_order_price.
+  // Returns null if everything is fine, or an error message to display.
+  //
+  // For the primary store: min_order_price comes from storeDetail.
+  // For the combo second store: we compare against the second Cart's items only;
+  // the actual threshold is stored in the backend store document and only
+  // surfaced on the invoice, so we fall back to 0 here.  The real enforcement
+  // happens server-side; this is a best-effort client-side guard.
+  // ---------------------------------------------------------------------------
+  String? _checkMinOrderPrice() {
+    if (cart == null) return null;
+
+    // Primary store subtotal
+    double primarySubtotal = 0;
+    cart!.items?.forEach((item) => primarySubtotal += item.price!);
+    final double primaryMin =
+        (storeDetail?['store']?['min_order_price'] as num? ?? 0).toDouble();
+    if (primaryMin > 0 && primarySubtotal < primaryMin) {
+      final name = storeName.isNotEmpty ? storeName : 'this store';
+      return 'Minimum order for $name is ${primaryMin.toStringAsFixed(0)} ETB. '
+          'Please add more items.';
+    }
+
+    // Combo second store subtotal (min threshold not locally available yet —
+    // the checkout invoice will enforce it; we only guard if we somehow have it)
+    if (comboCart != null) {
+      double secondSubtotal = 0;
+      comboCart!.second.items?.forEach((item) => secondSubtotal += item.price!);
+      // Second store min is not locally cached before invoice — skip if 0
+      // (server-side validation will catch it at checkout).
+    }
+
+    return null;
+  }
+
+  Future<void> _loadComboCart() async {
+    final combo = await ComboCart.load();
+    if (!mounted) return;
+    setState(() {
+      comboCart = combo;
+    });
+    if (combo != null && comboStoreName.isEmpty) {
+      final data = await ComboService.getStoreDetail(
+        context,
+        storeId: combo.second.storeId!,
+      );
+      if (!mounted) return;
+      if (data != null && data['success'] == true) {
+        setState(() {
+          comboStoreName = data['store']['name'] ?? '';
+        });
+      }
+    }
+  }
+
+  void _onComboChanged() {
+    if (comboCart == null) return;
+    if (comboCart!.second.items!.isEmpty) {
+      ComboCart.clear();
+      setState(() {
+        comboCart = null;
+        comboStoreName = '';
+      });
+    } else {
+      comboCart!.save();
+      setState(() {});
+    }
+    calculatePrice();
+  }
+
+  /// When the first store is emptied, the second store becomes the normal
+  /// single-store cart.
+  void _promoteComboIfFirstEmpty() {
+    if (comboCart == null || cart == null || cart!.items!.isNotEmpty) return;
+    final second = comboCart!.second;
+    second.serverToken = cart!.serverToken;
+    setState(() {
+      cart = second;
+      storeID = second.storeId;
+      storeName = comboStoreName;
+      extraItems = null;
+      comboCart = null;
+      comboStoreName = '';
+    });
+    Service.save('cart', cart!.toJson());
+    ComboCart.clear();
+    _getStoreExtraItemList();
+    _getStoreDetail();
+    calculatePrice();
   }
 
   void getCart() async {
@@ -122,6 +234,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         //   debugPrint("ALI CART NOT FOUND>>>");
         // }
         _getStoreExtraItemList();
+        await _loadComboCart();
+        _loadComboRecommendations();
 
         calculatePrice();
         _refreshAvailability();
@@ -143,52 +257,65 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   }
 
   void _getStoreDetail() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getStoreDetail();
-    if (data != null && data['success']) {
+    if (!mounted) return;
+    if (data != null && data['success'] == true) {
+      final String? odooUrl = ZmallAvailabilityService.extractOrderUrl(data);
+      if (odooUrl != null && odooUrl.isNotEmpty && cart?.storeId != null) {
+        ZmallAvailabilityService.setStoreOrderUrl(cart!.storeId!, odooUrl);
+        cart!.zmallOrderUrl = odooUrl;
+      }
       setState(() {
         storeDetail = data;
         cart!.isLaundryService =
-            storeDetail['store']['is_provide_laundry_service'];
-        storeLocations = storeDetail['store']['location'];
-        storeName = storeDetail['store']['name'];
+            storeDetail['store']?['is_provide_laundry_service'];
+        storeLocations = storeDetail['store']?['location'];
+        storeName = storeDetail['store']?['name'];
         if (aliexpressCart?.cart != null &&
-            cart!.storeId == aliexpressCart!.cart.storeId) {
+            cart!.storeId == aliexpressCart!.cart.storeId &&
+            storeLocations != null &&
+            storeLocations.length >= 2) {
           cart!.storeLocation = aliexpressCart!.cart.storeLocation =
               StoreLocation(long: storeLocations[1], lat: storeLocations[0]);
         }
       });
       Service.save('cart', cart!.toJson());
       Service.save('aliexpressCart', aliexpressCart?.toJson());
+      _refreshAvailability();
     } else {
+      final err = data != null ? errorCodes['${data['error_code']}'] : null;
       Service.showMessage(
         context: context,
-        title: "${errorCodes['${data['error_code']}']}!",
+        title: "${err ?? 'Store details unavailable'}!",
         error: true,
       );
     }
-    setState(() {
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 
   void _requestLocationPermission() async {
     // First, check if location services are enabled
     bool isLocationServicesEnabled = await FlLocation.isLocationServicesEnabled;
-    // debugPrint( ">>>>\n is location on in permition $isLocationServicesEnabled");
+    if (!mounted) return;
 
     if (isLocationServicesEnabled == true) {
       // Then check permissions
       _permissionStatus = await FlLocation.checkLocationPermission();
+      if (!mounted) return;
       if (_permissionStatus == LocationPermission.always ||
           _permissionStatus == LocationPermission.whileInUse) {
         // Location permission granted, continue with location-related tasks
         getLocation();
       } else {
         // Handle permission denial
-
         Service.showMessage(
           context: context,
           title: "Location permission denied. Please enable and try again",
@@ -310,15 +437,38 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
 
   //////////////////////////////////////////////////////////////////newly added
   void _getStoreExtraItemList() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
     });
     var data = await getStoreExtraItemList();
+    if (!mounted) return;
 
-    if (data != null && data['success']) {
+    if (data != null && data['success'] == true) {
       extraItems = data['items'];
-      // debugPrint(storeID);
-    } else {
+      if (cart != null && cart!.items != null && extraItems is List) {
+        List<String> unavailableItemNames = [];
+        for (var cartItem in cart!.items!) {
+          final match = extraItems.firstWhere(
+            (e) => e['_id'] == cartItem.id || e['name'] == cartItem.itemName,
+            orElse: () => null,
+          );
+          if (match != null && match['is_available'] == false) {
+            unavailableItemNames.add(cartItem.itemName ?? 'Item');
+          }
+        }
+        if (unavailableItemNames.isNotEmpty && mounted) {
+          Service.showMessage(
+            context: context,
+            title:
+                "${unavailableItemNames.join(', ')} is currently unavailable. Please review your cart.",
+            error: true,
+            duration: 4,
+          );
+        }
+      }
+    }
+    if (mounted) {
       setState(() {
         _loading = false;
       });
@@ -341,13 +491,55 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     return "0.00";
   }
 
+  String? _resolveOdooOrderUrl() {
+    // 1. Check current storeDetail from user_get_store_product_item_list
+    String? url = ZmallAvailabilityService.extractOrderUrl(storeDetail);
+    if (url != null && url.isNotEmpty) return url;
+
+    // 2. Check cart.zmallOrderUrl
+    if (cart?.zmallOrderUrl != null && cart!.zmallOrderUrl!.isNotEmpty) {
+      return cart!.zmallOrderUrl;
+    }
+
+    // 3. Check in-memory store URL cache
+    if (cart?.storeId != null) {
+      url = ZmallAvailabilityService.getStoreOrderUrl(cart!.storeId!);
+      if (url != null && url.isNotEmpty) return url;
+    }
+
+    // 4. Fallback to hardcoded branch slug if known
+    final String? fallbackSlug = zmallBranchSlugForStore(cart?.storeId);
+    if (fallbackSlug != null && fallbackSlug.isNotEmpty) {
+      return "$kZmallOdooBaseUrl/zmall_order/$fallbackSlug";
+    }
+
+    return null;
+  }
+
   Future<bool> _checkAvailability() async {
     if (cart == null || cart!.items == null || cart!.items!.isEmpty) {
       return true;
     }
 
-    final String? branchSlug = zmallBranchSlugForStore(cart!.storeId);
-    if (branchSlug == null) {
+    String? orderUrl = _resolveOdooOrderUrl();
+    if (orderUrl == null && storeDetail == null) {
+      final data = await getStoreDetail();
+      if (data != null && data['success'] == true) {
+        if (mounted) {
+          setState(() {
+            storeDetail = data;
+          });
+        }
+        final String? odooUrl = ZmallAvailabilityService.extractOrderUrl(data);
+        if (odooUrl != null && odooUrl.isNotEmpty && cart?.storeId != null) {
+          ZmallAvailabilityService.setStoreOrderUrl(cart!.storeId!, odooUrl);
+          cart!.zmallOrderUrl = odooUrl;
+        }
+        orderUrl = _resolveOdooOrderUrl();
+      }
+    }
+
+    if (orderUrl == null) {
       // Non-POS store — Odoo availability does not apply.
       return true;
     }
@@ -370,7 +562,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     if (itemsMissingOdooId.isNotEmpty) {
       BackendLogger.error(
         method: 'POST',
-        url: '$kZmallOdooBaseUrl/zmall_order/$branchSlug',
+        url: orderUrl,
         error:
             'Missing odoo_product_id for: ${itemsMissingOdooId.map((i) => i.itemName ?? i.id).join(", ")}',
       );
@@ -389,7 +581,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     }
 
     final result = await ZmallAvailabilityService.check(
-      branchSlug: branchSlug,
+      orderUrl: orderUrl,
       products: products,
     );
 
@@ -459,8 +651,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       return _CartAvailability(true, null);
     }
 
-    final String? branchSlug = zmallBranchSlugForStore(cart!.storeId);
-    if (branchSlug == null) {
+    final String? orderUrl = _resolveOdooOrderUrl();
+    if (orderUrl == null) {
       // Non-POS store — Odoo availability does not apply.
       return _CartAvailability(true, null);
     }
@@ -489,7 +681,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     }
 
     final result = await ZmallAvailabilityService.check(
-      branchSlug: branchSlug,
+      orderUrl: orderUrl,
       products: products,
     );
 
@@ -683,6 +875,29 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                       //   });
                                       // } else {
 
+                                      final minPrice =
+                                          (storeDetail != null &&
+                                              storeDetail['store'] != null)
+                                          ? ((storeDetail['store']['min_order_price'] ??
+                                                        storeDetail['store']['minimum_order_price'] ??
+                                                        storeDetail['store']['min_order'] ??
+                                                        0)
+                                                    as num)
+                                                .toDouble()
+                                          : 0.0;
+                                      if (minPrice > 0 && price < minPrice) {
+                                        final diff = (minPrice - price)
+                                            .toStringAsFixed(0);
+                                        Service.showMessage(
+                                          context: context,
+                                          title:
+                                              "${storeName.isNotEmpty ? storeName : 'This store'} requires a minimum order of ${minPrice.toInt()} ETB (You need $diff ETB more).",
+                                          error: true,
+                                          duration: 4,
+                                        );
+                                        return;
+                                      }
+
                                       if (!isLocationServicesEnabled) {
                                         Service.showMessage(
                                           context: context,
@@ -749,6 +964,17 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
 
                                         if (now.isAfter(zmallOpen) &&
                                             now.isBefore(zmallClose)) {
+                                          // ── Min-order check ─────────────────
+                                          final minErr = _checkMinOrderPrice();
+                                          if (minErr != null) {
+                                            Service.showMessage(
+                                              context: context,
+                                              title: minErr,
+                                              error: true,
+                                              duration: 4,
+                                            );
+                                            return;
+                                          }
                                           Navigator.pushNamed(
                                             context,
                                             DeliveryScreen.routeName,
@@ -785,17 +1011,11 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
           : SizedBox.shrink(),
       body: ModalProgressHUD(
         color: kPrimaryColor,
-        progressIndicator: LinearLoadingIndicator(title: "Checking..."),
-        // progressIndicator: Column(
-        //   mainAxisAlignment: MainAxisAlignment.center,
-        //   children: [
-        //     SpinKitWave(
-        //       color: kSecondaryColor,
-        //       size: getProportionateScreenHeight(kDefaultPadding),
-        //     ),
-        //     Text("Checking if items are available..."),
-        //   ],
-        // ),
+        progressIndicator: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(kSecondaryColor),
+          ),
+        ),
         inAsyncCall: _loading,
         child: cart != null && cart!.items!.length > 0
             ? Column(
@@ -880,7 +1100,8 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                   Expanded(
                     child: ListView.separated(
                       shrinkWrap: true,
-                      itemCount: cart!.toJson()['items'].length ?? 0,
+                      itemCount:
+                          cart!.items!.length + (comboCart != null ? 1 : 0),
                       padding: EdgeInsets.only(
                         left: getProportionateScreenWidth(kDefaultPadding / 2),
                         right: getProportionateScreenWidth(kDefaultPadding / 2),
@@ -893,10 +1114,18 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                             ),
                           ),
                       itemBuilder: (context, index) {
+                        if (index == cart!.items!.length) {
+                          return ComboStoreSection(
+                            comboCart: comboCart!,
+                            storeName: comboStoreName,
+                            onChanged: _onComboChanged,
+                            onReturnFromStore: getCart,
+                          );
+                        }
                         final item = cart!.items?[index];
                         final isLunchBox =
                             item?.itemName?.contains('ምሳቃ') ?? false;
-                        return item != null
+                        final Widget itemRow = item != null
                             ? GestureDetector(
                                 onTap: isLunchBox
                                     ? () {
@@ -1126,16 +1355,27 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                           GestureDetector(
                                             onTap: () {
                                               setState(() {
+                                                // Keep the store id before `cart` may be set
+                                                // to null below (last item removed).
+                                                final removedStoreId =
+                                                    cart?.storeId;
                                                 cart?.items?.removeAt(index);
-                                                Service.save(
-                                                  'cart',
-                                                  cart!.toJson(),
-                                                );
+                                                if (cart?.items?.isEmpty ??
+                                                    true) {
+                                                  if (comboCart == null) {
+                                                    Service.remove('cart');
+                                                    cart = null;
+                                                  } else {
+                                                    Service.save('cart', cart);
+                                                  }
+                                                } else {
+                                                  Service.save('cart', cart);
+                                                }
                                                 if (aliexpressCart != null &&
                                                     aliexpressCart!
                                                             .cart
                                                             .storeId ==
-                                                        cart!.storeId) {
+                                                        removedStoreId) {
                                                   aliexpressCart!.cart.items!
                                                       .removeAt(index);
                                                   aliexpressCart!.itemIds!
@@ -1150,6 +1390,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                               });
                                               calculatePrice();
                                               _refreshAvailability();
+                                              _promoteComboIfFirstEmpty();
                                             },
                                             child: Text(
                                               Provider.of<ZLanguage>(
@@ -1172,6 +1413,26 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                 ),
                               )
                             : SizedBox.shrink();
+                        // Pairing suggestions sit right under the item they belong to.
+                        final recs = comboCart == null && item?.itemName != null
+                            ? comboRecsByItem[item!.itemName!]
+                            : null;
+                        if (recs == null || recs.isEmpty) return itemRow;
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            itemRow,
+                            ComboPairingStrip(
+                              recommendations: recs,
+                              baseUrl: Provider.of<ZMetaData>(context, listen: false).baseUrl,
+                              currency: Provider.of<ZMetaData>(context, listen: false).currency,
+                              onAdd: _onPairingAdd,
+                              busyItemId: _comboRecBusyId,
+                              title: 'Goes well with ${item!.itemName}',
+                            ),
+                          ],
+                        );
                       },
                     ),
                   ),
@@ -1529,53 +1790,247 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     }
   }
 
-  void _showDialog(item, destination, storeLocation, storeId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext alertContext) {
-        return AlertDialog(
-          backgroundColor: kPrimaryColor,
-          title: Text(Provider.of<ZLanguage>(context).warning),
-          content: Text(Provider.of<ZLanguage>(context).itemsFound),
-          actions: [
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).cancel,
-                style: TextStyle(
-                  color: kBlackColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(alertContext).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                Provider.of<ZLanguage>(context).clear,
-                style: TextStyle(
-                  color: kSecondaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  cart!.toJson();
-                  Service.remove('cart');
-                  Service.remove('aliexpressCart'); ////NEW
-                  cart = Cart();
-                  addToCart(item, destination, storeLocation, storeId);
-                });
+  Future<void> _showDialog(item, destination, storeLocation, storeId) async {
+    final comboFull = await ComboCart.load() != null;
+    final allowCombo = await ComboCart.canStartWith(cart);
+    if (!mounted) return;
 
-                Navigator.of(alertContext).pop();
-              },
-            ),
-          ],
-        );
+    // Starts (or restarts) the combo with [item] as the second store.
+    Future<void> startCombo() async {
+      await ComboCart.start(
+        userData: userData,
+        storeId: storeId,
+        item: item,
+        storeLocation: storeLocation,
+        destination: destination,
+      );
+      if (!mounted) return;
+      await _loadComboCart();
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+        error: false,
+      );
+    }
+
+    showStoreConflictDialog(
+      context: context,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+      onClear: () {
+        setState(() {
+          cart!.toJson();
+          Service.remove('cart');
+          Service.remove('aliexpressCart'); ////NEW
+          ComboCart.clear();
+          comboCart = null;
+          cart = Cart();
+          addToCart(item, destination, storeLocation, storeId);
+        });
+      },
+      onCombo: startCombo,
+      // Keeps the first store, swaps the combo's second store for this one.
+      onReplace: () async {
+        await ComboCart.clear();
+        await startCombo();
       },
     );
   }
 
+  /// Loads admin-configured pairings from nearby stores, one cart item at a
+  /// time (a small queue). Each item name is asked once; only items the
+  /// dashboard has a rule for get a suggestion, shown under that item.
+  Future<void> _loadComboRecommendations() async {
+    final items = cart?.items;
+    if (userData == null ||
+        cart?.storeId == null ||
+        items == null ||
+        items.isEmpty) {
+      if (mounted && comboRecsByItem.isNotEmpty) {
+        setState(() => comboRecsByItem.clear());
+      }
+      _recAsked.clear();
+      return;
+    }
+    final storeId = cart!.storeId!;
+    final names = items.map((i) => i.itemName).whereType<String>().toSet();
+    // Drop pairings of items no longer in the cart.
+    if (comboRecsByItem.keys.any((k) => !names.contains(k))) {
+      setState(() => comboRecsByItem.removeWhere((k, _) => !names.contains(k)));
+    }
+    _recAsked.removeWhere((k) => !names.contains(k));
+    for (final name in names) {
+      if (!_recAsked.add(name)) continue;
+      final data = await ComboService.getRecommendations(
+        context,
+        userData: userData,
+        storeId: storeId,
+        itemNames: [name],
+      );
+      if (!mounted) return;
+      if (ComboService.isSessionExpired(data)) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['999']}!",
+          error: true,
+        );
+        await CoreServices.clearCache();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+        return;
+      }
+      if (data == null) {
+        _recAsked.remove(name); // network failure: retry next refresh
+        continue;
+      }
+      final list = data['success'] == true
+          ? ((data['recommendations'] as List?) ?? const [])
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+          : const <Map<String, dynamic>>[];
+      // Guard against junk: promo placeholders (price 0), nameless rows, and
+      // the same item repeated for one store.
+      final seen = <String>{};
+      final clean = list.where((r) {
+        final price = (r['price'] as num?)?.toDouble() ?? 0.0;
+        final rName = '${r['name'] ?? ''}'.trim();
+        if (price <= 0 || rName.isEmpty) return false;
+        return seen.add('${r['store_id']}|$rName');
+      }).toList();
+      setState(() {
+        if (clean.isEmpty) {
+          comboRecsByItem.remove(name);
+        } else {
+          comboRecsByItem[name] = clean;
+        }
+      });
+    }
+  }
+
+  /// Tap on a recommendation: checks distance, then starts the combo with the
+  /// recommended store as the second store, right here on the cart page.
+  Future<void> _onPairingAdd(Map<String, dynamic> rec) async {
+    if (_comboRecBusyId != null || cart == null || userData == null) return;
+    final recStoreId = '${rec['store_id']}';
+    final itemId = '${rec['item_id']}';
+    final meta = Provider.of<ZMetaData>(context, listen: false);
+    final image = '${rec['image'] ?? ''}';
+    final item = Item(
+      id: itemId,
+      quantity: 1,
+      specification: [],
+      noteForItem: "",
+      price: (rec['price'] as num?)?.toDouble() ?? 0.0,
+      itemName: '${rec['name'] ?? ''}',
+      imageURL: image.isEmpty ? "https://ibb.co/vkhzjd6" : "${meta.baseUrl}/$image",
+    );
+    final destination = DestinationAddress(
+      long: meta.longitude,
+      lat: meta.latitude,
+      name: "Current Location",
+      note: "User current location",
+    );
+
+    // Same store as the cart: plain add.
+    if (recStoreId == cart!.storeId) {
+      setState(() {
+        Service.addOrMergeCartItem(cart!, item);
+        Service.save('cart', cart!.toJson())
+            .then((_) => calculatePrice())
+            .then((_) => setState(() {}));
+      });
+      _refreshAvailability();
+      return;
+    }
+
+    if (!await ComboCart.canStartWith(cart)) {
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: "A combo is already in your cart.",
+        error: true,
+      );
+      return;
+    }
+
+    setState(() => _comboRecBusyId = itemId);
+    try {
+      final detail = await ComboService.getStoreDetail(
+        context,
+        storeId: recStoreId,
+      );
+      if (!mounted) return;
+      final loc = detail?['store']?['location'];
+      if (detail == null ||
+          detail['success'] != true ||
+          loc is! List ||
+          loc.length < 2) {
+        Service.showMessage(
+          context: context,
+          title: "Store location unavailable. Cannot verify combo distance.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+      final storeLocation = StoreLocation(long: loc[1], lat: loc[0]);
+
+      // Distance check (fail-closed), same rule as the item screens.
+      final distRes = await ComboService.StoreDistancegetMax(
+        context,
+        userData: userData,
+        storeIdA: cart!.storeId ?? '',
+        storeIdB: recStoreId,
+      );
+      if (!mounted) return;
+      if (distRes == null ||
+          distRes['success'] != true ||
+          storeLocations is! List ||
+          storeLocations.length < 2) {
+        Service.showMessage(
+          context: context,
+          title: "Could not verify store distance. Please try again.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+      final maxM = (distRes['max_distance'] as num? ?? 0.0).toDouble();
+      final actualM = AddressValidationService.calculateDistanceInMeters(
+        storeLocations[0],
+        storeLocations[1],
+        loc[0],
+        loc[1],
+      );
+      if (actualM > maxM) {
+        await showComboTooFarDialog(
+          context: context,
+          actualKm: actualM / 1000.0,
+          maxKm: maxM / 1000.0,
+        );
+        return;
+      }
+
+      await ComboCart.start(
+        userData: userData,
+        storeId: recStoreId,
+        item: item,
+        storeLocation: storeLocation,
+        destination: destination,
+      );
+      if (!mounted) return;
+      await _loadComboCart();
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+        error: false,
+      );
+    } finally {
+      if (mounted) setState(() => _comboRecBusyId = null);
+    }
+  }
   Widget showExtraItems() {
     bool isNull = extraItems.every(
       (extraItem) => cart!.items!.any(

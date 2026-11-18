@@ -653,6 +653,7 @@ class _OtpScreenState extends State<OtpScreen>
   Future<bool> _resumePendingAiCartIfAny() async {
     final cartId = await Service.consumePendingAiCart();
     if (cartId != null && mounted) {
+      debugPrint('[MCP CART] Resuming pending AI cart $cartId after OTP verification');
       Navigator.pushReplacementNamed(
         context,
         McpCartScreen.routeName,

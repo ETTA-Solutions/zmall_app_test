@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:zmall/help/support_chat/components/floating_chat_button.dart';
-import 'package:zmall/help/support_chat/support_chat_screen.dart';
+// safe_prod: chatbot AI disabled
+// import 'package:zmall/help/support_chat/components/floating_chat_button.dart';
+// import 'package:zmall/help/support_chat/support_chat_screen.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/services/service.dart';
 import 'components/home_body.dart';
@@ -39,12 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: HomeBody(isLaunched: widget.isLaunched),
-      floatingActionButton: FloatingChatButton(
-        onTap: () {
-          Navigator.pushNamed(context, SupportChatScreen.routeName);
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      // safe_prod: chatbot AI disabled
+      // floatingActionButton: FloatingChatButton(
+      //   onTap: () {
+      //     Navigator.pushNamed(context, SupportChatScreen.routeName);
+      //   },
+      // ),
+      // floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

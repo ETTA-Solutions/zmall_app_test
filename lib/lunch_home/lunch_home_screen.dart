@@ -220,6 +220,9 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
       });
       await Service.save('courier', data);
       await Service.saveBool("is_schedule", isSchedule);
+      // Lunch From Home: sender always pays. Overwrite any value left by an
+      // earlier courier order so create_order matches the invoice intent.
+      await Service.saveBool('courier_paid_by_sender', true);
       await Service.save(
         "schedule_start",
         isSchedule ? _scheduledDate.toString() : null,
@@ -1279,6 +1282,16 @@ class _LunchHomeScreenState extends State<LunchHomeScreen> {
       "country_id": Provider.of<ZMetaData>(context, listen: false).countryId,
       "is_round_trip": false,
       "courier_type": "Lunch From Home",
+      // Order intent: saved by the backend with this order_payment and
+      // used to create the order itself once payment is confirmed.
+      "order_type": 7,
+      "delivery_type": 2,
+      "paid_by": 1, // Lunch From Home: sender always pays
+      "is_schedule_order": isSchedule,
+      "schedule_order_start_at": isSchedule && _scheduledDate != null
+          ? _scheduledDate.toString()
+          : "",
+      "flow": "single",
     };
     var body = json.encode(data);
     try {

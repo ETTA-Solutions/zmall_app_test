@@ -9,6 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/checkout/checkout_screen.dart';
+import 'package:zmall/combo/combo_checkout_screen.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
+import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
+import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/core_services.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
@@ -142,7 +147,27 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             ? 0
             : -1;
 
-        vehicleId = vehicleList['vehicles'][selectedVehicle]['_id'];
+        if (selectedVehicle != -1) {
+          // Default to MOTOR BIKE if available
+          for (int i = 0; i < vehicleList['vehicles'].length; i++) {
+            final vName = (vehicleList['vehicles'][i]['name'] ?? '')
+                .toString()
+                .toLowerCase();
+            if (vName.contains('motor') || vName.contains('bike')) {
+              selectedVehicle = i;
+              break;
+            }
+          }
+          vehicleId = vehicleList['vehicles'][selectedVehicle]['_id'];
+        } else {
+          Service.showMessage(
+            context: context,
+            title:
+                "Delivery is not available to this location. Please update your address.",
+            error: true,
+            duration: 4,
+          );
+        }
         // debugPrint("selectedVehicle after $selectedVehicle");
         // debugPrint("selected vehicle id  after ${vehicleId}");
       });
@@ -353,37 +378,17 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     });
   }
 
-  void _clearCart(String cartId) async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-    });
-
-    var data = await clearCart(cartId);
-    if (!mounted) return;
-    if (data != null && data['success']) {
-    } else if (data != null) {
-      Service.showMessage(
-        context: context,
-        title:
-            "${errorCodes['${data['error_code']}'] ?? 'Something went wrong'}!",
-        error: true,
-      );
-      await Future.delayed(Duration(seconds: 2));
-      if (data['error_code'] == 999) {
-        await Service.saveBool('logged', false);
-        await Service.remove('user');
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
-      }
-    }
-  }
-
   void _addToCart() async {
     if (!mounted) return;
     setState(() {
       _loading = true;
     });
+    final combo = await ComboCart.load();
+    if (!mounted) return;
+    if (combo != null) {
+      await _addToComboCart(combo);
+      return;
+    }
     var data = await addToCart();
     if (!mounted) return;
     if (data != null && data['success']) {
@@ -422,6 +427,216 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           Navigator.pushReplacementNamed(context, LoginScreen.routeName);
         }
       }
+    }
+  }
+
+  // Guard flag: prevents re-entrant calls while the distance check is in flight.
+  bool _comboDistanceCheckInProgress = false;
+
+  /// Combo order: sends both stores in one call, then opens combo checkout.
+  Future<void> _addToComboCart(ComboCart combo) async {
+    // ── Re-entrancy guard ──────────────────────────────────────────────────
+    // Prevents multiple simultaneous taps from racing through while the
+    // async distance-check API call is awaited.
+    if (_comboDistanceCheckInProgress) return;
+
+    if (selfPickup) {
+      setState(() {
+        _loading = false;
+      });
+      Service.showMessage(
+        context: context,
+        title: "Self pickup is not available when ordering from 2 stores.",
+        error: true,
+        duration: 4,
+      );
+      return;
+    }
+
+    // ── Distance restriction check ─────────────────────────────────────────
+    // Ask the backend for the maximum allowed distance between the two stores.
+    // We compute the straight-line distance client-side using haversine and
+    // compare against the backend's limit before sending any cart data.
+    // IMPORTANT: fail-closed — if the API call fails or returns an unexpected
+    // response, we block the order rather than letting it through.
+    final storeALoc = cart!.storeLocation;
+    final storeBLoc = combo.second.storeLocation;
+    if (storeALoc != null &&
+        storeBLoc != null &&
+        storeALoc.lat != null &&
+        storeALoc.long != null &&
+        storeBLoc.lat != null &&
+        storeBLoc.long != null) {
+      _comboDistanceCheckInProgress = true;
+      try {
+        debugPrint(
+          '[COMBO-DEBUG] ▶ Distance check: get_combo_max_store_distance\n'
+          '  storeA: ${cart!.storeId}  lat=${storeALoc.lat} lng=${storeALoc.long}\n'
+          '  storeB: ${combo.second.storeId}  lat=${storeBLoc.lat} lng=${storeBLoc.long}',
+        );
+
+        if (!mounted) return;
+
+        final distRes = await ComboService.StoreDistancegetMax(
+          context,
+          userData: userData,
+          storeIdA: cart!.storeId ?? '',
+          storeIdB: combo.second.storeId ?? '',
+        );
+
+        debugPrint(
+          '[COMBO-DEBUG] ◀ Distance check response: '
+          '${distRes == null ? "NULL (timeout/network)" : distRes.toString()}',
+        );
+
+        if (!mounted) return;
+
+        // Fail-closed: if the API returned null (timeout/network error)
+        // or did not return success:true, block the order.
+        if (distRes == null || distRes['success'] != true) {
+          setState(() {
+            _loading = false;
+          });
+          Service.showMessage(
+            context: context,
+            title:
+                "Could not verify store distance. Please check your connection and try again.",
+            error: true,
+            duration: 4,
+          );
+          return;
+        }
+
+        final double maxDistM =
+            (distRes['max_distance'] as num? ?? 0.0).toDouble();
+
+        final double actualDistM =
+            AddressValidationService.calculateDistanceInMeters(
+              storeALoc.lat!,
+              storeALoc.long!,
+              storeBLoc.lat!,
+              storeBLoc.long!,
+            );
+
+        debugPrint(
+          '[COMBO-DEBUG] ✓ Distance check:\n'
+          '  actualDistance : ${actualDistM.toStringAsFixed(0)} m\n'
+          '  maxDistance    : ${maxDistM.toStringAsFixed(0)} m\n'
+          '  allowed        : ${actualDistM <= maxDistM}',
+        );
+
+        if (actualDistM > maxDistM) {
+          debugPrint(
+            '[COMBO-DEBUG] ⛔ BLOCKED by distance restriction:\n'
+            '  actualDistance: $actualDistM m (${(actualDistM / 1000).toStringAsFixed(2)} km)\n'
+            '  maxDistance   : $maxDistM m (${(maxDistM / 1000).toStringAsFixed(2)} km)\n'
+            '  Order will NOT proceed to addItemInCart or ComboCheckoutScreen.',
+          );
+          setState(() {
+            _loading = false;
+          });
+          await showComboTooFarDialog(
+            context: context,
+            actualKm: actualDistM / 1000.0,
+            maxKm: maxDistM / 1000.0,
+          );
+          return;
+        }
+      } finally {
+        // Always release the guard, even if an exception is thrown.
+        _comboDistanceCheckInProgress = false;
+      }
+    } else {
+      debugPrint(
+        '[COMBO-DEBUG] ⚠️ STORE LOCATIONS MISSING! Distance check SKIPPED:\n'
+        '  storeA loc: lat=${storeALoc?.lat}, long=${storeALoc?.long}\n'
+        '  storeB loc: lat=${storeBLoc?.lat}, long=${storeBLoc?.long}',
+      );
+    }
+    // ── end distance check ─────────────────────────────────────────────────
+
+    debugPrint(
+      '[COMBO-DEBUG] ▶ Step 1: addItemInCart\n'
+      '  first_store_id : ${cart!.storeId}\n'
+      '  second_store_id: ${combo.second.storeId}\n'
+      '  existing combo_id: ${combo.comboId ?? "(none)"}\n'
+      '  first_items_count : ${cart!.items?.length ?? 0}\n'
+      '  second_items_count: ${combo.second.items?.length ?? 0}',
+    );
+
+    final data = await ComboService.addItemInCart(
+      context,
+      userData: userData,
+      first: cart!,
+      combo: combo,
+      destination: cart!.destinationAddress!,
+      username: isForOthers
+          ? receiverName
+          : "${userData['user']['first_name']} ${userData['user']['last_name']}",
+      phone: isForOthers ? receiverPhone : "${userData['user']['phone']}",
+    );
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+    });
+
+    debugPrint(
+      '[COMBO-DEBUG] ◀ Step 1 response: ${data == null ? "NULL (timeout/network)" : data.toString()}',
+    );
+
+    if (data != null && data['success'] == true) {
+      combo.resetServerState();
+      combo.comboId = data['combo_id'];
+      // Map by store_id: the a/b labels change at the invoice step.
+      for (final side in ['store_a', 'store_b']) {
+        final sideData = data[side];
+        if (sideData is Map &&
+            sideData['store_id'] != null &&
+            sideData['cart_id'] != null) {
+          combo.cartIdByStore['${sideData['store_id']}'] =
+              '${sideData['cart_id']}';
+        }
+      }
+      if (combo.comboId == null || combo.cartIdByStore.length != 2) {
+        debugPrint(
+          '[COMBO-DEBUG] ✗ Step 1 validation failed: '
+          'combo_id=${combo.comboId} cartIdByStore=${combo.cartIdByStore}',
+        );
+        Service.showMessage(
+          context: context,
+          title: "Something went wrong. Please try again.",
+          error: true,
+        );
+        return;
+      }
+      debugPrint(
+        '[COMBO-DEBUG] ✓ Step 1 validated:\n'
+        '  combo_id     : ${combo.comboId}\n'
+        '  cartIdByStore: ${combo.cartIdByStore}',
+      );
+      await combo.save();
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ComboCheckoutScreen()),
+      );
+    } else if (ComboService.isSessionExpired(data)) {
+      Service.showMessage(
+        context: context,
+        title: "${errorCodes['999']}!",
+        error: true,
+      );
+      await Service.saveBool('logged', false);
+      await Service.remove('user');
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+    } else {
+      Service.showMessage(
+        context: context,
+        title: ComboService.errorText(data),
+        error: true,
+        duration: 5,
+      );
     }
   }
 
@@ -957,6 +1172,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                     destinationAddress!.long,
                   );
 
+                  debugPrint('┌─────────────────────────────────────────────────────');
+                  debugPrint('│ [DELIVERY-DEBUG] Continue pressed:');
+                  debugPrint('│ vehicle: ${selectedVehicle != -1 ? vehicleList['vehicles'][selectedVehicle]['vehicle_name'] : "(none)"}');
+                  debugPrint('│ selfPickup: $selfPickup');
+                  debugPrint('│ storeToCustomerDistance: ${storeToCustomerDistance.toStringAsFixed(2)} km');
+
                   if (selectedVehicle != -1 &&
                       vehicleList['vehicles'][selectedVehicle]['vehicle_name']
                               .toString()
@@ -964,6 +1185,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           "bicycle" &&
                       storeToCustomerDistance > 5 &&
                       !selfPickup) {
+                    debugPrint('│ ⚠️ Far delivery location popup triggered (bicycle & distance > 5 km)!');
+                    debugPrint('└─────────────────────────────────────────────────────');
                     Service.showMessage(
                       context: context,
                       title: Provider.of<ZLanguage>(
@@ -974,6 +1197,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                       duration: 5,
                     );
                   } else {
+                    debugPrint('│ ✅ Distance check passed for vehicle. Proceeding to _addToCart...');
+                    debugPrint('└─────────────────────────────────────────────────────');
                     setState(() {
                       cart!.destinationAddress = destinationAddress;
                       Service.save('cart', cart);
@@ -1262,6 +1487,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     }
 
     var body = json.encode(cart!.toJson());
+    // TEMP DEBUG: compare with chatbot checkout
+    debugPrint("🔎 [MAIN CHECKOUT] add_item_in_cart_new payload: $body", wrapWidth: 800);
     try {
       http.Response response = await http
           .post(
@@ -1278,6 +1505,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               throw TimeoutException("The connection has timed out!");
             },
           );
+      // TEMP DEBUG: compare with chatbot checkout
+      debugPrint("🔎 [MAIN CHECKOUT] add_item_in_cart_new response: ${response.body}", wrapWidth: 800);
       if (mounted)
         setState(() {
           this.responseData = json.decode(response.body);

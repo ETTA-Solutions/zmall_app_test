@@ -22,6 +22,8 @@ class Cart {
     this.userName = "",
     this.phone = "",
     this.isLaundryService = false,
+    this.isMcp = false,
+    this.zmallOrderUrl,
   });
 
   String? userId;
@@ -36,6 +38,8 @@ class Cart {
   String userName;
   String phone;
   bool isLaundryService;
+  bool isMcp;
+  String? zmallOrderUrl;
 
   factory Cart.fromJson(Map<String, dynamic> json) => Cart(
     userId: json["user_id"],
@@ -46,18 +50,21 @@ class Cart {
     ),
     storeId: json["store_id"],
     storeLocation: StoreLocation.fromJson(json["store_location"]),
-    isSchedule: json["is_schedule"],
+    isSchedule: json["is_schedule"] ?? false,
     scheduleStart: json["schedule_start"] == null
         ? null
         : DateTime.parse(json["schedule_start"]),
-    isForOthers: json["delivery_for_other"],
-    userName: json["username"],
-    phone: json["phone"],
-    isLaundryService: json["is_laundry_service"],
+    isForOthers: json["delivery_for_other"] ?? false,
+    userName: json["username"] ?? "",
+    phone: json["phone"] ?? "",
+    isLaundryService: json["is_laundry_service"] ?? false,
+    isMcp: json["is_mcp"] ?? false,
+    zmallOrderUrl: json["zmll_order_url"] ?? json["zmall_order_url"],
   );
 
   Map<String, dynamic> toJson() => {
     "user_id": userId,
+    "is_mcp": isMcp,
     "items": List<dynamic>.from(items!.map((x) => x.toJson())),
     "server_token": serverToken,
     "destination_address": destinationAddress!.toJson(),
@@ -69,6 +76,7 @@ class Cart {
     "username": userName,
     "phone": phone,
     "is_laundry_service": isLaundryService,
+    "zmll_order_url": zmallOrderUrl,
   };
 }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:provider/provider.dart';
@@ -778,10 +779,14 @@ class BodyState extends State<Body> {
         };
       });
 
-      if (mounted) {
+      // Timeouts already showed a friendly message in onTimeout. For other
+      // errors show a user-friendly message; raw details only in debug builds.
+      if (mounted && e is! TimeoutException) {
         Service.showMessage(
           context: context,
-          title: "Backend Error: ${e.toString()}",
+          title: kDebugMode
+              ? "Backend Error: ${e.toString()}"
+              : "Couldn't load stores. Please try again.",
           error: true,
           duration: 3,
         );
@@ -890,14 +895,22 @@ class BodyState extends State<Body> {
         };
       });
 
-      if (mounted) {
+      // Timeouts already showed a friendly message in onTimeout. For other
+      // errors show a user-friendly message; raw details only in debug builds.
+      if (mounted && e is! TimeoutException) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Backend Error: ${e.toString()}"),
+            content: Text(
+              kDebugMode
+                  ? "Backend Error: ${e.toString()}"
+                  : "Couldn't load stores. Please try again.",
+            ),
             backgroundColor: kSecondaryColor,
           ),
         );
       }
+
+      //this backend error its make user impesive instead of warmming so that way we change the code
 
       return null;
     } finally {

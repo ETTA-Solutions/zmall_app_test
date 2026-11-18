@@ -5,7 +5,7 @@ description: ZMall E-commerce App
 # pub.dev using `pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 3.2.10+364
+version: 3.2.10+365
 
 environment:
   sdk: ">=3.10.4 <4.0.0"
@@ -35,6 +35,7 @@ dependencies:
   visibility_detector: ^0.4.0+2
   confetti: ^0.8.0
   country_code_picker: ^3.4.1
+  google_fonts: ^6.2.1            # custom fonts (used by subscription screen)
   # flutter_animate:              # (disabled)
 
   # ── Networking ──
@@ -42,13 +43,15 @@ dependencies:
   dio: ^5.9.2
 
   # ── Images & media ──
+  qr_flutter: ^4.1.0
   cached_network_image: ^3.4.1
   image_picker: ^1.2.2
   just_audio: ^0.10.5             # yearly recap audio
 
   # ── Maps & location ──
   geolocator: ^14.0.3
-  fl_location: ^5.0.0
+  fl_location:
+    path: packages/fl_location # patched for AGP 9 (built-in Kotlin)
   flutter_map: ^8.3.0
   google_maps_flutter: ^2.17.1
 
@@ -117,10 +120,10 @@ flutter:
     - images/
     - assets/
     - images/payment/
+    - images/payment/new_payment/
     - images/pl_logos/
     - images/pl_logos/nation/ # Added: national team logos for World Cup (e.g. GER.png, BRA.png)
     - images/store_tags/
-    - images/meal/
     - assets/audio/
 #    - packages/timezone/data/2021a.tzf
 
@@ -149,3 +152,8 @@ flutter:
 #
 # For details regarding fonts from package dependencies,
 # see https://flutter.dev/custom-fonts/#from-packages
+
+# Patched for AGP 9 (proguard-android.txt no longer supported)
+dependency_overrides:
+  flutter_inappwebview_android:
+    path: packages/flutter_inappwebview_android

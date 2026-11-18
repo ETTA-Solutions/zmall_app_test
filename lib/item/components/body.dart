@@ -2,6 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/utils/constants.dart';
+import 'package:zmall/combo/models/combo_cart.dart';
+import 'package:zmall/combo/services/combo_service.dart';
+import 'package:zmall/combo/widgets/store_conflict_dialog.dart';
+import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
+import 'package:zmall/services/address_validation_service.dart';
 import 'package:zmall/custom_widgets/custom_button.dart';
 import 'package:zmall/item/components/photo_viewer.dart';
 import 'package:zmall/login/login_screen.dart';
@@ -10,6 +15,8 @@ import 'package:zmall/models/language.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/notifications/notification_store.dart';
 import 'package:zmall/services/service.dart';
+import 'package:zmall/services/zmall_availability_service.dart';
+import 'package:zmall/widgets/stock_left_notification.dart';
 import 'package:zmall/utils/size_config.dart';
 
 class Body extends StatefulWidget {
@@ -40,6 +47,8 @@ class _BodyState extends State<Body> {
   String note = "";
   bool clearedRequired = false;
   Cart? cart;
+  // Guard: prevents re-entrant distance-check calls when the user taps fast.
+  bool _comboDistanceCheckInProgress = false;
   double? longitude, latitude;
   double? initialPrice;
   double? price;
@@ -80,22 +89,134 @@ class _BodyState extends State<Body> {
     super.dispose();
   }
 
+  void _specDebug(String msg) => debugPrint("[SPEC DEBUG] $msg");
+
+  // ── Odoo availability (same "Limited Stock" popup as the cart) ──────────
+
+  /// Last popup shown, so tapping + again doesn't reopen the same one.
+  String? _lastStockLeftSignature;
+
+  /// The store's Odoo /zmall_order URL, or null for non-POS stores.
+  String? _resolveOdooOrderUrl() {
+    final String? storeId = widget.item['store_id']?.toString();
+    String? url = ZmallAvailabilityService.extractOrderUrl(widget.item);
+    if (url != null && url.isNotEmpty) return url;
+    if (cart?.storeId == storeId &&
+        cart?.zmallOrderUrl != null &&
+        cart!.zmallOrderUrl!.isNotEmpty) {
+      return cart!.zmallOrderUrl;
+    }
+    if (storeId != null) {
+      url = ZmallAvailabilityService.getStoreOrderUrl(storeId);
+      if (url != null && url.isNotEmpty) return url;
+    }
+    final String? slug = zmallBranchSlugForStore(storeId);
+    if (slug != null && slug.isNotEmpty) {
+      return "$kZmallOdooBaseUrl/zmall_order/$slug";
+    }
+    return null;
+  }
+
+  /// Called when the user taps +. Asks Odoo for this item's stock and shows
+  /// the "Limited Stock" popup when the chosen quantity is above the
+  /// `forecasted_quantity`. Silent for non-POS stores and on network errors.
+  Future<void> _checkStockOnIncrease() async {
+    final int? odooId = extractOdooProductId(
+      widget.item is Map ? Map<String, dynamic>.from(widget.item) : null,
+    );
+    final String? orderUrl = _resolveOdooOrderUrl();
+    if (odooId == null || orderUrl == null) return;
+
+    final int requested = quantity;
+    final result = await ZmallAvailabilityService.check(
+      orderUrl: orderUrl,
+      products: [
+        {"product_id": odooId, "quantity": requested},
+      ],
+    );
+    // Ignore stale answers if the user changed the quantity meanwhile.
+    if (!mounted || result == null || !result.success) return;
+    if (requested != quantity) return;
+
+    for (final product in result.products) {
+      if (product.productId != odooId) continue;
+      final double? forecasted = product.forecastedQuantity;
+      if (product.isAvailableForRequestedQuantity || forecasted == null) {
+        return;
+      }
+      final int available = forecasted < 0 ? 0 : forecasted.toInt();
+      final String signature = '$odooId:$available:$requested';
+      if (signature == _lastStockLeftSignature) return;
+      _lastStockLeftSignature = signature;
+      final String baseUrl =
+          Provider.of<ZMetaData>(context, listen: false).baseUrl;
+      StockLeftNotification.show(
+        context: context,
+        items: [
+          StockLeftItem(
+            item: Item(
+              id: widget.item['_id'],
+              quantity: requested,
+              price: price,
+              itemName: widget.item['name'],
+              imageURL: widget.item['image_url'] != null &&
+                      widget.item['image_url'].length > 0
+                  ? "$baseUrl/${widget.item['image_url'][0]}"
+                  : null,
+              odooProductId: odooId,
+            ),
+            forecastedQty: available,
+            cartQty: requested,
+          ),
+        ],
+      );
+      return;
+    }
+  }
+
   void requiredCount() {
+    _specDebug(
+      "item=${widget.item['name']} id=${widget.item['_id']} "
+      "price=${widget.item['price']} (${widget.item['price'].runtimeType})",
+    );
+    final specs = widget.item['specifications'] ?? [];
+    for (final s in specs) {
+      _specDebug(
+        "spec '${s['name']}' unique_id=${s['unique_id']} "
+        "(${s['unique_id'].runtimeType}) type=${s['type']} "
+        "range=${s['range']} (${s['range'].runtimeType}) "
+        "is_required=${s['is_required']}",
+      );
+      for (final o in (s['list'] ?? [])) {
+        _specDebug(
+          "   option '${o['name']}' unique_id=${o['unique_id']} "
+          "(${o['unique_id'].runtimeType}) price=${o['price']} "
+          "(${o['price'].runtimeType})",
+        );
+      }
+    }
     if (widget.item['specifications'].length > 0) {
       for (
         var index = 0;
         index < widget.item['specifications'].length;
         index++
       ) {
-        if (widget.item['specifications'][index]['is_required']) {
+        final spec = widget.item['specifications'][index];
+        if (spec['is_required'] == true) {
+          final id = spec['unique_id'];
+          if (id is! int) {
+            _specDebug(
+              "WARNING required spec '${spec['name']}' has non-int "
+              "unique_id=$id (${id.runtimeType}) - it can never be cleared",
+            );
+          }
           setState(() {
             reqCount += 1;
-            requiredSpecs?.add(
-              widget.item['specifications'][index]['unique_id'],
-            );
+            if (id is int) requiredSpecs?.add(id);
           });
         }
       }
+      _specDebug("reqCount=$reqCount requiredSpecs=$requiredSpecs");
       if (reqCount == 0) {
         setState(() {
           clearedRequired = true;
@@ -128,6 +249,10 @@ class _BodyState extends State<Body> {
           count += 1;
         }
       });
+      _specDebug(
+        "checkRequired: selectedSpecs=${specification!.map((e) => '${e.uniqueId}:${e.list!.map((l) => l.uniqueId).toList()}').toList()} "
+        "matched=$count / reqCount=$reqCount",
+      );
       if (reqCount == count) {
         setState(() {
           clearedRequired = true;
@@ -171,6 +296,10 @@ class _BodyState extends State<Body> {
   }
 
   void addToCart(item, destination, storeLocation) {
+    debugPrint(
+      "📍 [ITEM ORDER] addToCart -> Item: ${item.itemName}, "
+      "Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}",
+    );
     cart = Cart(
       userId: userData['user']['_id'],
       items: [item],
@@ -280,6 +409,7 @@ class _BodyState extends State<Body> {
                           quantity += 1;
                           updatePrice();
                         });
+                        _checkStockOnIncrease();
                       },
                     ),
                   ],
@@ -327,17 +457,38 @@ class _BodyState extends State<Body> {
                             note: "User current location",
                           );
 
-                          if (cart != null) {
+                          debugPrint(
+                            "==================== ITEM ORDER DEBUG ====================\n"
+                            "📍 Item Name: ${widget.item['name']}\n"
+                            "📍 Item ID: ${widget.item['_id']}\n"
+                            "📍 Store ID: ${widget.item['store_id']}\n"
+                            "📍 Item/Store Location (raw): ${widget.location}\n"
+                            "📍 Item/Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}\n"
+                            "📍 Destination Location: Lat: ${destination.lat}, Long: ${destination.long}\n"
+                            "==========================================================",
+                          );
+
+                          if (cart != null &&
+                              cart!.items != null &&
+                              cart!.items!.isNotEmpty) {
                             if (userData != null) {
                               if (cart!.storeId == widget.item['store_id']) {
                                 setState(() {
                                   // Use Service method to add or merge item
+                                  debugPrint(
+                                    "📍 [ITEM ORDER] Merged item '${item.itemName}' into existing cart. "
+                                    "Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}",
+                                  );
                                   Service.addOrMergeCartItem(cart!, item);
                                   Service.save('cart', cart!.toJson());
                                   Navigator.of(context).pop();
                                 });
                               } else {
-                                _showDialog(item, destination, storeLocation);
+                                _handleOtherStore(
+                                  item,
+                                  destination,
+                                  storeLocation,
+                                );
                               }
                             } else {
                               Service.showMessage(
@@ -374,6 +525,12 @@ class _BodyState extends State<Body> {
                           }
                         }
                       : () {
+                          _specDebug(
+                            "Add to cart blocked: clearedRequired=$clearedRequired "
+                            "price=$price reqCount=$reqCount "
+                            "requiredSpecs=$requiredSpecs "
+                            "selected=${specification!.map((e) => e.uniqueId).toList()}",
+                          );
                           Service.showMessage(
                             context: context,
                             title:
@@ -849,77 +1006,95 @@ class _BodyState extends State<Body> {
                                   ),
                                 ),
                                 onSelected: (_) {
-                                  final specItem = ListElement(
-                                    uniqueId: opt['unique_id'],
-                                    price: price,
-                                  );
+                                  try {
+                                    _specDebug(
+                                      "tap option '${opt['name']}' (${opt['unique_id']}) "
+                                      "in spec '${spec['name']}' (${spec['unique_id']}) "
+                                      "type=${spec['type']} range=${spec['range']}",
+                                    );
+                                    final specItem = ListElement(
+                                      uniqueId: opt['unique_id'],
+                                      price: price,
+                                    );
 
-                                  final existingSpec = specification!
-                                      .firstWhere(
-                                        (e) => e.uniqueId == spec['unique_id'],
-                                        orElse: () => Specification(
-                                          uniqueId: -1,
-                                          list: [],
-                                        ),
-                                      );
+                                    final existingSpec = specification!
+                                        .firstWhere(
+                                          (e) =>
+                                              e.uniqueId == spec['unique_id'],
+                                          orElse: () => Specification(
+                                            uniqueId: -1,
+                                            list: [],
+                                          ),
+                                        );
 
-                                  if (existingSpec.uniqueId != -1) {
-                                    final list = existingSpec.list!;
-                                    if (list.any(
-                                      (e) => e.uniqueId == specItem.uniqueId,
-                                    )) {
-                                      setState(() {
-                                        list.removeWhere(
-                                          (e) =>
-                                              e.uniqueId == specItem.uniqueId,
-                                        );
-                                        selected.removeWhere(
-                                          (e) =>
-                                              e.uniqueId == specItem.uniqueId,
-                                        );
-                                        if (list.isEmpty) {
-                                          specification!.removeWhere(
+                                    if (existingSpec.uniqueId != -1) {
+                                      final list = existingSpec.list!;
+                                      if (list.any(
+                                        (e) => e.uniqueId == specItem.uniqueId,
+                                      )) {
+                                        setState(() {
+                                          list.removeWhere(
                                             (e) =>
-                                                e.uniqueId ==
-                                                existingSpec.uniqueId,
+                                                e.uniqueId == specItem.uniqueId,
                                           );
-                                        }
-                                      });
-                                    } else {
-                                      if (spec['type'] == 2) {
-                                        if (spec['range'] == 0 ||
-                                            list.length < spec['range']) {
+                                          selected.removeWhere(
+                                            (e) =>
+                                                e.uniqueId == specItem.uniqueId,
+                                          );
+                                          if (list.isEmpty) {
+                                            specification!.removeWhere(
+                                              (e) =>
+                                                  e.uniqueId ==
+                                                  existingSpec.uniqueId,
+                                            );
+                                          }
+                                        });
+                                      } else {
+                                        if (spec['type'] == 2) {
+                                          final int range =
+                                              (spec['range'] as num?)
+                                                  ?.toInt() ??
+                                              0;
+                                          if (range == 0 ||
+                                              list.length < range) {
+                                            setState(() {
+                                              list.add(specItem);
+                                              selected.add(specItem);
+                                            });
+                                          }
+                                        } else {
                                           setState(() {
-                                            list.add(specItem);
+                                            selected.removeWhere(
+                                              (e) =>
+                                                  e.uniqueId ==
+                                                  list[0].uniqueId,
+                                            );
+                                            list
+                                              ..clear()
+                                              ..add(specItem);
                                             selected.add(specItem);
                                           });
                                         }
-                                      } else {
-                                        setState(() {
-                                          selected.removeWhere(
-                                            (e) =>
-                                                e.uniqueId == list[0].uniqueId,
-                                          );
-                                          list
-                                            ..clear()
-                                            ..add(specItem);
-                                          selected.add(specItem);
-                                        });
                                       }
+                                    } else {
+                                      setState(() {
+                                        specification!.add(
+                                          Specification(
+                                            uniqueId: spec['unique_id'],
+                                            list: [specItem],
+                                          ),
+                                        );
+                                        selected.add(specItem);
+                                      });
                                     }
-                                  } else {
-                                    setState(() {
-                                      specification!.add(
-                                        Specification(
-                                          uniqueId: spec['unique_id'],
-                                          list: [specItem],
-                                        ),
-                                      );
-                                      selected.add(specItem);
-                                    });
+                                    checkRequired();
+                                    updatePrice();
+                                    _specDebug(
+                                      "after tap: clearedRequired=$clearedRequired price=${this.price}",
+                                    );
+                                  } catch (e, st) {
+                                    _specDebug("ERROR in onSelected: $e\n$st");
                                   }
-                                  checkRequired();
-                                  updatePrice();
                                 },
                               );
                             }),
@@ -936,43 +1111,159 @@ class _BodyState extends State<Body> {
     );
   }
 
-  void _showDialog(item, destination, storeLocation) {
-    showDialog(
+  /// Item is from a store other than the cart's: merge into the combo's
+  /// second store, or ask whether to clear or order from both stores.
+  Future<void> _handleOtherStore(
+    Item item,
+    DestinationAddress destination,
+    StoreLocation storeLocation,
+  ) async {
+    // ── Re-entrancy guard ─────────────────────────────────────────────────
+    if (_comboDistanceCheckInProgress) return;
+
+    // ── Distance check ────────────────────────────────────────────────────
+    // Fail-closed: missing locations or API failure → block combo.
+    final firstStoreLoc = cart?.storeLocation;
+    if (cart != null) {
+      if (firstStoreLoc == null ||
+          firstStoreLoc.lat == null ||
+          firstStoreLoc.long == null ||
+          storeLocation.lat == null ||
+          storeLocation.long == null) {
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: "Store location unavailable. Cannot verify combo distance.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+
+      _comboDistanceCheckInProgress = true;
+      try {
+        final distRes = await ComboService.StoreDistancegetMax(
+          context,
+          userData: userData,
+          storeIdA: cart!.storeId ?? '',
+          storeIdB: widget.item['store_id'] ?? '',
+        );
+        if (!mounted) return;
+
+        // Fail-closed: API failure → block
+        if (distRes == null || distRes['success'] != true) {
+          Service.showMessage(
+            context: context,
+            title: "Could not verify store distance. Please try again.",
+            error: true,
+            duration: 4,
+          );
+          return;
+        }
+
+        final double maxDistM =
+            (distRes['max_distance'] as num? ?? 0.0).toDouble();
+        final double actualDistM =
+            AddressValidationService.calculateDistanceInMeters(
+          firstStoreLoc.lat!,
+          firstStoreLoc.long!,
+          storeLocation.lat!,
+          storeLocation.long!,
+        );
+        if (actualDistM > maxDistM) {
+          if (!mounted) return;
+          await showComboTooFarDialog(
+            context: context,
+            actualKm: actualDistM / 1000.0,
+            maxKm: maxDistM / 1000.0,
+          );
+          return; // blocked — no combo dialog shown
+        }
+      } finally {
+        _comboDistanceCheckInProgress = false;
+      }
+    }
+    // ── end distance check ─────────────────────────────────────────────────
+
+    if (await ComboCart.addToSecondStoreIfMatches(
+      widget.item['store_id'],
+      item,
+    )) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      return;
+    }
+    final comboFull = await ComboCart.load() != null;
+    final allowCombo = await ComboCart.canStartWith(cart);
+    if (!mounted) return;
+    _showDialog(
+      item,
+      destination,
+      storeLocation,
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+    );
+  }
+
+  void _showDialog(
+    item,
+    destination,
+    storeLocation, {
+    bool allowCombo = false,
+    bool comboFull = false,
+  }) {
+    showStoreConflictDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: kPrimaryColor,
-        title: Text(Provider.of<ZLanguage>(context).warning),
-        content: Text(Provider.of<ZLanguage>(context).itemsFound),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              Provider.of<ZLanguage>(context).cancel,
-              style: TextStyle(color: kBlackColor, fontWeight: FontWeight.bold),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                Service.remove('cart');
-                Service.remove('aliexpressCart');
-                cart = Cart();
-                addToCart(item, destination, storeLocation);
-              });
-              Navigator.of(context)
-                ..pop()
-                ..pop();
-            },
-            child: Text(
-              Provider.of<ZLanguage>(context).clear,
-              style: TextStyle(
-                color: kSecondaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+      allowCombo: allowCombo,
+      comboFull: comboFull,
+      onClear: () {
+        setState(() {
+          Service.remove('cart');
+          Service.remove('aliexpressCart');
+          ComboCart.clear();
+          cart = Cart();
+          addToCart(item, destination, storeLocation);
+        });
+        Navigator.of(context).pop();
+      },
+      onReplace: () async {
+        // Drops the current second store; the first store stays.
+        await ComboCart.clear();
+        await ComboCart.start(
+          userData: userData,
+          storeId: widget.item['store_id'],
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
+        );
+        Navigator.of(context).pop();
+      },
+      onCombo: () async {
+        debugPrint(
+          "📍 [ITEM ORDER COMBO] Item: ${item.itemName}, "
+          "Store Location: Lat: ${storeLocation.lat}, Long: ${storeLocation.long}",
+        );
+        await ComboCart.start(
+          userData: userData,
+          storeId: widget.item['store_id'],
+          item: item,
+          storeLocation: storeLocation,
+          destination: destination,
+        );
+        if (!mounted) return;
+        Service.showMessage(
+          context: context,
+          title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+          error: false,
+        );
+        Navigator.of(context).pop();
+      },
     );
   }
 }

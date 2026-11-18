@@ -16,7 +16,9 @@ class ProductDetailSheet {
     BuildContext context, {
     required MockProduct product,
     required Future<void> Function(MockProduct, int) onAddToCart,
+    Future<void> Function(MockProduct, int)? onOrderNow,
   }) {
+    debugPrint("🔍 [PRODUCT SHEET] Showing sheet for: ${product.name} (id: ${product.id}, storeId: ${product.storeId}, price: ${product.price})");
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -25,6 +27,7 @@ class ProductDetailSheet {
       builder: (_) => _ProductDetailSheet(
         product: product,
         onAddToCart: onAddToCart,
+        onOrderNow: onOrderNow,
       ),
     );
   }
@@ -34,9 +37,13 @@ class _ProductDetailSheet extends StatefulWidget {
   final MockProduct product;
   final Future<void> Function(MockProduct, int) onAddToCart;
 
+  /// Skips the cart and goes straight to payment (see ChatCheckoutService).
+  final Future<void> Function(MockProduct, int)? onOrderNow;
+
   const _ProductDetailSheet({
     required this.product,
     required this.onAddToCart,
+    this.onOrderNow,
   });
 
   @override
@@ -49,22 +56,39 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
 
   void _increment() {
     HapticFeedback.selectionClick();
-    if (_qty < 9) setState(() => _qty++);
+    if (_qty < 9) {
+      setState(() => _qty++);
+      debugPrint("🔢 [PRODUCT SHEET] Incremented quantity: $_qty for ${widget.product.name}");
+    }
   }
 
   void _decrement() {
     HapticFeedback.selectionClick();
-    if (_qty > 1) setState(() => _qty--);
+    if (_qty > 1) {
+      setState(() => _qty--);
+      debugPrint("🔢 [PRODUCT SHEET] Decremented quantity: $_qty for ${widget.product.name}");
+    }
   }
 
   Future<void> _handleAdd() async {
     if (_adding) return;
     setState(() => _adding = true);
     HapticFeedback.mediumImpact();
+    debugPrint("🛒 [PRODUCT SHEET] Adding to cart: ${widget.product.name} x $_qty");
     await widget.onAddToCart(widget.product, _qty);
     if (!mounted) return;
     setState(() => _adding = false);
     Navigator.pop(context);
+  }
+
+  void _handleOrderNow() {
+    if (_adding) return;
+    HapticFeedback.mediumImpact();
+    final qty = _qty;
+    debugPrint("⚡ [PRODUCT SHEET] Direct Order Now: ${widget.product.name} x $qty");
+    // Close the sheet first; the chat shows progress and opens payment.
+    Navigator.pop(context);
+    widget.onOrderNow!(widget.product, qty);
   }
 
   @override
@@ -329,6 +353,45 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                         ),
                       ],
                     ),
+
+                    // ── Order Now → payment ────────────────────────
+                    if (widget.onOrderNow != null) ...[
+                      SizedBox(height: getProportionateScreenHeight(12)),
+                      GestureDetector(
+                        onTap: _adding ? null : _handleOrderNow,
+                        child: Container(
+                          height: getProportionateScreenHeight(52),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(50),
+                            border: Border.all(
+                              color: kSecondaryColor,
+                              width: 1.5,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                HeroiconsOutline.creditCard,
+                                color: kSecondaryColor,
+                                size: getProportionateScreenWidth(16),
+                              ),
+                              SizedBox(width: getProportionateScreenWidth(8)),
+                              Text(
+                                'Order Now · ${(product.price * _qty).toStringAsFixed(0)} ${product.currencySymbol}',
+                                style: TextStyle(
+                                  color: kSecondaryColor,
+                                  fontSize: getProportionateScreenWidth(15),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

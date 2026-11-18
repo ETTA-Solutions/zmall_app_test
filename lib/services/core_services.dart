@@ -510,10 +510,63 @@ class CoreServices {
     }
   }
 
+  /// Fetches the subscription state for the logged-in user.
+  ///
+  /// Returns a map with:
+  ///   - is_subscription_enabled (bool)
+  ///   - subscription_price (num)
+  ///   - subscription_duration_days (int)
+  ///   - is_active (bool)
+  ///   - subscription_expiry (String? ISO-8601)
+  ///   - subscription_amount (num)
+  static Future<dynamic> getSubscriptionDetail({
+    required String userId,
+    required String serverToken,
+    required BuildContext context,
+  }) async {
+    final url =
+        "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/get_subscription_detail";
+    final body = json.encode({"user_id": userId, "server_token": serverToken});
+    try {
+      BackendLogger.request(
+        method: 'POST',
+        url: url,
+        headers: {"Content-Type": "application/json", "Accept": "application/json"},
+        body: body,
+      );
+      final http.Response response = await http
+          .post(
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException("The connection has timed out!");
+            },
+          );
+      BackendLogger.response(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      BackendLogger.error(method: 'POST', url: url, error: e);
+      return null;
+    }
+  }
+
   static Future<dynamic> clearCache() async {
     await Service.saveBool('logged', false);
     await Service.remove('user');
     await Service.remove('cart');
+    await Service.remove('combo_cart');
     await Service.remove('aliexpressCart'); //
     await Service.remove('images');
     await Service.remove('p_items');

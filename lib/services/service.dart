@@ -51,8 +51,7 @@ class Service {
         SnackBar(
           backgroundColor: error == null
               ? kWhiteColor
-              // kGreyColor
-              : error
+              : error == true
               ? kSecondaryColor
               : kGreenColor,
           content: Text(
@@ -135,6 +134,7 @@ class Service {
     await Service.saveBool('logged', false);
     await Service.remove('user');
     await Service.remove('cart');
+    await Service.remove('combo_cart');
     await Service.remove('aliexpressCart'); //NEW
     await Service.remove('images');
   }
@@ -893,12 +893,19 @@ class Service {
         : jsonDecode(pendingRaw.toString());
     final savedAt = pending['saved_at'] as int? ?? 0;
     final ageMs = DateTime.now().millisecondsSinceEpoch - savedAt;
+    final cartId = pending['cart_id'] as String?;
 
     await Service.remove('pending_ai_cart');
 
     if (ageMs < 2 * 60 * 60 * 1000) {
-      return pending['cart_id'] as String?;
+      debugPrint(
+        '[MCP CART] Consumed pending AI cart: $cartId (${ageMs ~/ 1000}s old)',
+      );
+      return cartId;
     }
+    debugPrint(
+      '[MCP CART] Expired pending AI cart discarded: $cartId (${ageMs ~/ 1000}s old)',
+    );
     return null;
   }
 

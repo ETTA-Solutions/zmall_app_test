@@ -49,6 +49,7 @@ class _OrderRatingState extends State<OrderRating> {
       setState(() {
         _loading = false;
         responseData = data;
+        print(responseData);
       });
 
       Service.showMessage(
@@ -62,9 +63,10 @@ class _OrderRatingState extends State<OrderRating> {
         _loading = false;
       });
       Service.showMessage(
-          context: context,
-          title: "${errorCodes['${data['error_code']}']}!",
-          error: true);
+        context: context,
+        title: "${errorCodes['${data['error_code']}']}!",
+        error: true,
+      );
       if (data['error_code'] == 999) {
         await Service.saveBool('logged', false);
         await Service.remove('user');
@@ -80,10 +82,7 @@ class _OrderRatingState extends State<OrderRating> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Order Rating",
-          style: TextStyle(color: kBlackColor),
-        ),
+        title: Text("Order Rating", style: TextStyle(color: kBlackColor)),
         elevation: 1.0,
       ),
       body: SingleChildScrollView(
@@ -93,35 +92,42 @@ class _OrderRatingState extends State<OrderRating> {
             children: [
               Container(
                 padding: EdgeInsets.all(
-                    getProportionateScreenWidth(kDefaultPadding)),
+                  getProportionateScreenWidth(kDefaultPadding),
+                ),
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: kPrimaryColor,
                   borderRadius: BorderRadius.circular(
-                      getProportionateScreenWidth(kDefaultPadding)),
+                    getProportionateScreenWidth(kDefaultPadding),
+                  ),
                 ),
                 child: Center(
                   child: Column(
                     children: [
                       ImageContainer(url: widget.imageUrl),
                       SizedBox(
-                          height: getProportionateScreenHeight(
-                              kDefaultPadding / 2)),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
+                      ),
                       Text(
                         widget.name!,
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: kBlackColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: kBlackColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       SizedBox(
-                          height: getProportionateScreenHeight(
-                              kDefaultPadding / 2)),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
+                      ),
                       SmoothStarRating(
                         rating: rating,
-                        size:
-                            getProportionateScreenWidth(kDefaultPadding * 1.4),
+                        size: getProportionateScreenWidth(
+                          kDefaultPadding * 1.4,
+                        ),
                         starCount: 5,
                         color: Colors.amber,
                         borderColor: kSecondaryColor,
@@ -132,8 +138,10 @@ class _OrderRatingState extends State<OrderRating> {
                         },
                       ),
                       SizedBox(
-                          height: getProportionateScreenHeight(
-                              kDefaultPadding / 2)),
+                        height: getProportionateScreenHeight(
+                          kDefaultPadding / 2,
+                        ),
+                      ),
                       TextField(
                         controller: controller,
                         keyboardType: TextInputType.text,
@@ -142,9 +150,12 @@ class _OrderRatingState extends State<OrderRating> {
                           setState(() {
                             review = value;
                           });
+                          debugPrint("typed review: $review");
+                          print(value);
                         },
                         decoration: textFieldInputDecorator.copyWith(
-                            hintText: "Enter your review here..."),
+                          hintText: "Enter your review here...",
+                        ),
                       ),
                     ],
                   ),
@@ -163,10 +174,8 @@ class _OrderRatingState extends State<OrderRating> {
                           _submitRating();
                         }
                       },
-                      color: rating != 0.0
-                          ? kSecondaryColor
-                          : kGreyColor,
-                    )
+                      color: rating != 0.0 ? kSecondaryColor : kGreyColor,
+                    ),
             ],
           ),
         ),
@@ -188,41 +197,45 @@ class _OrderRatingState extends State<OrderRating> {
             "server_token": widget.serverToken,
             "order_id": widget.orderId,
             "user_review_to_store": review,
-            "user_rating_to_store": rating
+            "user_rating_to_store": rating,
           }
         : {
             "user_id": widget.userId,
             "server_token": widget.serverToken,
             "order_id": widget.orderId,
             "user_review_to_provider": review,
-            "user_rating_to_provider": rating
+            "user_rating_to_provider": rating,
           };
     var body = json.encode(data);
+    debugPrint("rating URL: $url");
+    debugPrint("rating body: $body");
     try {
       http.Response response = await http
           .post(
-        Uri.parse(url),
-        headers: <String, String>{
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: body,
-      )
+            Uri.parse(url),
+            headers: <String, String>{
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: body,
+          )
           .timeout(
-        Duration(seconds: 10),
-        onTimeout: () {
-          setState(() {
-            this._loading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Something went wrong!"),
-              backgroundColor: kSecondaryColor,
-            ),
+            Duration(seconds: 10),
+            onTimeout: () {
+              setState(() {
+                this._loading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Something went wrong!"),
+                  backgroundColor: kSecondaryColor,
+                ),
+              );
+              throw TimeoutException("The connection has timed out!");
+            },
           );
-          throw TimeoutException("The connection has timed out!");
-        },
-      );
+      debugPrint("rating status: ${response.statusCode}");
+      debugPrint("rating response: ${response.body}");
       if (json.decode(response.body) != null) {
         setState(() {
           responseData = json.decode(response.body);
@@ -233,7 +246,7 @@ class _OrderRatingState extends State<OrderRating> {
       });
       return json.decode(response.body);
     } catch (e) {
-      // debugPrint(e);
+      debugPrint("rating error: $e");
       setState(() {
         this._loading = false;
       });

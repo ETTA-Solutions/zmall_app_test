@@ -15,6 +15,9 @@ import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/image_container.dart';
 import 'package:zmall/widgets/linear_loading_indicator.dart';
 import 'package:zmall/widgets/shimmer_widget.dart';
+import 'package:zmall/orders/models/combo_order_entry.dart';
+import 'package:zmall/orders/components/combo_order_card.dart';
+import 'package:zmall/orders/components/combo_order_detail.dart';
 
 class Body extends StatefulWidget {
   @override
@@ -25,6 +28,7 @@ class _BodyState extends State<Body> {
   var userData;
   bool _loading = false;
   var responseData;
+  dynamic localCombos;
 
   @override
   void initState() {
@@ -68,12 +72,36 @@ class _BodyState extends State<Body> {
       _loading = true;
     });
     var data = await Service.read('user');
+    var combos = await Service.read('combo_orders');
     if (data != null) {
       setState(() {
         userData = data;
+        localCombos = combos;
       });
       _getOrders(userData['user']['_id'], userData['user']['server_token']);
     }
+  }
+
+  void _showComboOrderPicker(BuildContext context, OrderEntry entry) {
+    // One order left in the combo: open the normal single-store page.
+    // Two or more: show every store's status together on one page.
+    final Widget screen = entry.comboOrders.length == 1
+        ? OrderDetail(
+            order: entry.comboOrders[0],
+            userId: userData['user']['_id'],
+            userPhone: userData['user']['phone'],
+            serverToken: userData['user']['server_token'],
+          )
+        : ComboOrderDetail(
+            orders: entry.comboOrders,
+            userId: userData['user']['_id'],
+            userPhone: userData['user']['phone'],
+            serverToken: userData['user']['server_token'],
+          );
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+    ).then((_) => getUser());
   }
 
   @override
@@ -129,157 +157,165 @@ class _BodyState extends State<Body> {
                   ).copyWith(
                     top: getProportionateScreenHeight(kDefaultPadding) / 2,
                   ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: responseData['order_list'].length,
-                padding: EdgeInsets.only(
-                  bottom: getProportionateScreenHeight(kDefaultPadding) / 2,
-                ),
-                separatorBuilder: (BuildContext context, int index) => SizedBox(
-                  height: getProportionateScreenHeight(kDefaultPadding / 2),
-                ),
-                itemBuilder: (context, index) {
-                  return InkWell(
-                    onTap: () {
-                      if (responseData['order_list'][index]['delivery_type'] ==
-                          2) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) {
-                              return CourierDetail(
-                                courierData: responseData['order_list'][index],
-                                userId: userData['user']['_id'],
-                                userPhone: userData['user']['phone'],
-                                serverToken: userData['user']['server_token'],
-                              );
-                            },
-                          ),
-                        ).then((value) => getUser());
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) {
-                              return OrderDetail(
-                                order: responseData['order_list'][index],
-                                userId: userData['user']['_id'],
-                                userPhone: userData['user']['phone'],
-                                serverToken: userData['user']['server_token'],
-                              );
-                            },
-                          ),
-                        ).then((value) => getUser());
+              child: Builder(
+                builder: (context) {
+                  final List<OrderEntry> orderEntries =
+                      (responseData['order_list'] is List)
+                          ? groupOrders(responseData['order_list'], localCombos)
+                          : [];
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: orderEntries.length,
+                    padding: EdgeInsets.only(
+                      bottom: getProportionateScreenHeight(kDefaultPadding) / 2,
+                    ),
+                    separatorBuilder: (BuildContext context, int index) =>
+                        SizedBox(
+                          height:
+                              getProportionateScreenHeight(kDefaultPadding / 2),
+                        ),
+                    itemBuilder: (context, index) {
+                      final entry = orderEntries[index];
+                      if (entry.isCombo) {
+                        return ComboOrderCard(
+                          entry: entry,
+                          onTap: () => _showComboOrderPicker(context, entry),
+                        );
                       }
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: kPrimaryColor,
-                        border: Border.all(color: kWhiteColor),
-                        borderRadius: BorderRadius.circular(kDefaultPadding),
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: getProportionateScreenHeight(
-                          kDefaultPadding / 2,
-                        ),
-                        horizontal: getProportionateScreenWidth(
-                          kDefaultPadding / 2,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          ImageContainer(
-                            url:
-                                "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${responseData['order_list'][index]['store_image']}",
-                          ),
-                          SizedBox(
-                            width: getProportionateScreenWidth(
-                              kDefaultPadding / 1.5,
-                            ),
-                          ),
-                          Expanded(
-                            flex: 10,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              spacing: getProportionateScreenHeight(
-                                kDefaultPadding / 5,
+                      final order = entry.singleOrder ?? entry.allOrders.first;
+                      return InkWell(
+                        onTap: () {
+                          if (order['delivery_type'] == 2) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) {
+                                  return CourierDetail(
+                                    courierData: order,
+                                    userId: userData['user']['_id'],
+                                    userPhone: userData['user']['phone'],
+                                    serverToken:
+                                        userData['user']['server_token'],
+                                  );
+                                },
                               ),
-                              children: [
-                                Text(
-                                  responseData['order_list'][index]['store_name'] ==
-                                          "Courier"
-                                      ? responseData['order_list'][index]['destination_addresses'][0]['note'] ==
-                                                "Lunch from Home"
-                                            ? "Lunch From Home"
-                                            : Service.capitalizeFirstLetters(
-                                                responseData['order_list'][index]['store_name'],
-                                              )
-                                      : Service.capitalizeFirstLetters(
-                                          responseData['order_list'][index]['store_name'],
-                                        ),
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: kBlackColor,
-                                      ),
-                                  softWrap: true,
-                                ),
-
-                                Text(
-                                  "Order No. #${responseData['order_list'][index]['unique_id']}",
-                                  style: Theme.of(context).textTheme.titleSmall
-                                      ?.copyWith(color: kGreyColor),
-                                ),
-
-                                Text(
-                                  "${responseData['order_list'][index]['created_at'].split('T')[0].split('-')[1]}/${responseData['order_list'][index]['created_at'].split('T')[0].split('-')[2]} ${int.parse(responseData['order_list'][index]['created_at'].split('T')[1].split('.')[0].split(':')[0]) + 3}:${responseData['order_list'][index]['created_at'].split('T')[1].split('.')[0].split(':')[1]}:${responseData['order_list'][index]['created_at'].split('T')[1].split('.')[0].split(':')[2]}",
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: kGreyColor),
-                                ),
-
-                                //                                  responseData['order_list'][index]
-                                //                                              ['delivery_type'] ==
-                                //                                          1
-                                //                                      ?
-                                Text(
-                                  isOdooStoreByName(responseData['order_list'][index]['store_name'])
-                                      ? "${order_status['${responseData['order_list'][index]['order_status']}']}"
-                                      : responseData['order_list'][index]['order_status'] ==
-                                              7
-                                          ? responseData['order_list'][index]['delivery_status'] !=
-                                                    null
-                                                ? "${order_status['${responseData['order_list'][index]['delivery_status']}']}"
-                                                : "Waiting to accept order"
-                                          : "${order_status['${responseData['order_list'][index]['order_status']}']}",
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color:
-                                            responseData['order_list'][index]['order_status'] ==
-                                                25
-                                            ? Colors.green
-                                            : kSecondaryColor,
-                                      ),
-                                ),
-                              ],
+                            ).then((value) => getUser());
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) {
+                                  return OrderDetail(
+                                    order: order,
+                                    userId: userData['user']['_id'],
+                                    userPhone: userData['user']['phone'],
+                                    serverToken:
+                                        userData['user']['server_token'],
+                                  );
+                                },
+                              ),
+                            ).then((value) => getUser());
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: kPrimaryColor,
+                            border: Border.all(color: kWhiteColor),
+                            borderRadius: BorderRadius.circular(kDefaultPadding),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            vertical: getProportionateScreenHeight(
+                              kDefaultPadding / 2,
+                            ),
+                            horizontal: getProportionateScreenWidth(
+                              kDefaultPadding / 2,
                             ),
                           ),
-                          Spacer(),
-                          Column(
+                          child: Row(
                             children: [
-                              Text(
-                                "${Provider.of<ZMetaData>(context, listen: false).currency} ${responseData['order_list'][index]['total_order_price'].toStringAsFixed(2)}",
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(
-                                      color: kBlackColor,
-                                      fontWeight: FontWeight.bold,
+                              ImageContainer(
+                                url:
+                                    "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/${order['store_image']}",
+                              ),
+                              SizedBox(
+                                width: getProportionateScreenWidth(
+                                  kDefaultPadding / 1.5,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 10,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  spacing: getProportionateScreenHeight(
+                                    kDefaultPadding / 5,
+                                  ),
+                                  children: [
+                                    Text(
+                                      order['store_name'] == "Courier"
+                                          ? order['destination_addresses'][0]['note'] ==
+                                                    "Lunch from Home"
+                                                ? "Lunch From Home"
+                                                : Service.capitalizeFirstLetters(
+                                                    order['store_name'],
+                                                  )
+                                          : Service.capitalizeFirstLetters(
+                                              order['store_name'],
+                                            ),
+                                      style: Theme.of(context).textTheme.bodyLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: kBlackColor,
+                                          ),
+                                      softWrap: true,
                                     ),
+                                    Text(
+                                      "Order No. #${order['unique_id']}",
+                                      style: Theme.of(context).textTheme.titleSmall
+                                          ?.copyWith(color: kGreyColor),
+                                    ),
+                                    Text(
+                                      "${order['created_at'].split('T')[0].split('-')[1]}/${order['created_at'].split('T')[0].split('-')[2]} ${int.parse(order['created_at'].split('T')[1].split('.')[0].split(':')[0]) + 3}:${order['created_at'].split('T')[1].split('.')[0].split(':')[1]}:${order['created_at'].split('T')[1].split('.')[0].split(':')[2]}",
+                                      style: Theme.of(context).textTheme.bodySmall
+                                          ?.copyWith(color: kGreyColor),
+                                    ),
+                                    Text(
+                                      isOdooStoreByName(order['store_name'])
+                                          ? "${order_status['${order['order_status']}']}"
+                                          : order['order_status'] == 7
+                                              ? order['delivery_status'] != null
+                                                    ? "${order_status['${order['delivery_status']}']}"
+                                                    : "Waiting to accept order"
+                                              : "${order_status['${order['order_status']}']}",
+                                      style: Theme.of(context).textTheme.bodySmall
+                                          ?.copyWith(
+                                            color:
+                                                order['order_status'] == 25
+                                                    ? Colors.green
+                                                    : kSecondaryColor,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Spacer(),
+                              Column(
+                                children: [
+                                  Text(
+                                    "${Provider.of<ZMetaData>(context, listen: false).currency} ${(order['total_order_price'] as num).toDouble().toStringAsFixed(2)}",
+                                    style: Theme.of(context).textTheme.titleSmall
+                                        ?.copyWith(
+                                          color: kBlackColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),

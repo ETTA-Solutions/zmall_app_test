@@ -5,7 +5,7 @@ courier/parcel delivery, wallet & payments, events & ticketing, magazines, and m
 Ethiopia (`app.zmall.et`) and Juba (`juba.zmallapp.com`) regions.
 
 - **Package:** `zmall`
-- **Version:** see `version:` in [`pubspec.yaml`](pubspec.yaml) (currently `3.2.9+362`)
+- **Version:** see `version:` in [`pubspec.yaml`](pubspec.yaml) (currently `3.2.10+365`)
 - **Dart SDK:** `>=3.10.4 <4.0.0` · **Flutter:** 3.44.x (stable)
 - **State management:** `provider`
 
@@ -101,7 +101,7 @@ flutter build ios --release        # iOS (then archive in Xcode)
 
 Project docs live in [`zmall_files/docs/`](zmall_files/docs):
 
-- [`GIT_PUSH_README.md`](GIT_PUSH_README.md) — feature release guide (Odoo Availability, AI Chatbot, Telebirr USSD Channel)
+- [`GIT_PUSH_README.md`](GIT_PUSH_README.md) — release notes: combo, payments, create-order change, Odoo, MCP cart, AI chatbot
 - [`api_endpoints_reference.md`](zmall_files/docs/api_endpoints_reference.md) — full API/endpoint catalog
 - [`api_dio_migration_plan.md`](zmall_files/docs/api_dio_migration_plan.md) — plan to migrate `http` → organized `dio`
 - [`heroicons_flutter_compatibility_fix.md`](zmall_files/docs/heroicons_flutter_compatibility_fix.md) — icon package fix

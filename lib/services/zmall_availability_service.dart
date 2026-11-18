@@ -85,30 +85,92 @@ class ZmallAvailabilityResult {
 
 /// Branch-scoped forecasted inventory check against the Odoo server.
 class ZmallAvailabilityService {
+  /// In-memory cache mapping store_id -> zmll_order_url
+  static final Map<String, String> _storeOrderUrlCache = {};
+
+  static void setStoreOrderUrl(String storeId, String url) {
+    if (storeId.isNotEmpty && url.isNotEmpty) {
+      _storeOrderUrlCache[storeId.trim()] = url.trim();
+    }
+  }
+
+  static String? getStoreOrderUrl(String storeId) {
+    return _storeOrderUrlCache[storeId.trim()];
+  }
+
+  /// Extracts the Odoo order endpoint URL from a backend response map
+  /// (e.g. from /api/user/user_get_store_product_item_list).
+  ///
+  /// Checks:
+  /// - response["zmll_order_url"] (or "zmall_order_url")
+  /// - response["store"]["zmll_order_url"] (or "zmall_order_url")
+  static String? extractOrderUrl(dynamic data) {
+    if (data == null || data is! Map) return null;
+    final dynamic root = data['zmll_order_url'] ?? data['zmall_order_url'];
+    if (root is String && root.trim().isNotEmpty) {
+      return root.trim();
+    }
+    if (data['store'] is Map) {
+      final store = data['store'] as Map;
+      final dynamic storeUrl =
+          store['zmll_order_url'] ?? store['zmall_order_url'];
+      if (storeUrl is String && storeUrl.trim().isNotEmpty) {
+        return storeUrl.trim();
+      }
+    }
+    return null;
+  }
+
+  /// Calls the Odoo availability endpoint.
+  ///
+  /// [orderUrl] is the endpoint returned by the backend:
+  /// e.g. "http://196.191.117.85:9070/zmall_order/mexico"
+  /// If [orderUrl] is null, falls back to [branchSlug].
   static Future<ZmallAvailabilityResult?> check({
-    required String branchSlug,
+    String? orderUrl,
+    String? branchSlug,
     required List<Map<String, dynamic>> products,
     int timeoutSeconds = 15,
   }) async {
-    final url = "$kZmallOdooBaseUrl/zmall_order/$branchSlug";
+    String url = '';
+    final String? rawUrl = (orderUrl != null && orderUrl.trim().isNotEmpty)
+        ? orderUrl.trim()
+        : (branchSlug != null && branchSlug.trim().isNotEmpty)
+            ? branchSlug.trim()
+            : null;
+
+    if (rawUrl == null || rawUrl.isEmpty) {
+      return null;
+    }
+
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      url = rawUrl;
+    } else if (rawUrl.startsWith('/')) {
+      url = "$kZmallOdooBaseUrl$rawUrl";
+    } else {
+      url = "$kZmallOdooBaseUrl/zmall_order/$rawUrl";
+    }
+
     final requestBody = jsonEncode({"products": products});
+    final Map<String, String> headers = <String, String>{
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "X-Odoo-Database": kZmallOdooDatabase,
+    };
     final stopwatch = Stopwatch()..start();
 
     try {
       BackendLogger.request(
         method: 'POST',
         url: url,
-        headers: {"Content-Type": "application/json"},
+        headers: headers,
         body: requestBody,
       );
 
       final http.Response response = await http
           .post(
             Uri.parse(url),
-            headers: <String, String>{
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-            },
+            headers: headers,
             body: requestBody,
           )
           .timeout(

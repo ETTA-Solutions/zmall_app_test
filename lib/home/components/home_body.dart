@@ -50,7 +50,7 @@ import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
 import 'package:zmall/store/components/custom_list_tile.dart';
 import 'package:zmall/store/store_screen.dart';
-import 'package:zmall/widgets/linear_loading_indicator.dart';
+import 'package:zmall/kifiya/order_settlement_service.dart';
 import 'package:zmall/widgets/section_title.dart';
 import 'package:zmall/widgets/sliver_appbar_delegate.dart';
 import 'package:zmall/world_cup/prediction_home.dart';
@@ -158,6 +158,11 @@ class _HomeBodyState extends State<HomeBody> {
     getUser();
     getLocalPromotionalItems();
     getLocalPromotionalStores();
+    // Re-check a payment that was still being confirmed when the app
+    // closed: the backend may have created the order since.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) OrderSettlementService.resumePending(context);
+    });
 
     // Show holiday celebration dialog
     // WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -169,7 +174,11 @@ class _HomeBodyState extends State<HomeBody> {
       MyApp.analytics.logEvent(name: "notification_opened");
       if (message.data.isNotEmpty && !is_abroad) {
         var notificationData = message.data;
-        if (notificationData['item_id'] != null) {
+        if (notificationData['order_id'] != null ||
+            notificationData['order_unique_id'] != null) {
+          // "Order placed" push from the backend settlement.
+          OrderSettlementService.resumePending(context);
+        } else if (notificationData['item_id'] != null) {
           // debugPrint("Navigate to item screen...");
           _getItemInformation(notificationData['item_id']);
         } else if (notificationData['store_id'] != null) {
@@ -362,7 +371,11 @@ class _HomeBodyState extends State<HomeBody> {
       MyApp.analytics.logEvent(name: "notification_opened");
       if (message.data.isNotEmpty && !is_abroad) {
         var notificationData = message.data;
-        if (notificationData['item_id'] != null) {
+        if (notificationData['order_id'] != null ||
+            notificationData['order_unique_id'] != null) {
+          // "Order placed" push from the backend settlement.
+          OrderSettlementService.resumePending(context);
+        } else if (notificationData['item_id'] != null) {
           // debugPrint("Navigate to item screen...");
           _getItemInformation(notificationData['item_id']);
         } else if (notificationData['store_id'] != null) {
@@ -491,11 +504,12 @@ class _HomeBodyState extends State<HomeBody> {
   void getCart() async {
     // debugPrint("Fetching data");
     var data = await Service.read('cart');
-    if (data != null && mounted) {
-      setState(() {
-        cart = Cart.fromJson(data);
-      });
-    }
+    if (!mounted) return;
+    // Always sync with storage: when the cart was cleared (e.g. last item
+    // removed on the cart page) reset to null so the badge drops to 0.
+    setState(() {
+      cart = data != null ? Cart.fromJson(data) : null;
+    });
   }
 
   void launchRedirect(url) async {
@@ -1881,14 +1895,18 @@ class _HomeBodyState extends State<HomeBody> {
           ),
         ],
       ),
+
       body: RefreshIndicator(
         color: kPrimaryColor,
         backgroundColor: kSecondaryColor,
         onRefresh: _onRefresh,
         child: ModalProgressHUD(
           color: kPrimaryColor,
-          progressIndicator: LinearLoadingIndicator(),
-
+          progressIndicator: Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(kSecondaryColor),
+            ),
+          ),
           inAsyncCall: _loading,
           child: categories != null
               ? CustomScrollView(

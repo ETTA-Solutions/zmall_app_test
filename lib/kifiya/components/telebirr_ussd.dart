@@ -1,3 +1,25 @@
+// =============================================================================
+// ORIGINAL TELEBIRR USSD  (Ethio Telecom via Odoo — NOT ZooryaPay)
+// =============================================================================
+// This is the original telebirr USSD flow, restored as-is from the
+// `ai_mcp_combo` branch. Keep it stand-alone.
+//
+//   * Opened from kifiya_screen.dart when the backend payment gateway name is
+//     "tele birr" (the gateway name comes from the backend, the UI only
+//     displays it).
+//   * Init  : POST widget.url  (Odoo: http://196.189.44.60:8069/telebirr/ussd/send_sms)
+//             body: traceNo, amount, phone "251…", payerId, appId, apiKey,
+//             zmall, channel.
+//   * Verify: POST {baseUrl}/admin/check_paid_order, polled every 2s until
+//             success == true, then the screen pops and kifiya_screen calls
+//             _boaVerify() (which creates the order).
+
+//
+// The NEW ZooryaPay telebirr USSD (method key "telebirr" under the
+// ZOORYA-PAY gateway) is a different flow with its own screen:
+//   lib/kifiya/zoorya_pay/zoorya_telebirr_ussd_screen.dart (ZooryaTelebirrUssd)
+// Do not add ZooryaPay logic here.
+// =============================================================================
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -82,10 +104,10 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       debugPrint('[TelebirrUssd] ❌ Init failed or unapproved: $data');
       final errorMsg =
           (data != null &&
-                  data['result'] != null &&
-                  data['result']['message'] != null)
-              ? data['result']['message'].toString()
-              : "Telebirr USSD initialization failed";
+              data['result'] != null &&
+              data['result']['message'] != null)
+          ? data['result']['message'].toString()
+          : "Telebirr USSD initialization failed";
       Service.showMessage(
         context: context,
         title: errorMsg,
@@ -116,9 +138,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
       debugPrint(
         '[TelebirrUssd] ⏳ Payment not yet completed. Re-checking in 2 seconds...',
       );
-      await Future.delayed(
-        Duration(seconds: 2),
-      );
+      await Future.delayed(Duration(seconds: 2));
       if (mounted) {
         _verifyPayment();
       }
@@ -299,9 +319,7 @@ class _TelebirrUssdState extends State<TelebirrUssd> {
             },
           );
 
-      debugPrint(
-        '[TelebirrUssd] verifyPayment Status: ${response.statusCode}',
-      );
+      debugPrint('[TelebirrUssd] verifyPayment Status: ${response.statusCode}');
       debugPrint('[TelebirrUssd] verifyPayment Raw Body: ${response.body}');
       return json.decode(response.body);
     } catch (e, stackTrace) {

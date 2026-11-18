@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:zmall/models/metadata.dart';
 import 'package:zmall/utils/constants.dart';
 import 'package:zmall/services/service.dart';
 import 'package:zmall/utils/size_config.dart';
@@ -11,6 +13,8 @@ class KifiyaMethodContainer extends StatelessWidget {
     required this.kifiyaMethod,
     required this.imagePath,
     required this.press,
+    this.isSoon = false,
+    this.fillImage = false,
   });
 
   final bool selected;
@@ -18,10 +22,21 @@ class KifiyaMethodContainer extends StatelessWidget {
   final String title;
   final String imagePath;
   final GestureTapCallback press;
+  final bool isSoon;
+
+  /// When true the logo fills the whole badge instead of a 40x40 box.
+  /// Used for wide logos (e.g. CyberSource "VISA / Mastercard") that
+  /// otherwise shrink to an unreadable size with BoxFit.contain.
+  final bool fillImage;
+
+  double get _imgWidth =>
+      getProportionateScreenWidth(fillImage ? 66 : 40);
+  double get _imgHeight =>
+      getProportionateScreenWidth(fillImage ? 56 : 40);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       // alignment: Alignment.center,
       width: getProportionateScreenWidth(100),
       height: getProportionateScreenWidth(100),
@@ -57,14 +72,12 @@ class KifiyaMethodContainer extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Image.asset(
-                    fit: BoxFit.contain,
-                    imagePath.isNotEmpty
-                        ? imagePath
-                        : 'images/payment/default_payment.png',
-                    width: getProportionateScreenWidth(40),
-                    height: getProportionateScreenWidth(40),
-                  ),
+                  child: fillImage
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: _buildMethodIcon(context),
+                        )
+                      : _buildMethodIcon(context),
                 ),
               ),
               Text(
@@ -89,6 +102,99 @@ class KifiyaMethodContainer extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+
+    if (!isSoon) return card;
+
+    return Opacity(
+      opacity: 0.65,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          card,
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: kSecondaryColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                "Soon",
+                style: TextStyle(
+                  color: kPrimaryColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMethodIcon(BuildContext context) {
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return Image.network(
+        imagePath,
+        fit: BoxFit.contain,
+        width: _imgWidth,
+        height: _imgHeight,
+        errorBuilder: (_, __, ___) => _buildFallbackAsset(),
+      );
+    }
+    if (imagePath.startsWith('web_images/')) {
+      try {
+        final baseUrl = Provider.of<ZMetaData>(context, listen: false).baseUrl;
+        return Image.network(
+          '$baseUrl/$imagePath',
+          fit: BoxFit.contain,
+          width: _imgWidth,
+          height: _imgHeight,
+          errorBuilder: (_, __, ___) => _buildFallbackAsset(),
+        );
+      } catch (_) {
+        return _buildFallbackAsset();
+      }
+    }
+    return _buildFallbackAsset();
+  }
+
+  Widget _buildFallbackAsset() {
+    final lower = imagePath.toLowerCase();
+    String fallback = 'images/payment/default_payment.png';
+    if (lower.contains('telebirr')) {
+      fallback = 'images/payment/new_payment/telebirr.png';
+    } else if (lower.contains('mpesa')) {
+      fallback = 'images/payment/new_payment/mpesa.png';
+    } else if (lower.contains('nib')) {
+      fallback = 'images/payment/new_payment/nib_bank.png';
+    } else if (lower.contains('zemen')) {
+      fallback = 'images/payment/new_payment/zemen.png';
+    } else if (lower.contains('ethswitch')) {
+      fallback = 'images/payment/new_payment/ethswitch.png';
+    } else if (lower.contains('dashen')) {
+      fallback = 'images/payment/dashen.png';
+    }
+
+    return Image.asset(
+      imagePath.isNotEmpty &&
+              !imagePath.startsWith('web_images/') &&
+              !imagePath.startsWith('http')
+          ? imagePath
+          : fallback,
+      fit: BoxFit.contain,
+      width: getProportionateScreenWidth(40),
+      height: getProportionateScreenWidth(40),
+      errorBuilder: (_, __, ___) => Image.asset(
+        'images/payment/default_payment.png',
+        fit: BoxFit.contain,
+        width: getProportionateScreenWidth(40),
+        height: getProportionateScreenWidth(40),
       ),
     );
   }

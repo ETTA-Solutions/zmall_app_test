@@ -4,6 +4,8 @@ import 'package:heroicons_flutter/heroicons_flutter.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:zmall/borsa/borsa_screen.dart';
+// safe_prod: subscription disabled
+// import 'package:zmall/profile/subscription/subscription.dart';
 import 'package:zmall/profile/components/addresses.dart';
 import 'package:zmall/profile/components/change_password.dart';
 import 'package:zmall/profile/components/confirmation_bottom_sheet.dart';
@@ -175,6 +177,7 @@ class _BodyState extends State<Body> {
       await Service.saveBool('logged', false);
       await Service.remove('user');
       await Service.remove('cart');
+      await Service.remove('combo_cart');
       await Service.remove('aliexpressCart');
 
       ///newly added for aliexpress
@@ -232,6 +235,7 @@ class _BodyState extends State<Body> {
         await Service.saveBool('logged', false);
         await Service.remove('user');
         await Service.remove('cart');
+        await Service.remove('combo_cart');
         await Service.remove('aliexpressCart'); //NEW
         await Service.remove('images');
         Navigator.pushReplacementNamed(context, LoginScreen.routeName);
@@ -336,6 +340,7 @@ class _BodyState extends State<Body> {
       await Service.saveBool('logged', false);
       await Service.remove('user');
       await Service.remove('cart');
+      await Service.remove('combo_cart');
       await Service.remove('aliexpressCart');
       await Service.remove('images');
       await Service.remove('p_items');
@@ -647,6 +652,22 @@ class _BodyState extends State<Body> {
                             },
                           ),
                           Divider(color: kWhiteColor, height: 1),
+                          // safe_prod: subscription (Zmall Pro) disabled
+                          // NewProfileListTile(
+                          //   borderColor: kWhiteColor,
+                          //   icon: Icon(HeroiconsOutline.sparkles),
+                          //   title: "Zmall Pro",
+                          //   onTap: () {
+                          //     Navigator.push(
+                          //       context,
+                          //       MaterialPageRoute(
+                          //         builder: (context) =>
+                          //             SubscriptionScreen(userData: userData),
+                          //       ),
+                          //     ).then((value) => getUser());
+                          //   },
+                          // ),
+                          // Divider(color: kWhiteColor, height: 1),
                           //  Address Section
                           NewProfileListTile(
                             borderColor: kWhiteColor,
@@ -1858,74 +1879,74 @@ class _BodyState extends State<Body> {
   }
 }
 // if (enable) {
-    //   // Enable biometric
-    //   if (userData == null) {
-    //     Service.showMessage(
-    //       context: context,
-    //       title: "Please login first to enable $_biometricType",
-    //       error: true,
-    //     );
-    //     return;
-    //   }
+//   // Enable biometric
+//   if (userData == null) {
+//     Service.showMessage(
+//       context: context,
+//       title: "Please login first to enable $_biometricType",
+//       error: true,
+//     );
+//     return;
+//   }
 
-    //   final result = await BiometricService.authenticate(
-    //     localizedReason: 'Authenticate to enable $_biometricType login',
-    //   );
+//   final result = await BiometricService.authenticate(
+//     localizedReason: 'Authenticate to enable $_biometricType login',
+//   );
 
-    //   if (result.success) {
-    //     final phone = userData['user']['phone'];
-    //     final userName = userData['user']['name'];
+//   if (result.success) {
+//     final phone = userData['user']['phone'];
+//     final userName = userData['user']['name'];
 
-    //     await BiometricCredentialsManager.updateBiometricStatus(phone, true);
-    //     await BiometricCredentialsManager.updateUserName(phone, userName);
-    //     await BiometricCredentialsManager.updateLastUsed(phone);
-    //     // final account = await BiometricCredentialsManager.getAccount(phone);
+//     await BiometricCredentialsManager.updateBiometricStatus(phone, true);
+//     await BiometricCredentialsManager.updateUserName(phone, userName);
+//     await BiometricCredentialsManager.updateLastUsed(phone);
+//     // final account = await BiometricCredentialsManager.getAccount(phone);
 
-    //     if (mounted) {
-    //       // setState(() => _isBiometricEnabled = true);
-    //       setState(() {
-    //         _isBiometricEnabled = true;
-    //         // _isBiometricEnabled = account?.biometricEnabled ?? true;
-    //       });
+//     if (mounted) {
+//       // setState(() => _isBiometricEnabled = true);
+//       setState(() {
+//         _isBiometricEnabled = true;
+//         // _isBiometricEnabled = account?.biometricEnabled ?? true;
+//       });
 
-    //       Service.showMessage(
-    //         context: context,
-    //         title: "$_biometricType login enabled successfully!",
-    //         error: false,
-    //       );
-    //     }
-    //   } else if (result.errorMessage != null) {
-    //     if (mounted) {
-    //       Service.showMessage(
-    //         context: context,
-    //         title: result.errorMessage!,
-    //         error: true,
-    //       );
-    //     }
-    //   }
-    // } else {
-    //   // Disable biometric
-    //   final phone = userData['user']['phone'];
-    //   final result = await BiometricService.authenticate(
-    //     localizedReason: 'Authenticate to disable $_biometricType login',
-    //   );
+//       Service.showMessage(
+//         context: context,
+//         title: "$_biometricType login enabled successfully!",
+//         error: false,
+//       );
+//     }
+//   } else if (result.errorMessage != null) {
+//     if (mounted) {
+//       Service.showMessage(
+//         context: context,
+//         title: result.errorMessage!,
+//         error: true,
+//       );
+//     }
+//   }
+// } else {
+//   // Disable biometric
+//   final phone = userData['user']['phone'];
+//   final result = await BiometricService.authenticate(
+//     localizedReason: 'Authenticate to disable $_biometricType login',
+//   );
 
-    //   if (result.success) {
-    //     await BiometricCredentialsManager.updateBiometricStatus(phone, false);
-    //     final account = await BiometricCredentialsManager.getAccount(phone);
+//   if (result.success) {
+//     await BiometricCredentialsManager.updateBiometricStatus(phone, false);
+//     final account = await BiometricCredentialsManager.getAccount(phone);
 
-    //     if (mounted) {
-    //       setState(() {
-    //         _isBiometricEnabled = account?.biometricEnabled ?? false;
-    //       });
+//     if (mounted) {
+//       setState(() {
+//         _isBiometricEnabled = account?.biometricEnabled ?? false;
+//       });
 
-    //       if (!_isBiometricEnabled) {
-    //         Service.showMessage(
-    //           context: context,
-    //           title: "$_biometricType login disabled",
-    //           error: false,
-    //         );
-    //       }
-    //     }
-    //   }
-    // }
+//       if (!_isBiometricEnabled) {
+//         Service.showMessage(
+//           context: context,
+//           title: "$_biometricType login disabled",
+//           error: false,
+//         );
+//       }
+//     }
+//   }
+// }

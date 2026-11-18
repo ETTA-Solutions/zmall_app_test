@@ -38,6 +38,23 @@ const BASE_URL_TEST_OLD =
 // const BASE_URL = kDebugMode ? BASE_URL_TEST : BASE_URL_PROD;
 //
 
+/*
+
+
+
+{
+  "is_user_selected": false,
+  "is_default_selected": false,
+  "price": 840,
+  "dinein_price": 0,
+  "unique_id": 19130,
+  "name": "Full ",
+  "_id": "6492a7248bc79c3af98f0a7f"
+}
+
+
+*/
+
 const BASE_URL_TEST =
     "https://testbackend.zmall.et"; //Eth new test.  the current test domain after july 29, 2026.
 //
@@ -52,6 +69,10 @@ const BASE_URL = BASE_URL_TEST;
 ///
 /// This endpoint lives on the Odoo server, NOT the regular Zmall backend.
 const String kZmallOdooBaseUrl = "http://196.191.117.85:9070";
+
+/// Odoo database name, sent as the `X-Odoo-Database` header. Without it the
+/// Odoo server can't pick a database and returns 404 for /zmall_order/<slug>.
+const String kZmallOdooDatabase = "zmall_odoo";
 
 /// Maps Zmall store_id -> Odoo pos.config.zmall_branch_slug.
 /// Fill these in with the real store ids and their branch slugs.
@@ -92,10 +113,6 @@ const double kDefaultPadding = 15.0;
 
 final double zmall_latitude = 8.999578803663903;
 final double zmall_longitude = 38.769460522577134;
-
-// Gemini chatbot config
-const String kGeminiApiKey = "AIzaSyDZD94UbvnltvJcALnZ7Ch4cn0No7EaEcI";
-const String kGeminiModel = "gemini-1.5-flash";
 
 final eKey = Encrypt.Key.fromUtf8("T-aie)c(ko,o=>ue1ir^UW&I90jm@@9!");
 final b64key = Encrypt.Key.fromBase64(base64Encode(eKey.bytes));

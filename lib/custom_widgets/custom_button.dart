@@ -56,7 +56,8 @@ class CustomButton extends StatelessWidget {
                         style: TextStyle(
                           color: textColor,
                           fontSize: getProportionateScreenWidth(
-                              kDefaultPadding / 1.1),
+                            kDefaultPadding / 1.1,
+                          ),
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.5,
                         ),
@@ -67,8 +68,9 @@ class CustomButton extends StatelessWidget {
                     title,
                     style: TextStyle(
                       color: textColor,
-                      fontSize:
-                          getProportionateScreenWidth(kDefaultPadding / 1.1),
+                      fontSize: getProportionateScreenWidth(
+                        kDefaultPadding / 1.1,
+                      ),
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
                     ),

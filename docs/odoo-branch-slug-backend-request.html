@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Odoo Branch Slug Handoff</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: single reading column, request/response pairs side by side on wide screens */
+:root {
+  --bg: #f6f7f5; --surface: #ffffff; --fg: #1d2420; --muted: #5d6862; --line: #dde2de;
+  --accent: #1f6f5c; --accent-soft: #e2efea;
+  --bad: #a3392b; --bad-soft: #f7e6e3; --ok: #2c7a3f; --ok-soft: #e3f1e6; --warn: #8a6100; --warn-soft: #f6eed9;
+  --code-bg: #eef1ee;
+  --f-display: "Fraunces", Georgia, serif;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141917; --surface: #1b211e; --fg: #e4e9e6; --muted: #9aa6a0; --line: #2d3532;
+  --accent: #6cc3a8; --accent-soft: #1f322b;
+  --bad: #ef8f80; --bad-soft: #3a2320; --ok: #80cf93; --ok-soft: #1f3324; --warn: #e2bb62; --warn-soft: #362d17;
+  --code-bg: #101412; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141917; --surface: #1b211e; --fg: #e4e9e6; --muted: #9aa6a0; --line: #2d3532;
+  --accent: #6cc3a8; --accent-soft: #1f322b;
+  --bad: #ef8f80; --bad-soft: #3a2320; --ok: #80cf93; --ok-soft: #1f3324; --warn: #e2bb62; --warn-soft: #362d17;
+  --code-bg: #101412; color-scheme: dark }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 860px; margin: 0 auto; padding-block: 40px 64px; display: grid; gap: 44px; }
+h1 { font-family: var(--f-display); font-size: clamp(28px, 5vw, 38px); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 12px; text-wrap: balance; }
+h3 { font-size: 15px; margin: 0 0 8px; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.lede { color: var(--muted); font-size: 16px; }
+header { display: grid; gap: 12px; }
+section { display: grid; gap: 14px; }
+code { font-family: var(--f-mono); font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { font-family: var(--f-mono); font-size: 13px; line-height: 1.55; background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 14px 16px; margin: 0; overflow-x: auto; }
+pre .k { color: var(--accent); font-weight: 500; }
+pre .new { background: var(--ok-soft); color: var(--ok); display: inline-block; width: 100%; }
+pre .c { color: var(--muted); }
+.flow { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.step { display: grid; grid-template-columns: 2.2rem 1fr auto; gap: 12px; align-items: start; padding: 14px 16px; border-top: 1px solid var(--line); }
+.step:first-child { border-top: 0; }
+.step .n { font-family: var(--f-mono); color: var(--muted); font-size: 13px; padding-top: 2px; }
+.step > div { min-width: 0; }
+.step p { color: var(--muted); font-size: 14px; }
+.pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pair > div { min-width: 0; display: grid; gap: 8px; align-content: start; }
+@media (max-width: 720px) { .pair { grid-template-columns: 1fr; } .step { grid-template-columns: 1.6rem 1fr; } .step .pill { grid-column: 2; justify-self: start; } }
+.callout { border: 1px solid var(--line); border-left: 3px solid var(--bad); background: var(--surface); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; }
+.callout.good { border-left-color: var(--ok); }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+ol.checklist { margin: 0; padding-left: 1.3rem; display: grid; gap: 8px; max-width: 70ch; }
+.src { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <span class="eyebrow">ZMall app ↔ Backend ↔ Odoo · Branch availability</span>
+    <h1>Send the Odoo branch slug with the store, not from a hardcoded store ID map</h1>
+    <p class="lede">Right now the app works out which Odoo branch a store belongs to by looking up the store's Mongo <code>_id</code> in a list hardcoded in the app. This page shows how that works today, why it breaks, and the one field the backend needs to add so the app can drop the list.</p>
+  </header>
+
+  <section>
+    <h2>How it works today</h2>
+    <p>Before checkout the cart calls <code>POST http://196.191.117.85:9070/zmall_order/&lt;branch_slug&gt;</code>. Odoo picks the branch only from that URL segment, matching it against <code>pos.config.zmall_branch_slug</code>. The app finds the slug in this order (<code>resolveZmallBranchSlug</code> in <code>lib/utils/constants.dart</code>):</p>
+    <div class="flow">
+      <div class="step"><span class="n">1</span><div><h3>Backend field <code>store.zmall_branch_slug</code></h3><p>Read from the <code>store</code> object of <code>user_get_store_product_item_list</code>. The app already checks this first, but the backend never sends it, so this step always misses.</p></div><span class="pill bad">Never sent</span></div>
+      <div class="step"><span class="n">2</span><div><h3>Hardcoded store ID map <code>kZmallBranchSlugs</code></h3><p><code>6aacf908ec395cd9bc9a18b9 → ayat</code>, <code>6a856a07ea239cfe7a6d1eb7 → mexico</code>. This is what actually resolves the slug today.</p></div><span class="pill warn">Used today</span></div>
+      <div class="step"><span class="n">3</span><div><h3>Store name contains a known slug</h3><p>"Besh Mexico" contains "mexico". Only works for slugs already in the map, and only after store detail has loaded.</p></div><span class="pill warn">Fragile</span></div>
+      <div class="step"><span class="n">4</span><div><h3>Unresolved</h3><p>Items have a <code>pos_id</code> but no slug was found. The check is skipped, logged as <code>SKIPPED (NO BRANCH SLUG)</code>, and checkout stays open.</p></div><span class="pill bad">Silent skip</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="callout">
+      <h3>Why the store ID map is the wrong source</h3>
+      <p>Store IDs differ between the test and production servers, and they change when a store is recreated. The map already has two commented-out older IDs for the same branches. Every new POS store needs an app release, and any store missing from the map silently loses its stock check, so customers can order items that are out of stock.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What the backend should change</h2>
+    <p>Store the Odoo slug on the Zmall store record (for example a <code>zmall_branch_slug</code> field set by admin), and return it on the <code>store</code> object. The value must equal <code>pos.config.zmall_branch_slug</code> in Odoo exactly. Non-POS stores send <code>null</code> or omit it.</p>
+    <div class="pair">
+      <div>
+        <span class="eyebrow">Request (unchanged)</span>
+<pre><span class="k">POST</span> /api/user/user_get_store_product_item_list
+{
+  "store_id": "6a856a07ea239cfe7a6d1eb7"
+}</pre>
+      </div>
+      <div>
+        <span class="eyebrow">Response (one field added)</span>
+<pre>{
+  "success": true,
+  "store": {
+    "_id": "6a856a07ea239cfe7a6d1eb7",
+    "name": "Besh Mexico",
+    "location": [9.0108, 38.7468],
+    "is_provide_laundry_service": false,
+<span class="new">    "zmall_branch_slug": "mexico"</span>
+  },
+  "products": [ ... items with "pos_id" ... ]
+}</pre>
+      </div>
+    </div>
+    <p class="src">The app reads this key as <code>kZmallBranchSlugField = "zmall_branch_slug"</code>. No app change is needed for the cart to pick it up.</p>
+  </section>
+
+  <section>
+    <h2>Every place the slug should appear</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Endpoint</th><th>Where</th><th>Used for</th><th>Today the app uses</th></tr></thead>
+        <tbody>
+          <tr><td><code>user_get_store_product_item_list</code></td><td><code>store.zmall_branch_slug</code></td><td>Cart availability check and checkout lock</td><td>ID map, then name</td></tr>
+          <tr><td>Store detail / store list</td><td><code>store.zmall_branch_slug</code></td><td>Same, wherever a store object is returned</td><td>ID map</td></tr>
+          <tr><td><code>get_orders</code> / order history</td><td><code>order_list[].zmall_branch_slug</code></td><td>Marking Odoo orders in order history</td><td>Store name match (<code>isOdooStoreByName</code>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>What happens after the field ships</h2>
+    <div class="pair">
+      <div class="callout">
+        <h3>Before</h3>
+        <p>New POS store "Bole" → not in map → no slug → check skipped → out-of-stock items can be ordered. Fix needs an app release.</p>
+      </div>
+      <div class="callout good">
+        <h3>After</h3>
+        <p>Admin sets <code>zmall_branch_slug = "bole"</code> on the store → backend returns it → app calls <code>/zmall_order/bole</code> → stock is checked. No app release.</p>
+      </div>
+    </div>
+<pre><span class="c">// [CART DEBUG] once the backend sends the field</span>
+branchSlug: mexico (from <span class="k">backend</span>)      <span class="c">// today: mexico (from idMap)</span></pre>
+  </section>
+
+  <section>
+    <h2>Rollout</h2>
+    <ol class="checklist">
+      <li><strong>Backend:</strong> add <code>zmall_branch_slug</code> to the store model and set it for Ayat and Besh Mexico on test.</li>
+      <li><strong>Backend:</strong> return it on every <code>store</code> object and on each <code>order_list</code> entry.</li>
+      <li><strong>App:</strong> check the debug screen shows <code>source = backend</code> for both stores.</li>
+      <li><strong>Backend:</strong> set the field on production stores.</li>
+      <li><strong>App:</strong> delete <code>kZmallBranchSlugs</code>, the name fallback, and <code>isOdooStoreByName</code>; read the slug only from the backend.</li>
+    </ol>
+  </section>
+</main>
+</body>
+</html>

@@ -30,12 +30,17 @@ class OrderDetail extends StatefulWidget {
     required this.serverToken,
     //
     required this.userPhone,
+    this.embedded = false,
   });
 
   final order;
   final String userId, serverToken;
   //
   final String userPhone;
+
+  /// True when shown inside the combo store tabs (ComboOrderDetail):
+  /// hides this page's own title bar so only one app bar is visible.
+  final bool embedded;
 
   @override
   _OrderDetailState createState() => _OrderDetailState();
@@ -300,29 +305,30 @@ class _OrderDetailState extends State<OrderDetail> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Order Detail", style: TextStyle(color: kBlackColor)),
+          title: widget.embedded
+              ? null
+              : Text("Order Detail", style: TextStyle(color: kBlackColor)),
+          automaticallyImplyLeading: !widget.embedded,
+          toolbarHeight: widget.embedded ? 0 : null,
           elevation: 1.0,
           bottom: TabBar(
             indicatorColor: kSecondaryColor,
             tabs: [
-              Column(
-                children: [
-                  Tab(
-                    icon: Icon(HeroiconsOutline.truck, color: kSecondaryColor),
-                  ),
-                  Text("Order Status", style: TextStyle(color: kBlackColor)),
-                ],
+              // Tab(icon + child) lets TabBar reserve the full icon+label
+              // height; the old Column-of-Tab layout overflowed the bar.
+              Tab(
+                icon: Icon(HeroiconsOutline.truck, color: kSecondaryColor),
+                child: Text(
+                  "Order Status",
+                  style: TextStyle(color: kBlackColor),
+                ),
               ),
-              Column(
-                children: [
-                  Tab(
-                    icon: Icon(
-                      HeroiconsOutline.shoppingBag,
-                      color: kSecondaryColor,
-                    ),
-                  ),
-                  Text("Cart", style: TextStyle(color: kBlackColor)),
-                ],
+              Tab(
+                icon: Icon(
+                  HeroiconsOutline.shoppingBag,
+                  color: kSecondaryColor,
+                ),
+                child: Text("Cart", style: TextStyle(color: kBlackColor)),
               ),
             ],
           ),
@@ -515,7 +521,9 @@ class _OrderDetailState extends State<OrderDetail> {
                           ),
                         ),
 
-                        orderStatus['order_status'] != 25 &&
+                        // Odoo/POS stores: no driver, so no driver timeline.
+                        !isOdooStoreByName(widget.order['store_name']) &&
+                                orderStatus['order_status'] != 25 &&
                                 orderStatus['delivery_status'] != null &&
                                 orderStatus['delivery_status'] < 100
                             ? Container(
@@ -675,7 +683,8 @@ class _OrderDetailState extends State<OrderDetail> {
                                   isLast: true,
                                 ),
                               ),
-                        orderStatus['order_status'] != 25 &&
+                        !isOdooStoreByName(widget.order['store_name']) &&
+                                orderStatus['order_status'] != 25 &&
                                 orderStatus['delivery_status'] != null &&
                                 orderStatus['delivery_status'] > 100
                             ? Container(

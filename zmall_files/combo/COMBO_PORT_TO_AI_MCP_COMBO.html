@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Combo Order Port</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>
+  :root{--bg:#ffffff;--fg:#1f2328;--muted:#59636e;--border:#d1d9e0;--code:#f6f8fa;--accent:#c0392b;--head:#f6f8fa}
+  @media (prefers-color-scheme: dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9198a1;--border:#3d444d;--code:#161b22;--accent:#ff7b72;--head:#161b22}}
+  body{background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;max-width:1100px;margin:0 auto;padding:24px 16px}
+  h1{border-bottom:2px solid var(--accent);padding-bottom:8px}
+  h2{border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:2em}
+  code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.88em}
+  .table-wrap,table{display:block;overflow-x:auto}
+  table{border-collapse:collapse;margin:12px 0;width:max-content;max-width:100%}
+  th,td{border:1px solid var(--border);padding:6px 10px;vertical-align:top;text-align:left}
+  th{background:var(--head)}
+  hr{border:0;border-top:1px solid var(--border)}
+  ul.task-list{list-style:none;padding-left:8px}
+  a{color:var(--accent)}
+  nav#TOC{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:8px 16px;margin:16px 0}
+  </style>
+</head>
+<body>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#combo-order-port-order_details--ai_mcp_combo"
+id="toc-combo-order-port-order_details--ai_mcp_combo">Combo Order Port:
+<code>order_details</code> → <code>ai_mcp_combo</code></a>
+<ul>
+<li><a href="#1-what-was-ported" id="toc-1-what-was-ported">1. What was
+ported</a></li>
+<li><a href="#2-new-files-15-codeasset--7-docs"
+id="toc-2-new-files-15-codeasset--7-docs">2. New files (15 code/asset +
+7 docs)</a></li>
+<li><a href="#3-modified-files-22" id="toc-3-modified-files-22">3.
+Modified files (22)</a></li>
+<li><a href="#4-conflicts-resolved-by-hand"
+id="toc-4-conflicts-resolved-by-hand">4. Conflicts resolved by
+hand</a></li>
+<li><a href="#5-backend-endpoints-used-by-the-combo-flow"
+id="toc-5-backend-endpoints-used-by-the-combo-flow">5. Backend endpoints
+used by the combo flow</a></li>
+<li><a href="#6-intentionally-not-ported"
+id="toc-6-intentionally-not-ported">6. Intentionally NOT ported</a></li>
+<li><a href="#7-verification-and-next-steps"
+id="toc-7-verification-and-next-steps">7. Verification and next
+steps</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="combo-order-port-order_details--ai_mcp_combo">Combo Order Port:
+<code>order_details</code> → <code>ai_mcp_combo</code></h1>
+<p><strong>Date:</strong> 2026-10-29 <strong>Source:</strong>
+<code>main_app/zmall_app</code>, branch <code>order_details</code> (HEAD
+<code>2ca021c</code>) <strong>Target:</strong>
+<code>order_refund_new_zmall</code>, branch <code>ai_mcp_combo</code>
+(HEAD <code>ba20131</code>) <strong>Common ancestor:</strong>
+<code>273f824</code> (feat: update payment and order details UI)
+<strong>Status:</strong> Applied to the working tree, <strong>not
+committed</strong>. <code>flutter analyze lib</code> → <strong>0
+errors</strong> (159 info/warnings, baseline was 167).</p>
+<hr />
+<h2 id="1-what-was-ported">1. What was ported</h2>
+<p>All combo-order work from the 7 source commits after the common
+ancestor:</p>
+<table>
+<thead>
+<tr>
+<th>Commit</th>
+<th>Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>e2c333f</code></td>
+<td>latest_branch</td>
+</tr>
+<tr>
+<td><code>51ec651</code></td>
+<td>final_combo</td>
+</tr>
+<tr>
+<td><code>7604f37</code></td>
+<td>latest</td>
+</tr>
+<tr>
+<td><code>ae806f8</code></td>
+<td>loading</td>
+</tr>
+<tr>
+<td><code>8d0aed1</code></td>
+<td>loading_finished</td>
+</tr>
+<tr>
+<td><code>6391121</code></td>
+<td>before adding order_detail_by_combom</td>
+</tr>
+<tr>
+<td><code>2ca021c</code></td>
+<td>add order detail screen changes</td>
+</tr>
+</tbody>
+</table>
+<p>Combo order = one checkout covering <strong>two stores, one
+driver</strong>. The user adds items from store A, then from store B.
+The app checks the distance between the stores, keeps both carts in a
+<code>ComboCart</code>, builds one combined invoice, and pays once. The
+orders list then groups the two child orders into one combo card.</p>
+<h3 id="method">Method</h3>
+<ul>
+<li><strong>Files the target had not touched since the ancestor</strong>
+were copied from the source as they are.</li>
+<li><strong>Files both branches changed</strong> were 3-way merged
+(<code>git merge-file</code>, base = <code>273f824</code>).</li>
+<li>Some target files had been converted from CRLF to LF. For those,
+base and source were normalized to LF before merging so the merge didn't
+conflict on every line.</li>
+<li>Each file keeps its original line endings.</li>
+</ul>
+<hr />
+<h2 id="2-new-files-15-codeasset--7-docs">2. New files (15 code/asset +
+7 docs)</h2>
+<h3 id="combo-module--libcombo">Combo module —
+<code>lib/combo/</code></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combo/combo_checkout_screen.dart</code></td>
+<td>586</td>
+<td><code>ComboCheckoutScreen</code>: loads the combined invoice for
+both stores, handles wallet use, then opens payment
+(<code>_getInvoice</code>, <code>_proceedToPayment</code>).</td>
+</tr>
+<tr>
+<td><code>combo/combo_route.dart</code></td>
+<td>112</td>
+<td><code>ComboRoute</code>: navigation helpers to enter the combo
+flow.</td>
+</tr>
+<tr>
+<td><code>combo/models/combo_cart.dart</code></td>
+<td>139</td>
+<td><code>ComboCart</code>: holds store A + store B carts, persisted
+under the <code>combo_cart</code> key. <code>load()</code>,
+<code>canStartWith()</code>, <code>resetServerState()</code>.</td>
+</tr>
+<tr>
+<td><code>combo/services/combo_service.dart</code></td>
+<td>280</td>
+<td><code>ComboService</code>: all combo API calls (see §5).</td>
+</tr>
+<tr>
+<td><code>combo/widgets/combo_store_section.dart</code></td>
+<td>219</td>
+<td>Cart section showing one store's items in a combo, with quantity
+controls.</td>
+</tr>
+<tr>
+<td><code>combo/widgets/combo_too_far_dialog.dart</code></td>
+<td>100</td>
+<td>Dialog shown when the two stores are farther apart than the allowed
+maximum.</td>
+</tr>
+<tr>
+<td><code>combo/widgets/store_conflict_dialog.dart</code></td>
+<td>98</td>
+<td>"Your cart has items from another store" dialog: <em>Order from both
+stores</em> or <em>Clear cart</em>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="models">Models</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/combo_invoice.dart</code></td>
+<td>319</td>
+<td><code>ComboInvoice</code>, <code>StoreInvoice</code>,
+<code>StoreFlags</code>: parse the combined invoice response;
+<code>validate()</code>.</td>
+</tr>
+<tr>
+<td><code>models/combo_payment_context.dart</code></td>
+<td>113</td>
+<td><code>ComboPaymentContext</code> + <code>ComboLeg</code>: combo id,
+per-store cart id and order-payment id, passed to the payment
+screen.</td>
+</tr>
+<tr>
+<td><code>orders/models/combo_order_entry.dart</code></td>
+<td>313</td>
+<td><code>OrderEntry</code>, <code>groupOrders()</code>: groups raw
+orders into single or combo entries (using <code>combo_id</code> and the
+locally saved <code>combo_orders</code>). <code>getComboStatus()</code>
+/ <code>ComboStatusInfo</code>: combined status of the two child
+orders.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ui">UI</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orders/components/combo_order_card.dart</code></td>
+<td>213</td>
+<td><code>ComboOrderCard</code>: order-list card for a 2-store combo
+(stacked store images, combined status).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="assets">Assets</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>images/payment/wegagen_real.png</code></td>
+<td>New Wegagen logo used by <code>wegagen_ussd.dart</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="documentation">Documentation</h3>
+<p><code>COMBO_CONCEPTUAL_ARCHITECTURE.md</code>,
+<code>COMBO_ORDER_FLOW.md</code>, <code>UI_FIX_SUMMARY.md</code> (repo
+root), and in <code>zmall_files/combo/</code>:
+<code>COMBO_MOBILE_CHANGES.md</code> / <code>_tmp.html</code>,
+<code>COMBO_ORDER_IMPLEMENTATION.md</code> / <code>_tmp.html</code>.</p>
+<hr />
+<h2 id="3-modified-files-22">3. Modified files (22)</h2>
+<p><code>+/-</code> = lines added/removed relative to
+<code>ai_mcp_combo</code> HEAD.</p>
+<h3 id="add-to-cart-entry-points-start-a-combo">Add-to-cart entry
+points: start a combo</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>+/-</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>item/components/body.dart</code></td>
+<td>+168 / −38</td>
+<td><code>_handleOtherStore()</code>: when the item is from a different
+store, check the store distance
+(<code>ComboService.StoreDistancegetMax</code>), then show
+<code>StoreConflictDialog</code> or <code>ComboTooFarDialog</code>.
+Re-entrancy guard <code>_comboDistanceCheckInProgress</code>. Fails
+closed: missing location or API error blocks the combo.</td>
+</tr>
+<tr>
+<td><code>product/product_screen.dart</code></td>
+<td>+164 / −45</td>
+<td>Same <code>_handleOtherStore()</code> flow for the product
+screen.</td>
+</tr>
+<tr>
+<td><code>notifications/notification_store.dart</code></td>
+<td>+142 / −47</td>
+<td>Same flow for adding from the notification store screen.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cart--delivery--checkout">Cart → delivery → checkout</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>+/-</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cart/components/body.dart</code></td>
+<td>+141 / −16</td>
+<td>Shows both stores (<code>ComboStoreSection</code>). Adds
+<code>_checkMinOrderPrice()</code> (min-order check before checkout) and
+<code>_promoteComboIfFirstEmpty()</code> (if store A becomes empty,
+store B becomes the main cart). Removing an item keeps the cart while a
+combo exists. <strong>Merged</strong> with target's availability and
+location logic (see §4).</td>
+</tr>
+<tr>
+<td><code>delivery/delivery_screen.dart</code></td>
+<td>+230 / −25</td>
+<td><code>_addToCart()</code> routes to <code>_addToComboCart()</code>
+when a <code>ComboCart</code> exists: re-checks distance, sends both
+stores in one call (<code>combo_add_item_in_cart</code>), then opens
+<code>ComboCheckoutScreen</code>.</td>
+</tr>
+<tr>
+<td><code>checkout/checkout_screen.dart</code></td>
+<td>+4 / −1</td>
+<td><code>[COMBO-DEBUG]</code> logging of the
+<code>get_order_cart_invoice</code> request and response.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="payment">Payment</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>+/-</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kifiya/kifiya_screen.dart</code></td>
+<td>+359 / −27</td>
+<td>New <code>isCombo</code>, <code>comboId</code>, <code>combo</code>
+(<code>ComboPaymentContext</code>) params, plus per-store order-payment
+and cart ids. Pays and creates the order via
+<code>combo_pay_order_payment</code> / <code>combo_create_order</code>.
+Detects duplicate orders. Step-by-step <code>[COMBO-DEBUG]</code>
+logs.</td>
+</tr>
+<tr>
+<td><code>kifiya/components/kifiya_method_container.dart</code></td>
+<td>+34 / −1</td>
+<td>New <code>isSoon</code> flag: dims the payment method and shows a
+"Soon" badge.</td>
+</tr>
+<tr>
+<td><code>kifiya/components/telebirr_inapp.dart</code></td>
+<td>+79 / −141</td>
+<td>Simplified Telebirr in-app result handling: pops back with
+<code>false</code> after 2 s on failure.</td>
+</tr>
+<tr>
+<td><code>kifiya/components/wegagen_ussd.dart</code></td>
+<td>+10 / −7</td>
+<td>Uses <code>wegagen_real.png</code>; formatting only otherwise.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="orders">Orders</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>+/-</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orders/components/body.dart</code></td>
+<td>+292 / −141</td>
+<td>Active orders list is built from <code>groupOrders()</code>. Combo
+entries render as <code>ComboOrderCard</code>; tapping one opens a
+bottom sheet to pick which store's order to open
+(<code>_showComboOrderPicker</code>). <strong>Merged</strong>: target's
+<code>isOdooStoreByName</code> status rule re-applied.</td>
+</tr>
+<tr>
+<td><code>orders/components/orders_history.dart</code></td>
+<td>+149 / −111</td>
+<td>History list uses the same <code>groupOrders()</code> /
+<code>ComboOrderCard</code> grouping.</td>
+</tr>
+<tr>
+<td><code>orders/components/order_history_detail.dart</code></td>
+<td>+1176 / −736</td>
+<td>Combo-aware history detail: <code>_isCombo</code>,
+<code>_comboStores</code>, <code>_comboTotals</code>. "Combo Order (2
+Stores · 1 Driver)" header listing both order numbers; per-store
+sections and combined totals.</td>
+</tr>
+<tr>
+<td><code>orders/components/order_detail.dart</code></td>
+<td>+84 / −0</td>
+<td>Combo banner ("Part of a combo order (2 stores · 1 driver)") when
+the order has <code>combo_id</code> or
+<code>order_payment_detail.combo_id</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cleanup-strings-misc">Cleanup, strings, misc</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>+/-</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/language.dart</code></td>
+<td>+16</td>
+<td>New strings (EN + ZH): <code>orderFromBothStores</code>,
+<code>comboItemsFound</code>, <code>comboStoreLimit</code>,
+<code>comboAdded</code>.</td>
+</tr>
+<tr>
+<td><code>profile/components/body.dart</code></td>
+<td>+3</td>
+<td>Clears <code>combo_cart</code> on logout / account actions.</td>
+</tr>
+<tr>
+<td><code>services/core_services.dart</code></td>
+<td>+1</td>
+<td>Clears <code>combo_cart</code> together with <code>cart</code>.</td>
+</tr>
+<tr>
+<td><code>services/service.dart</code></td>
+<td>+2 / −2</td>
+<td>Clears <code>combo_cart</code>; <code>showMessage</code> uses
+<code>error == true</code> for the error colour.</td>
+</tr>
+<tr>
+<td><code>home/components/home_body.dart</code></td>
+<td>+6 / −3</td>
+<td>Home loading indicator: <code>LinearLoadingIndicator</code> →
+<code>CircularProgressIndicator</code>.</td>
+</tr>
+<tr>
+<td><code>widgets/linear_loading_indicator.dart</code></td>
+<td>+30 / −27</td>
+<td>Rework of the loading indicator widget.</td>
+</tr>
+<tr>
+<td><code>store/components/body.dart</code></td>
+<td>+2</td>
+<td>Comment only.</td>
+</tr>
+<tr>
+<td><code>main.dart</code></td>
+<td>+3</td>
+<td>Comment only.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-conflicts-resolved-by-hand">4. Conflicts resolved by hand</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Target (<code>ai_mcp_combo</code>) had</th>
+<th>Source (<code>order_details</code>) had</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cart/components/body.dart</code>: imports</td>
+<td><code>stock_availability_dialog</code>,
+<code>stock_left_notification</code>, <code>_CartAvailability</code>
+class</td>
+<td>Removed <code>linear_loading_indicator</code> import</td>
+<td><strong>Kept target</strong>. Combo imports came in via the clean
+part of the merge.</td>
+</tr>
+<tr>
+<td><code>cart/components/body.dart</code>: checkout button</td>
+<td>Location-services check → <code>_checkAvailability()</code> →
+store-hours bypass (<code>if (true)</code>)</td>
+<td>Min-order check before <code>DeliveryScreen</code></td>
+<td><strong>Combined</strong>: target's flow, with the source's
+<code>_checkMinOrderPrice()</code> added inside the open branch.</td>
+</tr>
+<tr>
+<td><code>cart/components/body.dart</code>: remove item</td>
+<td><code>Service.save('cart', cart!.toJson())</code></td>
+<td>Keep or clear the cart depending on <code>comboCart</code></td>
+<td><strong>Source</strong> (combo-aware).</td>
+</tr>
+<tr>
+<td><code>cart/components/body.dart</code>: after remove</td>
+<td><code>_refreshAvailability()</code></td>
+<td><code>_promoteComboIfFirstEmpty()</code></td>
+<td><strong>Both</strong>, in that order.</td>
+</tr>
+<tr>
+<td><code>delivery/delivery_screen.dart</code> (2 hunks)</td>
+<td><code>🔎 [MAIN CHECKOUT]</code> debug prints</td>
+<td><code>[COMBO-DEBUG]</code> debug prints</td>
+<td><strong>Kept target</strong>. Debug output only.</td>
+</tr>
+<tr>
+<td><code>utils/constants.dart</code> (2 hunks)</td>
+<td>Sample JSON comment, <code>BASE_URL = BASE_URL_TEST</code>, Odoo
+<code>kZmallOdooBaseUrl</code>, <code>kZmallBranchSlugs</code>,
+<code>isOdooStoreByName()</code></td>
+<td><code>BASE_URL = BASE_URL_TEST</code></td>
+<td><strong>Kept target</strong>. File ends up unchanged.</td>
+</tr>
+<tr>
+<td><code>orders/components/body.dart</code></td>
+<td><code>isOdooStoreByName(...)</code> status rule on the old list
+item</td>
+<td>Whole list rewritten around <code>OrderEntry</code> /
+<code>ComboOrderCard</code></td>
+<td><strong>Source version</strong>, with the Odoo rule re-applied on
+<code>order['store_name']</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-backend-endpoints-used-by-the-combo-flow">5. Backend endpoints
+used by the combo flow</h2>
+<p>All under <code>{baseUrl}/api/user/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>combo_add_item_in_cart</code></td>
+<td>Send both store carts (<code>store_a</code>, <code>store_b</code>)
+in one request</td>
+</tr>
+<tr>
+<td><code>combo_get_order_cart_invoice</code></td>
+<td>Combined invoice (<code>ComboInvoice</code>)</td>
+</tr>
+<tr>
+<td><code>combo_pay_order_payment</code></td>
+<td>Pay once for both <code>store_a_order_payment_id</code> /
+<code>store_b_order_payment_id</code></td>
+</tr>
+<tr>
+<td><code>combo_create_order</code></td>
+<td>Create both child orders under one <code>combo_id</code></td>
+</tr>
+<tr>
+<td><code>get_combo_max_store_distance</code></td>
+<td>Max allowed distance between the two stores
+(<code>combo_max_store_distance_km</code>)</td>
+</tr>
+<tr>
+<td><code>change_user_wallet_status</code>,
+<code>get_payment_gateway</code>, <code>get_detail</code></td>
+<td>Wallet toggle, gateways, user/store details during combo
+checkout</td>
+</tr>
+</tbody>
+</table>
+<p>Local storage keys: <code>combo_cart</code> (active combo),
+<code>combo_orders</code> (used to group orders in lists).</p>
+<hr />
+<h2 id="6-intentionally-not-ported">6. Intentionally NOT ported</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ios/build/**</code>,
+<code>ios/Runner/Frameworks/build/**</code> (~330 files),
+<code>android/build/**</code></td>
+<td>Build cache, not source</td>
+</tr>
+<tr>
+<td><code>ios/Podfile</code>, <code>Podfile.lock</code>,
+<code>Podfile.backup</code>, <code>Runner.xcodeproj/*</code>,
+<code>ImageNotification/NotificationService.m</code></td>
+<td>iOS project config, not combo</td>
+</tr>
+<tr>
+<td><code>pubspec.yaml</code> (<code>3.2.10+364</code> →
+<code>+367</code>, <code>enable-swift-package-manager: false</code>),
+<code>pubspec.lock</code></td>
+<td>Version bump / build config</td>
+</tr>
+<tr>
+<td><code>.gitignore</code> (<code>.widget_preview/</code>),
+<code>analysis_options.yaml</code> (exclude platform dirs)</td>
+<td>Tooling only</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-verification-and-next-steps">7. Verification and next
+steps</h2>
+<ul class="task-list">
+<li><label><input type="checkbox" checked="" />No conflict markers left
+in <code>lib/</code></label></li>
+<li><label><input type="checkbox"
+checked="" /><code>flutter analyze lib</code>: 0 errors</label></li>
+<li><label><input type="checkbox" />Run the app. Test: add from store A
+→ add from store B → distance dialog → cart → delivery → combo checkout
+→ payment → orders list combo card → order detail banner</label></li>
+<li><label><input type="checkbox" />Check that the cart checkout order
+(location → availability → min-order) behaves as intended</label></li>
+<li><label><input type="checkbox" />Remove or guard
+<code>[COMBO-DEBUG]</code> / <code>🔎 [MAIN CHECKOUT]</code> logs before
+release</label></li>
+<li><label><input type="checkbox" />Commit on
+<code>ai_mcp_combo</code></label></li>
+<li><label><input type="checkbox" />Optional cleanup:
+<code>git update-ref -d refs/remotes/mainapp/order_details</code>
+(temporary ref used for the merge)</label></li>
+</ul>
+</body>
+</html>
