@@ -287,7 +287,7 @@ class _OrderHistoryDetailState extends State<OrderHistoryDetail> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                "Combo Order (${_comboStores.length} Stores · 1 Driver)",
+                                                "Combo Driver",
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: kSecondaryColor,

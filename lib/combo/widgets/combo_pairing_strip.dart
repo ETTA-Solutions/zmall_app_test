@@ -15,6 +15,7 @@ class ComboPairingStrip extends StatelessWidget {
     required this.currency,
     required this.onAdd,
     this.busyItemId,
+    this.title = 'Perfect Pairing for Your Order!',
   });
 
   final List<Map<String, dynamic>> recommendations;
@@ -25,6 +26,9 @@ class ComboPairingStrip extends StatelessWidget {
   /// item_id currently being added (shows a spinner, blocks double taps).
   final String? busyItemId;
 
+  /// Heading above the strip.
+  final String title;
+
   @override
   Widget build(BuildContext context) {
     if (recommendations.isEmpty) return const SizedBox.shrink();
@@ -34,7 +38,7 @@ class ComboPairingStrip extends StatelessWidget {
       spacing: getProportionateScreenHeight(kDefaultPadding / 2),
       children: [
         Text(
-          'Perfect Pairing for Your Order!',
+          title,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
             color: kBlackColor,
             fontWeight: FontWeight.bold,

@@ -23,66 +23,54 @@ Future<void> showStoreConflictDialog({
     '[COMBO DIALOG] allowCombo=$allowCombo comboFull=$comboFull '
     'hasReplace=${onReplace != null}',
   );
+  final String title = comboFull
+      ? lang.warning
+      : allowCombo
+      ? "Items from another store"
+      : lang.warning;
+  final String message = comboFull
+      ? lang.comboStoreLimit
+      : allowCombo
+      ? lang.comboItemsFound
+      : lang.itemsFound;
+
   return showDialog(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    builder: (dialogContext) => Dialog(
       backgroundColor: kPrimaryColor,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kDefaultPadding),
+        borderRadius: BorderRadius.circular(kDefaultPadding * 1.2),
       ),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: (allowCombo ? kSecondaryColor : Colors.orange).withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              allowCombo ? Icons.layers_outlined : Icons.warning_amber_rounded,
-              color: allowCombo ? kSecondaryColor : Colors.orange[800],
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              comboFull
-                  ? lang.warning
-                  : allowCombo
-                  ? "Combo Order"
-                  : lang.warning,
-              style: const TextStyle(
-                color: kBlackColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 17,
-              ),
-            ),
-          ),
-        ],
-      ),
-      content: Text(
-        comboFull
-            ? lang.comboStoreLimit
-            : allowCombo
-            ? lang.comboItemsFound
-            : lang.itemsFound,
-        style: TextStyle(
-          color: kBlackColor.withValues(alpha: 0.8),
-          fontSize: 14,
-          height: 1.4,
-        ),
-      ),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      actions: [
-        Column(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: kBlackColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: kBlackColor.withValues(alpha: 0.7),
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
             if (allowCombo) ...[
               SizedBox(
-                width: double.infinity,
-                height: 44,
+                height: 46,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.of(dialogContext).pop();
@@ -93,19 +81,13 @@ Future<void> showStoreConflictDialog({
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(23),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
-                  icon: const Icon(
-                    Icons.storefront_outlined,
-                    size: 18,
-                    color: Colors.white,
-                  ),
+                  icon: const Icon(Icons.storefront_outlined, size: 18),
                   label: Text(
                     lang.orderFromBothStores,
                     style: const TextStyle(
-                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -115,99 +97,73 @@ Future<void> showStoreConflictDialog({
               const SizedBox(height: 10),
             ],
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    lang.cancel,
-                    style: TextStyle(
-                      color: kBlackColor.withValues(alpha: 0.65),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: Text(
+                      lang.cancel,
+                      style: TextStyle(
+                        color: kBlackColor.withValues(alpha: 0.65),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (comboFull && onReplace != null)
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                      onReplace();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: kSecondaryColor.withValues(alpha: 0.6),
-                        width: 1.2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      backgroundColor: kSecondaryColor.withValues(alpha: 0.08),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                    ),
-                    icon: Icon(
-                      Icons.swap_horiz_rounded,
-                      size: 16,
-                      color: kSecondaryColor,
-                    ),
-                    label: Text(
-                      "Replace second store",
-                      style: TextStyle(
-                        color: kSecondaryColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  )
-                else
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop();
-                      onClear();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: allowCombo
-                            ? kSecondaryColor.withValues(alpha: 0.6)
-                            : Colors.redAccent.withValues(alpha: 0.5),
-                        width: 1.2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      backgroundColor:
-                          (allowCombo ? kSecondaryColor : Colors.redAccent)
-                              .withValues(alpha: 0.08),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                    ),
-                    icon: Icon(
-                      allowCombo
-                          ? Icons.swap_horiz_rounded
-                          : Icons.delete_outline_rounded,
-                      size: 16,
-                      color: allowCombo ? kSecondaryColor : Colors.redAccent,
-                    ),
-                    label: Text(
-                      allowCombo ? "Replace" : lang.clear,
-                      style: TextStyle(
-                        color: allowCombo ? kSecondaryColor : Colors.redAccent,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
+                Expanded(
+                  child: comboFull && onReplace != null
+                      ? _actionButton(
+                          icon: Icons.swap_horiz_rounded,
+                          label: "Replace second store",
+                          color: kSecondaryColor,
+                          onTap: () {
+                            Navigator.of(dialogContext).pop();
+                            onReplace();
+                          },
+                        )
+                      : _actionButton(
+                          icon: allowCombo
+                              ? Icons.swap_horiz_rounded
+                              : Icons.delete_outline_rounded,
+                          label: allowCombo ? "Replace" : lang.clear,
+                          color: allowCombo ? kSecondaryColor : Colors.redAccent,
+                          onTap: () {
+                            Navigator.of(dialogContext).pop();
+                            onClear();
+                          },
+                        ),
+                ),
               ],
             ),
           ],
         ),
-      ],
+      ),
+    ),
+  );
+}
+
+/// Outlined action with no background fill.
+Widget _actionButton({
+  required IconData icon,
+  required String label,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return OutlinedButton.icon(
+    onPressed: onTap,
+    style: OutlinedButton.styleFrom(
+      side: BorderSide(color: color.withValues(alpha: 0.6), width: 1.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+    ),
+    icon: Icon(icon, size: 16, color: color),
+    label: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13),
     ),
   );
 }

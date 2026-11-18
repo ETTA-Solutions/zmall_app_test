@@ -76,7 +76,10 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   var userData;
   var extraItems;
   // combo_recommendations ("Perfect Pairing" from nearby stores)
-  List<Map<String, dynamic>> comboRecs = [];
+  // Pairings per cart item name (only items with a dashboard rule have an entry).
+  final Map<String, List<Map<String, dynamic>>> comboRecsByItem = {};
+  // Item names already asked about, so each name is requested only once.
+  final Set<String> _recAsked = {};
   String? _comboRecBusyId;
   //double walletBalance = 0.0;
   //String payeePhone = "964345364";
@@ -820,14 +823,6 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                   children: [
                     //
                     if (extraItems != null) showExtraItems(),
-                    if (comboCart == null && comboRecs.isNotEmpty)
-                      ComboPairingStrip(
-                        recommendations: comboRecs,
-                        baseUrl: Provider.of<ZMetaData>(context, listen: false).baseUrl,
-                        currency: Provider.of<ZMetaData>(context, listen: false).currency,
-                        onAdd: _onPairingAdd,
-                        busyItemId: _comboRecBusyId,
-                      ),
                     // Spacer(),
                     Padding(
                       padding: EdgeInsets.symmetric(
@@ -1130,7 +1125,7 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                         final item = cart!.items?[index];
                         final isLunchBox =
                             item?.itemName?.contains('ምሳቃ') ?? false;
-                        return item != null
+                        final Widget itemRow = item != null
                             ? GestureDetector(
                                 onTap: isLunchBox
                                     ? () {
@@ -1418,6 +1413,26 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                 ),
                               )
                             : SizedBox.shrink();
+                        // Pairing suggestions sit right under the item they belong to.
+                        final recs = comboCart == null && item?.itemName != null
+                            ? comboRecsByItem[item!.itemName!]
+                            : null;
+                        if (recs == null || recs.isEmpty) return itemRow;
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            itemRow,
+                            ComboPairingStrip(
+                              recommendations: recs,
+                              baseUrl: Provider.of<ZMetaData>(context, listen: false).baseUrl,
+                              currency: Provider.of<ZMetaData>(context, listen: false).currency,
+                              onAdd: _onPairingAdd,
+                              busyItemId: _comboRecBusyId,
+                              title: 'Goes well with ${item!.itemName}',
+                            ),
+                          ],
+                        );
                       },
                     ),
                   ),
@@ -1823,53 +1838,74 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
     );
   }
 
-  /// Loads admin-configured pairings from nearby stores for the cart items.
-  /// Empty / failed -> the section simply stays hidden.
+  /// Loads admin-configured pairings from nearby stores, one cart item at a
+  /// time (a small queue). Each item name is asked once; only items the
+  /// dashboard has a rule for get a suggestion, shown under that item.
   Future<void> _loadComboRecommendations() async {
     final items = cart?.items;
     if (userData == null ||
         cart?.storeId == null ||
         items == null ||
         items.isEmpty) {
-      if (mounted && comboRecs.isNotEmpty) setState(() => comboRecs = []);
+      if (mounted && comboRecsByItem.isNotEmpty) {
+        setState(() => comboRecsByItem.clear());
+      }
+      _recAsked.clear();
       return;
     }
-    final names = items.map((i) => i.itemName).whereType<String>().toList();
-    final data = await ComboService.getRecommendations(
-      context,
-      userData: userData,
-      storeId: cart!.storeId!,
-      itemNames: names,
-    );
-    if (!mounted) return;
-    if (ComboService.isSessionExpired(data)) {
-      Service.showMessage(
-        context: context,
-        title: "${errorCodes['999']}!",
-        error: true,
+    final storeId = cart!.storeId!;
+    final names = items.map((i) => i.itemName).whereType<String>().toSet();
+    // Drop pairings of items no longer in the cart.
+    if (comboRecsByItem.keys.any((k) => !names.contains(k))) {
+      setState(() => comboRecsByItem.removeWhere((k, _) => !names.contains(k)));
+    }
+    _recAsked.removeWhere((k) => !names.contains(k));
+    for (final name in names) {
+      if (!_recAsked.add(name)) continue;
+      final data = await ComboService.getRecommendations(
+        context,
+        userData: userData,
+        storeId: storeId,
+        itemNames: [name],
       );
-      await CoreServices.clearCache();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, LoginScreen.routeName);
-      return;
+      if (ComboService.isSessionExpired(data)) {
+        Service.showMessage(
+          context: context,
+          title: "${errorCodes['999']}!",
+          error: true,
+        );
+        await CoreServices.clearCache();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+        return;
+      }
+      if (data == null) {
+        _recAsked.remove(name); // network failure: retry next refresh
+        continue;
+      }
+      final list = data['success'] == true
+          ? ((data['recommendations'] as List?) ?? const [])
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+          : const <Map<String, dynamic>>[];
+      // Guard against junk: promo placeholders (price 0), nameless rows, and
+      // the same item repeated for one store.
+      final seen = <String>{};
+      final clean = list.where((r) {
+        final price = (r['price'] as num?)?.toDouble() ?? 0.0;
+        final rName = '${r['name'] ?? ''}'.trim();
+        if (price <= 0 || rName.isEmpty) return false;
+        return seen.add('${r['store_id']}|$rName');
+      }).toList();
+      setState(() {
+        if (clean.isEmpty) {
+          comboRecsByItem.remove(name);
+        } else {
+          comboRecsByItem[name] = clean;
+        }
+      });
     }
-    final list = (data != null && data['success'] == true)
-        ? List<Map<String, dynamic>>.from(
-            ((data['recommendations'] as List?) ?? const []).whereType<Map>().map(
-              (e) => Map<String, dynamic>.from(e),
-            ),
-          )
-        : <Map<String, dynamic>>[];
-    // Guard against junk: promo placeholders (price 0), nameless rows, and the
-    // same item repeated for one store.
-    final seen = <String>{};
-    final clean = list.where((r) {
-      final price = (r['price'] as num?)?.toDouble() ?? 0.0;
-      final name = '${r['name'] ?? ''}'.trim();
-      if (price <= 0 || name.isEmpty) return false;
-      return seen.add('${r['store_id']}|$name');
-    }).toList();
-    setState(() => comboRecs = clean);
   }
 
   /// Tap on a recommendation: checks distance, then starts the combo with the

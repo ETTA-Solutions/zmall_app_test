@@ -1139,8 +1139,6 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
         final String gName = g['name'].toString();
         final String key = gName.toLowerCase();
         if (key == 'zoorya-pay') continue; // expanded into its methods above
-        // Combo orders: cash and wallet only.
-        if (widget.isCombo && key != 'cash' && key != 'wallet') continue;
         if (!usedKeys.add(key)) continue; // already provided by ZOORYA-PAY
         methods.add({
           'key': key,
