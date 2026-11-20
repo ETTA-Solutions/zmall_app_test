@@ -278,7 +278,8 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
       if (ZooryaPayService.isPaid(result)) {
         debugPrint('[ZooryaPayUssd] Payment confirmed! Closing screen.');
         _pollGen++;
-        Navigator.pop(context, true);
+        // Return the check_paid_order response (backend creates the order).
+        Navigator.pop(context, result is Map ? result : true);
         return;
       }
       await Future.delayed(ZooryaPayService.pollInterval);
@@ -297,7 +298,7 @@ class _ZooryaPayUssdScreenState extends State<ZooryaPayUssdScreen> {
     if (!mounted) return;
     setState(() => _manualChecking = false);
     if (ZooryaPayService.isPaid(result)) {
-      Navigator.pop(context, true);
+      Navigator.pop(context, result is Map ? result : true);
     } else {
       Service.showMessage(
         context: context,

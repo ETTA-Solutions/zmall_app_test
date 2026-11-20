@@ -877,8 +877,11 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                     ),
                   ),
                 ).then((value) {
-                  if (value == true) {
-                    _boaVerify();
+                  // Same as M-PESA / Telebirr: backend creates the order.
+                  if (value is Map) {
+                    _finishOrWait(value);
+                  } else if (value == true) {
+                    _boaVerify(skipCreateOrder: true);
                   }
                 });
               },
@@ -906,7 +909,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                     ),
                   ),
                 ).then((value) {
-                  _boaVerify();
+                  _onZooryaTelebirrResult(value);
                 });
               },
             );
@@ -976,7 +979,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                       orderPaymentId: widget.orderPaymentId!,
                     ),
                   ),
-                ).then((_) => _boaVerify());
+                ).then((value) => _onZooryaTelebirrResult(value));
               },
             );
             return;
@@ -2194,7 +2197,8 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
       debugPrint(
         '╚══════════════════════════════════════════════════════════════════╝',
       );
-      _boaVerify();
+      // Backend creates the order (same as M-PESA / Telebirr).
+      _finishOrWait(result is Map ? result : {});
     } else {
       final elapsed = DateTime.now().difference(
         _zooryaPollStartedAt ?? DateTime.now(),
@@ -2850,8 +2854,13 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                       ),
                                                     ),
                                                   ).then((value) {
-                                                    if (value == true) {
-                                                      _boaVerify();
+                                                    // Backend creates the order.
+                                                    if (value is Map) {
+                                                      _finishOrWait(value);
+                                                    } else if (value == true) {
+                                                      _boaVerify(
+                                                        skipCreateOrder: true,
+                                                      );
                                                     }
                                                   });
                                                 },
@@ -2890,7 +2899,9 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                       ),
                                                     ),
                                                   ).then((value) {
-                                                    _boaVerify();
+                                                    _onZooryaTelebirrResult(
+                                                      value,
+                                                    );
                                                   });
                                                 },
                                               );
@@ -2987,7 +2998,7 @@ class _KifiyaScreenState extends State<KifiyaScreen> {
                                                             .orderPaymentId!,
                                                       ),
                                                     ),
-                                                  ).then((_) => _boaVerify());
+                                                  ).then((value) => _onZooryaTelebirrResult(value));
                                                 },
                                               );
                                               return;
