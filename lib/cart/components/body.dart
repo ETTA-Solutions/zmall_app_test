@@ -22,6 +22,7 @@ import 'package:zmall/combo/models/combo_cart.dart';
 import 'package:zmall/combo/services/combo_service.dart';
 import 'package:zmall/combo/widgets/combo_store_section.dart';
 import 'package:zmall/combo/widgets/combo_pairing_strip.dart';
+import 'package:zmall/combo/widgets/combo_suggestions_section.dart';
 import 'package:zmall/combo/widgets/combo_too_far_dialog.dart';
 import 'package:zmall/login/login_screen.dart';
 import 'package:zmall/services/address_validation_service.dart';
@@ -75,11 +76,14 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
   String storeName = '';
   var userData;
   var extraItems;
-  // combo_recommendations ("Perfect Pairing" from nearby stores)
-  // Pairings per cart item name (only items with a dashboard rule have an entry).
+  // ── Combo suggestions ("Complete your order") ───────────────────────────
+  // Keyed by storeId so a store change triggers a fresh fetch in the widget.
+  String? _suggestionStoreId;
+  // Per-item combo pairings: cart item name -> recommended items.
   final Map<String, List<Map<String, dynamic>>> comboRecsByItem = {};
-  // Item names already asked about, so each name is requested only once.
+  // Item names already requested, so each is fetched once per cart state.
   final Set<String> _recAsked = {};
+  // Item id of the recommendation currently being added (disables its button).
   String? _comboRecBusyId;
   //double walletBalance = 0.0;
   //String payeePhone = "964345364";
@@ -235,7 +239,6 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
         // }
         _getStoreExtraItemList();
         await _loadComboCart();
-        _loadComboRecommendations();
 
         calculatePrice();
         _refreshAvailability();
@@ -1413,29 +1416,27 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
                                 ),
                               )
                             : SizedBox.shrink();
-                        // Pairing suggestions sit right under the item they belong to.
-                        final recs = comboCart == null && item?.itemName != null
-                            ? comboRecsByItem[item!.itemName!]
-                            : null;
-                        if (recs == null || recs.isEmpty) return itemRow;
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            itemRow,
-                            ComboPairingStrip(
-                              recommendations: recs,
-                              baseUrl: Provider.of<ZMetaData>(context, listen: false).baseUrl,
-                              currency: Provider.of<ZMetaData>(context, listen: false).currency,
-                              onAdd: _onPairingAdd,
-                              busyItemId: _comboRecBusyId,
-                              title: 'Goes well with ${item!.itemName}',
-                            ),
-                          ],
-                        );
+                        // Old per-item pairing strip removed — replaced by
+                        // ComboSuggestionsSection at the bottom of the screen.
+                        return itemRow;
                       },
                     ),
                   ),
+
+
+                  // Suggestions sit above the price/checkout bar.
+                  if (comboCart == null && !(cart?.isLaundryService ?? false))
+                    ComboSuggestionsSection(
+                      storeId: cart?.storeId,
+                      itemNames:
+                          cart?.items
+                              ?.map((i) => i.itemName ?? '')
+                              .where((n) => n.isNotEmpty)
+                              .toList() ??
+                          const [],
+                      userData: userData,
+                      onAdd: _onSuggestionAdd,
+                    ),
 
                   ///////////////////////////New customization
                   // Align(
@@ -2031,6 +2032,143 @@ class _BodyState extends State<Body> with TickerProviderStateMixin {
       if (mounted) setState(() => _comboRecBusyId = null);
     }
   }
+
+  /// Handles tapping "Add" on a combo suggestion card.
+  /// Same logic as _onPairingAdd but driven by the new combo_suggestions data.
+  Future<void> _onSuggestionAdd(
+    Map<String, dynamic> storeData,
+    Map<String, dynamic> item,
+  ) async {
+    if (cart == null || userData == null) return;
+    final recStoreId = '${storeData['_id'] ?? storeData['store_id'] ?? ''}';
+    final itemId = '${item['item_id']}';
+    final meta = Provider.of<ZMetaData>(context, listen: false);
+    final image = '${item['image'] ?? ''}';
+    final cartItem = Item(
+      id: itemId,
+      quantity: 1,
+      specification: [],
+      noteForItem: "",
+      price: (item['price'] as num?)?.toDouble() ?? 0.0,
+      itemName: '${item['name'] ?? ''}',
+      imageURL: image.isEmpty ? "https://ibb.co/vkhzjd6" : "${meta.baseUrl}/$image",
+    );
+    final destination = DestinationAddress(
+      long: meta.longitude,
+      lat: meta.latitude,
+      name: "Current Location",
+      note: "User current location",
+    );
+
+    // Same store: plain merge into cart
+    if (recStoreId == cart!.storeId) {
+      setState(() {
+        Service.addOrMergeCartItem(cart!, cartItem);
+        Service.save('cart', cart!.toJson())
+            .then((_) => calculatePrice())
+            .then((_) => setState(() {}));
+      });
+      _refreshAvailability();
+      return;
+    }
+
+    if (!await ComboCart.canStartWith(cart)) {
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: "A combo is already in your cart.",
+        error: true,
+      );
+      return;
+    }
+
+    try {
+      final detail = await ComboService.getStoreDetail(
+        context,
+        storeId: recStoreId,
+      );
+      if (!mounted) return;
+      if (detail == null || detail['success'] != true) {
+        Service.showMessage(
+          context: context,
+          title: "Could not load store details. Please try again.",
+          error: true,
+        );
+        return;
+      }
+      final recLoc = detail['store']?['location'];
+      if (recLoc is! List || recLoc.length < 2) {
+        Service.showMessage(
+          context: context,
+          title: "Could not load store details. Please try again.",
+          error: true,
+        );
+        return;
+      }
+      final storeLocation = StoreLocation(long: recLoc[1], lat: recLoc[0]);
+      final distRes = await ComboService.StoreDistancegetMax(
+        context,
+        userData: userData,
+        storeIdA: cart!.storeId!,
+        storeIdB: recStoreId,
+      );
+      if (!mounted) return;
+      final cartLoc = storeLocations is List && storeLocations.length >= 2
+          ? storeLocations
+          : (cart!.storeLocation != null
+                ? [cart!.storeLocation!.lat, cart!.storeLocation!.long]
+                : null);
+      if (distRes == null || distRes['success'] != true || cartLoc == null) {
+        Service.showMessage(
+          context: context,
+          title: "Could not verify store distance. Please try again.",
+          error: true,
+          duration: 4,
+        );
+        return;
+      }
+      final maxM = (distRes['max_distance'] as num? ?? 0.0).toDouble();
+      final actualM = AddressValidationService.calculateDistanceInMeters(
+        cartLoc[0],
+        cartLoc[1],
+        recLoc[0],
+        recLoc[1],
+      );
+      if (actualM > maxM) {
+        await showComboTooFarDialog(
+          context: context,
+          actualKm: actualM / 1000.0,
+          maxKm: maxM / 1000.0,
+        );
+        return;
+      }
+      await ComboCart.start(
+        userData: userData,
+        storeId: recStoreId,
+        item: cartItem,
+        storeLocation: storeLocation,
+        destination: destination,
+      );
+      if (!mounted) return;
+      await _loadComboCart();
+      if (!mounted) return;
+      Service.showMessage(
+        context: context,
+        title: Provider.of<ZLanguage>(context, listen: false).comboAdded,
+        error: false,
+      );
+    } catch (e) {
+      debugPrint('[COMBO] suggestion add error: $e');
+      if (mounted) {
+        Service.showMessage(
+          context: context,
+          title: "Something went wrong. Please try again.",
+          error: true,
+        );
+      }
+    }
+  }
+
   Widget showExtraItems() {
     bool isNull = extraItems.every(
       (extraItem) => cart!.items!.any(

@@ -10,6 +10,8 @@ import 'package:zmall/combo/combo_route.dart';
 import 'package:zmall/combo/models/combo_cart.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/models/metadata.dart';
+import 'package:zmall/services/service.dart';
+import 'package:zmall/utils/navigator_key.dart';
 import 'package:zmall/utils/constants.dart';
 
 /// HTTP calls for combo (two-store) orders.
@@ -214,6 +216,8 @@ class ComboService {
   /// Admin-configured "goes with" items from nearby stores, for the cart page.
   /// Needs no server cart_id: [storeId] and [itemNames] come from local
   /// storage. An empty `recommendations` list means: hide the section.
+  ///
+  /// @deprecated Use [getSuggestions] instead (new combo_suggestions endpoint).
   static Future<Map<String, dynamic>?> getRecommendations(
     BuildContext context, {
     required dynamic userData,
@@ -227,6 +231,92 @@ class ComboService {
     "item_names": itemNames,
     "limit": limit,
   }, timeout: 15);
+
+  /// "Complete your order" combo suggestions for the cart page.
+  ///
+  /// Returns:
+  ///  - `favorites`       – stores the customer has ordered from before,
+  ///                        with `order_again_items` and `goes_with_items`.
+  ///  - `goes_with_cart`  – stores whose items complement the current cart.
+  ///  - `combo_max_store_distance_km` – radius used by the backend to filter.
+  ///
+  /// Every store in the response is open, within the combo radius, and
+  /// ready to accept an order right now. Up to 15 stores total (5 favourites).
+  static Map<String, dynamic>? _sugData;
+  static String? _sugKey;
+  static DateTime? _sugAt;
+  static const _sugTtl = Duration(minutes: 2);
+
+  static String _sugKeyOf(String storeId, List<String> names) =>
+      '$storeId|${names.join('\u0001')}';
+
+  /// Fresh cached suggestions for this exact cart, or null.
+  static Map<String, dynamic>? cachedSuggestions(
+    String storeId,
+    List<String> itemNames,
+  ) {
+    if (_sugAt == null || _sugKey != _sugKeyOf(storeId, itemNames)) return null;
+    if (DateTime.now().difference(_sugAt!) > _sugTtl) return null;
+    return _sugData;
+  }
+
+  static Timer? _prefetchTimer;
+
+  /// Called whenever the local cart is saved. Warms the suggestions cache in
+  /// the background (400 ms debounce) so the data is ready when the cart opens.
+  static void prefetchForCart(dynamic cartJson) {
+    _prefetchTimer?.cancel();
+    _prefetchTimer = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        if (cartJson is! Map) return;
+        final storeId = '${cartJson['store_id'] ?? ''}';
+        final items = (cartJson['items'] as List?) ?? const [];
+        final names = items
+            .map((i) => '${(i as Map)['item_name'] ?? ''}')
+            .where((n) => n.isNotEmpty)
+            .toList();
+        if (storeId.isEmpty || names.isEmpty) return;
+        if (cartJson['is_laundry_service'] == true) return;
+        if (await Service.read('combo_cart') != null) return;
+        final user = await Service.read('user');
+        if (user == null) return;
+        final ctx = navigatorKey.currentContext;
+        if (ctx == null) return;
+        await getSuggestions(
+          ctx,
+          userData: user,
+          storeId: storeId,
+          itemNames: names,
+        );
+      } catch (e) {
+        if (kDebugMode) debugPrint('[COMBO] prefetch error: $e');
+      }
+    });
+  }
+
+  /// Fetch (and cache) suggestions. Call as soon as the first item is added
+  /// so the data is ready when the cart opens.
+  static Future<Map<String, dynamic>?> getSuggestions(
+    BuildContext context, {
+    required dynamic userData,
+    required String storeId,
+    required List<String> itemNames,
+  }) async {
+    final cached = cachedSuggestions(storeId, itemNames);
+    if (cached != null) return cached;
+    final data = await _post(context, "combo_suggestions", {
+      "user_id": userData['user']['_id'],
+      "server_token": userData['user']['server_token'],
+      "store_id": storeId,
+      "item_names": itemNames,
+    }, timeout: 20);
+    if (data != null && data['success'] == true) {
+      _sugData = data;
+      _sugKey = _sugKeyOf(storeId, itemNames);
+      _sugAt = DateTime.now();
+    }
+    return data;
+  }
 
   /// Fetches the maximum allowed distance (in metres) between two combo stores.
   ///

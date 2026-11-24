@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:heroicons_flutter/heroicons_flutter.dart';
@@ -46,7 +47,12 @@ class ComboPairingStrip extends StatelessWidget {
         ),
         SizedBox(
           width: double.infinity,
-          height: MediaQuery.sizeOf(context).height * 0.12,
+          // Tall enough for name + price + Add rows plus padding, even on
+          // short screens or large text scale.
+          height: math.max(
+            MediaQuery.sizeOf(context).height * 0.12,
+            getProportionateScreenHeight(112),
+          ),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: recommendations.length,
