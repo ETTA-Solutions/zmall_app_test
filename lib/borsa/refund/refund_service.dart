@@ -31,6 +31,13 @@ class RefundService {
     if (errorCode != null) {
       final mapped = errorCodes['$errorCode'];
       if (mapped != null) return mapped;
+      // The server can put readable text in error_code, for example
+      // "Enter a valid Telebirr number (09XXXXXXXX)".
+      if (errorCode is String &&
+          errorCode.trim().isNotEmpty &&
+          int.tryParse(errorCode.trim()) == null) {
+        return errorCode;
+      }
     }
     // Server-provided message, then fallback
     return result['message'] ?? fallback;
@@ -108,9 +115,13 @@ class RefundService {
     );
   }
 
+  /// [receiverPhone] is the Telebirr number that receives the money. Leave it
+  /// null to refund to the ZMall phone. `phone` always stays the ZMall phone
+  /// (the OTP went there).
   Future<Map<String, dynamic>> processRefund({
     required String transactionId,
     required dynamic transactionAmount,
+    String? receiverPhone,
   }) async {
     return _post(
       endpoint: kRefundProcessEndpoint,
@@ -119,6 +130,8 @@ class RefundService {
         "phone": phone,
         "amount": transactionAmount,
         "unique_id": transactionId,
+        if (receiverPhone != null && receiverPhone.isNotEmpty)
+          "receiver_phone": receiverPhone,
       },
     );
   }

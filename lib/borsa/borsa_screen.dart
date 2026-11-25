@@ -41,6 +41,10 @@ class _BorsaScreenState extends State<BorsaScreen> {
   bool isLoading = false;
   String payeePhone = "";
   double topUpAmount = 0.0;
+  // True while a Telebirr top-up is running (payment screen open, or waiting
+  // for the server to confirm). Disables the amount field and pay button.
+  final ValueNotifier<bool> _topupBusy = ValueNotifier<bool>(false);
+  BuildContext? _topupSheetContext;
   String payerPassword = "";
   bool transferError = false;
   var selectedFilter = "All";
@@ -71,6 +75,7 @@ class _BorsaScreenState extends State<BorsaScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _topupBusy.dispose();
     super.dispose();
   }
 
@@ -371,6 +376,8 @@ class _BorsaScreenState extends State<BorsaScreen> {
     // bool showPayments = false;
     GlobalKey<FormState> topupFormKey = GlobalKey<FormState>();
     // TextEditingController amountController = TextEditingController();
+    // Start clean: a leftover amount would not match the empty field.
+    topUpAmount = 0.0;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -381,13 +388,9 @@ class _BorsaScreenState extends State<BorsaScreen> {
         maxHeight: MediaQuery.sizeOf(context).height * 1.0,
       ),
       builder: (BuildContext context) {
-        // var uuid = Uuid();
-        // String uniqueId = uuid.v4().substring(0, 10);
-        var uuid = Uuid();
-        String uniqueId = uuid
-            .v4()
-            .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
-            .substring(0, 10);
+        // Used to close this sheet from outside; a trace number is created
+        // per payment attempt in _startTelebirrTopup, not once per sheet.
+        _topupSheetContext = context;
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
@@ -460,44 +463,47 @@ class _BorsaScreenState extends State<BorsaScreen> {
                             kDefaultPadding,
                           ),
                           children: [
-                            CustomTextField(
-                              keyboardType: TextInputType.numberWithOptions(
-                                decimal: true,
+                            ValueListenableBuilder<bool>(
+                              valueListenable: _topupBusy,
+                              builder: (context, busy, child) => CustomTextField(
+                                enabled: !busy,
+                                keyboardType: TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                onChanged: (val) {
+                                  setState(() {
+                                    // Empty or invalid text counts as 0.
+                                    topUpAmount = (double.tryParse(val) ?? 0.0)
+                                        .ceilToDouble();
+                                  });
+                                },
+                                hintText: "Enter the amount to topup",
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Please enter the amount";
+                                  }
+
+                                  // Try parsing the value
+                                  final double? price = double.tryParse(value);
+
+                                  if (price == null) {
+                                    return "Invalid number entered.";
+                                  }
+
+                                  if (price < 100.0) {
+                                    final currency = Provider.of<ZMetaData>(
+                                      context,
+                                      listen: false,
+                                    ).currency;
+                                    // return "The minimum amount you can add is 1 $currency.";
+                                    return "The minimum amount you can add is 100 $currency.";
+                                  }
+                                  if (price == 0.0) {
+                                    return "Amount cannot be zero.";
+                                  }
+                                  return null;
+                                },
                               ),
-                              onChanged: (val) {
-                                setState(() {
-                                  // Safely parse to double, default to 0.0 if empty
-                                  topUpAmount = double.tryParse(
-                                    val,
-                                  )!.ceilToDouble();
-                                });
-                              },
-                              hintText: "Enter the amount to topup",
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return "Please enter the amount";
-                                }
-
-                                // Try parsing the value
-                                final double? price = double.tryParse(value);
-
-                                if (price == null) {
-                                  return "Invalid number entered.";
-                                }
-
-                                if (price < 100.0) {
-                                  final currency = Provider.of<ZMetaData>(
-                                    context,
-                                    listen: false,
-                                  ).currency;
-                                  // return "The minimum amount you can add is 1 $currency.";
-                                  return "The minimum amount you can add is 100 $currency.";
-                                }
-                                if (price == 0.0) {
-                                  return "Amount cannot be zero.";
-                                }
-                                return null;
-                              },
                             ),
                             SizedBox(
                               height: getProportionateScreenHeight(
@@ -510,89 +516,18 @@ class _BorsaScreenState extends State<BorsaScreen> {
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             // if (showPayments)
-                            PaymentCard(
-                              title: "telebirr in-app",
-                              subtitle: "Pay with mobile app",
-                              imageUrl: "images/payment/telebirr.png",
-                              onPressed: () {
-                                if (topupFormKey.currentState!.validate()) {
-                                  _getKifiyaGateway();
-
-                                  if (kifiyaGateway != null &&
-                                      kifiyaGateway['success'] &&
-                                      kifiyaGateway['payment_gateway'] !=
-                                          null) {
-                                    final telebirrId = getPaymentMethodIdByName(
-                                      "Telebirr inapp",
-                                    );
-
-                                    setState(() {
-                                      paymentId = telebirrId;
-                                    });
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) {
-                                          return TopupPaymentInApp(
-                                            amount: topUpAmount,
-                                            context: context,
-                                            traceNo: uniqueId,
-                                            phone: userData['user']['phone'],
-                                          );
-                                        },
-                                      ),
-                                    ).then((value) async {
-                                      if (value != null) {
-                                        if (value == false) {
-                                          WidgetsBinding.instance
-                                              .addPostFrameCallback((_) {
-                                                setState(() {
-                                                  topUpAmount = 0.0;
-                                                });
-                                              });
-                                          Navigator.of(context).pop();
-                                          Service.showMessage(
-                                            error: true,
-                                            context: context,
-                                            title:
-                                                "Faild to topup wallet amount. Please try again!.",
-                                          );
-                                        } else if ((value['code'] != null &&
-                                                value['code'] == 0) ||
-                                            (value['status'] != null &&
-                                                value['status']
-                                                        .toString()
-                                                        .toLowerCase() ==
-                                                    "success")) {
-                                          _addToWallet();
-                                        }
-                                      } else {
-                                        WidgetsBinding.instance
-                                            .addPostFrameCallback((_) {
-                                              setState(() {
-                                                topUpAmount = 0.0;
-                                              });
-                                            });
-                                        Navigator.of(context).pop();
-
-                                        Future.delayed(
-                                          Duration(milliseconds: 100),
-                                          () {
-                                            if (mounted) {
-                                              Service.showMessage(
-                                                error: true,
-                                                context: context,
-                                                title:
-                                                    "Faild to topup wallet amount. Please try again!.",
-                                              );
-                                            }
-                                          },
-                                        );
-                                      }
-                                    });
-                                  }
-                                }
-                              },
+                            ValueListenableBuilder<bool>(
+                              valueListenable: _topupBusy,
+                              builder: (context, busy, child) => PaymentCard(
+                                title: "telebirr in-app",
+                                subtitle: busy
+                                    ? "Payment in progress..."
+                                    : "Pay with mobile app",
+                                imageUrl: "images/payment/telebirr.png",
+                                onPressed: busy
+                                    ? null
+                                    : () => _startTelebirrTopup(topupFormKey),
+                              ),
                             ),
                             // if (!showPayments && amountController.text.isNotEmpty)
                             //   CustomButton(
@@ -1552,37 +1487,202 @@ class _BorsaScreenState extends State<BorsaScreen> {
     }
   }
 
-  ////Topup wallet ammount//
-  Future<void> _addToWallet() async {
-    try {
-      var data = await amoleAddToBorsa();
+  ////Topup wallet amount//
 
-      if (data != null && data['success']) {
-        // userData['user']['wallet'] += topUpAmount;
-        // Service.save('user', userData);
-        Navigator.of(context).pop();
-        Service.showMessage(
-          context: context,
-          title: "Wallet top-up completed successfully!",
-          error: false,
-        );
-      }
-    } catch (e) {
-      Navigator.of(context).pop();
-      Service.showMessage(
-        context: context,
-        title:
-            "Add to wallet failed! Please check if you have sufficient fund.",
-        error: true,
-        duration: 4,
+  /// New id for ONE payment attempt. The same id goes to Shekla's create_order
+  /// and to add_wallet_amount_new as `trace_no`, so the server can credit
+  /// exactly what Telebirr confirms for it, once.
+  String _newTraceNo() => const Uuid()
+      .v4()
+      .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+      .substring(0, 10);
+
+  void _closeTopupSheet() {
+    final ctx = _topupSheetContext;
+    _topupSheetContext = null;
+    if (ctx != null && ctx.mounted) Navigator.of(ctx).pop();
+  }
+
+  /// One Telebirr top-up from tap to wallet credit. The amount and trace
+  /// number are fixed here, so later edits to the amount field cannot change
+  /// what is credited. Only one payment can run at a time.
+  Future<void> _startTelebirrTopup(GlobalKey<FormState> formKey) async {
+    if (_topupBusy.value) return;
+    if (!(formKey.currentState?.validate() ?? false)) return;
+
+    final double amount = topUpAmount;
+    if (amount <= 0) return;
+    final String traceNo = _newTraceNo();
+
+    _topupBusy.value = true;
+    await _getKifiyaGateway();
+    if (!mounted) {
+      _topupBusy.value = false;
+      return;
+    }
+    if (kifiyaGateway == null ||
+        kifiyaGateway['success'] != true ||
+        kifiyaGateway['payment_gateway'] == null) {
+      _topupBusy.value = false;
+      return;
+    }
+    setState(() {
+      paymentId = getPaymentMethodIdByName("Telebirr inapp");
+    });
+
+    final dynamic value = await Navigator.push<dynamic>(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => TopupPaymentInApp(
+          amount: amount,
+          context: ctx,
+          traceNo: traceNo,
+          phone: userData['user']['phone'],
+        ),
+      ),
+    );
+    if (!mounted) {
+      _topupBusy.value = false;
+      return;
+    }
+
+    final bool paid =
+        value is Map &&
+        ((value['code'] != null && value['code'] == 0) ||
+            (value['status'] != null &&
+                value['status'].toString().toLowerCase() == "success"));
+
+    if (paid) {
+      // Busy stays on until the credit call is finished.
+      await _addToWallet(
+        traceNo: '${value['traceNo'] ?? traceNo}',
+        amount: amount,
       );
+      return;
+    }
+
+    _topupBusy.value = false;
+    if (value == null || value == false) {
+      setState(() {
+        topUpAmount = 0.0;
+      });
+      _closeTopupSheet();
+      Service.showMessage(
+        error: true,
+        context: context,
+        title: "Faild to topup wallet amount. Please try again!.",
+      );
+    }
+    // A Telebirr result with a non-zero code (for example cancelled): the
+    // sheet stays open so the user can try again with a new trace number.
+  }
+
+  static const int _topupMaxAttempts = 6; // first call + 5 retries
+  static const Duration _topupRetryDelay = Duration(seconds: 4);
+
+  String _topupResponseMessage(dynamic data) {
+    if (data is! Map) return '';
+    final message = data['message'];
+    if (message is String && message.isNotEmpty) return message;
+    final code = data['error_code'];
+    if (code != null) return errorCodes['$code'] ?? '$code';
+    return '';
+  }
+
+  void _applyWalletBalance(dynamic wallet) {
+    final balance = double.tryParse('$wallet');
+    if (balance != null && mounted) {
+      setState(() {
+        currentBalance = balance;
+      });
+    }
+  }
+
+  /// Asks the server to credit the wallet for [traceNo]. The server credits
+  /// the amount Telebirr confirmed, once per trace number, so retrying the
+  /// same call with the same [traceNo] is safe.
+  Future<void> _addToWallet({
+    required String traceNo,
+    required double amount,
+  }) async {
+    String? successMessage;
+    String? errorMessage;
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
+    try {
+      for (int attempt = 1; attempt <= _topupMaxAttempts; attempt++) {
+        final data = await amoleAddToBorsa(traceNo: traceNo, amount: amount);
+        if (!mounted) return;
+
+        if (data is Map && data['success'] == true) {
+          // The response's wallet is the new balance. It can differ from the
+          // typed amount if Telebirr charged a different amount.
+          _applyWalletBalance(data['wallet']);
+          successMessage = "Wallet top-up completed successfully!";
+          break;
+        }
+
+        final message = _topupResponseMessage(data);
+        final lower = message.toLowerCase();
+
+        if (lower.contains('already added')) {
+          successMessage = "This payment was already added to your wallet.";
+          break;
+        }
+
+        // No answer (network/timeout), or Telebirr has not confirmed yet.
+        final retryable =
+            data == null ||
+            lower.contains('wait_pay') ||
+            lower.contains('not confirmed') ||
+            lower.contains('could not confirm');
+        if (retryable) {
+          if (attempt < _topupMaxAttempts) {
+            await Future.delayed(_topupRetryDelay);
+            if (!mounted) return;
+            continue;
+          }
+          errorMessage =
+              "Payment received? Contact support with reference $traceNo.";
+          break;
+        }
+
+        errorMessage = message.isNotEmpty
+            ? "$message (ref: $traceNo)"
+            : "Add to wallet failed. Contact support with reference $traceNo.";
+        break;
+      }
     } finally {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
         setState(() {
           topUpAmount = 0.0;
           isLoading = false;
         });
-      });
+      }
+      _topupBusy.value = false;
+    }
+
+    if (!mounted) return;
+    // The payment is finished either way, so close the sheet to prevent a
+    // second payment on top of an unresolved one.
+    _closeTopupSheet();
+    if (successMessage != null) {
+      _refreshWallet();
+      Service.showMessage(
+        context: context,
+        title: successMessage,
+        error: false,
+      );
+    } else {
+      Service.showMessage(
+        context: context,
+        title: errorMessage ?? "Add to wallet failed. Reference: $traceNo",
+        error: true,
+        duration: 8,
+      );
     }
   }
 
@@ -1596,25 +1696,28 @@ class _BorsaScreenState extends State<BorsaScreen> {
     return method != null ? method['_id'] : '';
   }
 
-  Future<dynamic> amoleAddToBorsa() async {
-    setState(() {
-      isLoading = true;
-    });
+  Future<dynamic> amoleAddToBorsa({
+    required String traceNo,
+    required double amount,
+  }) async {
     var url =
         "${Provider.of<ZMetaData>(context, listen: false).baseUrl}/api/user/add_wallet_amount_new";
 
     Map data = {
       "user_id": userData['user']['_id'],
       "payment_id": paymentId,
-      // kifiyaGateway['payment_gateway'][0]['_id'],
-      // "otp": otp,
       "is_payment_paid": true,
       "type": userData['user']['admin_type'],
       "server_token": userData['user']['server_token'],
-      "wallet": topUpAmount,
+      "wallet": amount,
+      // Same id that was sent to Shekla create_order. The server credits what
+      // Telebirr confirms for it, once.
+      "trace_no": traceNo,
     };
 
     var body = json.encode(data);
+    // Quiet on failure: returns null and lets _addToWallet decide whether to
+    // retry or what to tell the user.
     try {
       http.Response response = await http
           .post(
@@ -1625,39 +1728,17 @@ class _BorsaScreenState extends State<BorsaScreen> {
             },
             body: body,
           )
-          .timeout(
-            Duration(seconds: 10),
-            onTimeout: () {
-              setState(() {
-                this.isLoading = false;
-              });
-              Service.showMessage(
-                error: true,
-                context: context,
-                title: "Something went wrong!",
-              );
-              throw TimeoutException("The connection has timed out!");
-            },
-          );
+          .timeout(Duration(seconds: 20));
       return json.decode(response.body);
     } catch (e) {
-      Service.showMessage(
-        error: true,
-        context: context,
-        title: "Your internet connection is bad!",
-      );
       return null;
-    } finally {
-      setState(() {
-        this.isLoading = false;
-      });
     }
   }
 
   ///_getKifiyaGateway
   ///
   ///
-  void _getKifiyaGateway() async {
+  Future<void> _getKifiyaGateway() async {
     setState(() {
       isLoading = true;
     });
