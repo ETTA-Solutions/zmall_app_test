@@ -1071,6 +1071,8 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
 
     return Column(
       children: [
+        const ZooryaPayBadge(height: 40),
+        const SizedBox(height: 16),
         Wrap(
           alignment: WrapAlignment.center,
           spacing: 16,
@@ -1080,8 +1082,6 @@ class _ZooryaPayMpesaScreenState extends State<ZooryaPayMpesaScreen> {
             item(Icons.verified_user_outlined, 'Safaricom M-PESA Secure'),
           ],
         ),
-        const SizedBox(height: 8),
-        const ZooryaPayBadge(),
       ],
     );
   }
