@@ -259,14 +259,14 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
       if (!mounted || gen != _pollGen) return;
       if (_isPaymentConfirmed(result)) {
         _pollGen++;
-        _onPaid();
+        _onPaid(result);
         return;
       }
       await Future.delayed(ZooryaPayService.pollInterval);
     }
   }
 
-  void _onPaid() {
+  void _onPaid([dynamic result]) {
     debugPrint('[ZooryaPayQr] ✅ PAYMENT CONFIRMED! Closing QR screen');
     Service.showMessage(
       context: context,
@@ -274,7 +274,8 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
       error: false,
       duration: 3,
     );
-    Navigator.pop(context, true);
+    // Return the check_paid_order response (backend creates the order).
+    Navigator.pop(context, result is Map ? result : true);
   }
 
   /// "I've paid, check again" — a single check after the 2 minutes.
@@ -289,7 +290,7 @@ class _ZooryaPayQrScreenState extends State<ZooryaPayQrScreen> {
     if (!mounted) return;
     setState(() => _manualChecking = false);
     if (_isPaymentConfirmed(result)) {
-      _onPaid();
+      _onPaid(result);
     } else {
       Service.showMessage(
         context: context,

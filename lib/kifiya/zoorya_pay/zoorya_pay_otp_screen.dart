@@ -1008,6 +1008,8 @@ class _ZooryaPayOtpScreenState extends State<ZooryaPayOtpScreen> {
 
     return Column(
       children: [
+        const ZooryaPayBadge(height: 40),
+        const SizedBox(height: 16),
         Wrap(
           alignment: WrapAlignment.center,
           spacing: 16,
@@ -1017,8 +1019,6 @@ class _ZooryaPayOtpScreenState extends State<ZooryaPayOtpScreen> {
             item(Icons.verified_user_outlined, 'Bank-verified OTP'),
           ],
         ),
-        const SizedBox(height: 8),
-        const ZooryaPayBadge(),
       ],
     );
   }

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:zmall/combo/services/combo_service.dart';
 import 'package:zmall/models/metadata.dart';
 import 'package:zmall/models/cart.dart';
 import 'package:zmall/services/core_services.dart';
@@ -128,6 +129,7 @@ class Service {
   static Future<dynamic> save(String key, value) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString(key, json.encode(value));
+    if (key == 'cart' && value is Map) ComboService.prefetchForCart(value);
   }
 
   static clearUserData() async {

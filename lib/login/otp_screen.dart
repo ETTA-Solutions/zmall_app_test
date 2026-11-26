@@ -62,7 +62,11 @@ class _OtpScreenState extends State<OtpScreen>
   @override
   void initState() {
     super.initState();
+    debugPrint('[OTP-DEBUG] initState -> listenForCode()');
     listenForCode(); // Start listening for incoming OTP
+    SmsAutoFill().getAppSignature.then(
+      (sig) => debugPrint('[OTP-DEBUG] APP HASH: $sig'),
+    );
     _startCountdown();
     // Initialize animation controller
     _animationController = AnimationController(
@@ -141,6 +145,7 @@ class _OtpScreenState extends State<OtpScreen>
 
   @override
   void codeUpdated() {
+    debugPrint('[OTP-DEBUG] mixin codeUpdated: code=$code');
     // Prevent processing if already verified
     if (hasVerified) return;
 
@@ -187,6 +192,7 @@ class _OtpScreenState extends State<OtpScreen>
     );
     if (isGeneratOtp) {
       // Re-listen for new OTP
+      debugPrint('[OTP-DEBUG] resend -> listenForCode()');
       listenForCode();
       // debugPrint("after otp resend");
       _startCountdown();
@@ -319,7 +325,7 @@ class _OtpScreenState extends State<OtpScreen>
                             strokeWidth: isError ? 2.0 : 1.0,
                           ),
                           onCodeChanged: (code) {
-                            // debugPrint("onchnage");
+                            debugPrint('[OTP-DEBUG] PinField onCodeChanged: $code');
                             if (hasVerified) return; // Skip if already verified
 
                             setState(() {
