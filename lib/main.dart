@@ -329,7 +329,6 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-
 ///for debugging FacebookAppEvents
 // import 'dart:io' show Platform;
 // import 'package:facebook_app_events/facebook_app_events.dart';

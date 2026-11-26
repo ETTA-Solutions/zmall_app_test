@@ -231,7 +231,7 @@ class _ComboSuggestionsSectionState extends State<ComboSuggestionsSection> {
               getProportionateScreenWidth(kDefaultPadding),
               getProportionateScreenHeight(kDefaultPadding / 2),
               getProportionateScreenWidth(kDefaultPadding),
-              0,
+              getProportionateScreenHeight(kDefaultPadding / 2),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -253,8 +253,9 @@ class _ComboSuggestionsSectionState extends State<ComboSuggestionsSection> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: getProportionateScreenWidth(13),
-                      color: kGreyColor,
+                      fontSize: getProportionateScreenWidth(11),
+                      fontWeight: FontWeight.w700,
+                      color: kGreyColor.withValues(alpha: 0.7),
                     ),
                   ),
                 ),
@@ -267,7 +268,7 @@ class _ComboSuggestionsSectionState extends State<ComboSuggestionsSection> {
             ),
             child: Row(
               children: [
-                for (var i = 0; i < keys.length; i++)
+                for (var i = 0; i < keys.length; i++) ...[
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => setState(() => _tab = i),
@@ -289,7 +290,7 @@ class _ComboSuggestionsSectionState extends State<ComboSuggestionsSection> {
                       child: Text(
                         keys[i],
                         style: TextStyle(
-                          fontSize: getProportionateScreenWidth(14),
+                          fontSize: getProportionateScreenWidth(12),
                           fontWeight: i == _tab
                               ? FontWeight.w600
                               : FontWeight.w400,
@@ -298,6 +299,7 @@ class _ComboSuggestionsSectionState extends State<ComboSuggestionsSection> {
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           ),
@@ -389,10 +391,10 @@ class _StoreCard extends StatelessWidget {
     final dist = _distance(store);
 
     Widget logoFallback() => Container(
-      width: 40,
-      height: 40,
+      width: 32,
+      height: 32,
       color: kPrimaryColor,
-      child: Icon(Icons.storefront_outlined, color: kGreyColor, size: 20),
+      child: Icon(Icons.storefront_outlined, color: kGreyColor, size: 18),
     );
 
     return Container(
@@ -414,8 +416,8 @@ class _StoreCard extends StatelessWidget {
                     ? logoFallback()
                     : CachedNetworkImage(
                         imageUrl: '$baseUrl/$storeImage',
-                        width: 40,
-                        height: 40,
+                        width: 32,
+                        height: 32,
                         fit: BoxFit.cover,
                         errorWidget: (_, __, ___) => logoFallback(),
                         placeholder: (_, __) => logoFallback(),
@@ -432,7 +434,7 @@ class _StoreCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: getProportionateScreenWidth(14),
+                        fontSize: getProportionateScreenWidth(12.5),
                         color: kBlackColor,
                       ),
                     ),
@@ -492,12 +494,23 @@ class _StoreCard extends StatelessWidget {
                 ),
               );
             },
-            child: Text(
-              'View store',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: kGreyColor,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: kSecondaryColor.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Text(
+                'View store',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: kSecondaryColor,
+                ),
               ),
             ),
           ),
@@ -538,8 +551,8 @@ class _ItemRow extends StatelessWidget {
     final hasOptions = item['has_options'] == true;
 
     Widget fallback() => Container(
-      width: 48,
-      height: 48,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: kSecondaryColor,
         borderRadius: BorderRadius.circular(12),
@@ -547,7 +560,7 @@ class _ItemRow extends StatelessWidget {
       child: const Icon(
         Icons.shopping_cart_outlined,
         color: Colors.white,
-        size: 22,
+        size: 20,
       ),
     );
 
@@ -561,8 +574,8 @@ class _ItemRow extends StatelessWidget {
                 ? fallback()
                 : CachedNetworkImage(
                     imageUrl: '$baseUrl/$image',
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     fit: BoxFit.cover,
                     errorWidget: (_, __, ___) => fallback(),
                     placeholder: (_, __) => fallback(),
@@ -578,7 +591,7 @@ class _ItemRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: getProportionateScreenWidth(13),
+                    fontSize: getProportionateScreenWidth(12),
                     fontWeight: FontWeight.w600,
                     color: kBlackColor,
                   ),
@@ -586,7 +599,7 @@ class _ItemRow extends StatelessWidget {
                 Text(
                   '${hasOptions ? 'from ' : ''}$currency ${price.toStringAsFixed(0)}',
                   style: TextStyle(
-                    fontSize: getProportionateScreenWidth(12),
+                    fontSize: getProportionateScreenWidth(11),
                     color: kGreyColor,
                   ),
                 ),
